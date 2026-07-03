@@ -31,6 +31,7 @@ export class Hotbar {
       count.className = 'count';
       slot.appendChild(count);
       slot.title = BLOCKS[this.layout[i]].name;
+      slot.addEventListener('click', () => this.select(i)); // tap-to-select on touch
       container.appendChild(slot);
       this.slotEls.push(slot);
       this.iconEls.push(icon);

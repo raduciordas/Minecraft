@@ -10,6 +10,7 @@ import {
   SKY_COLOR,
   SAVE_INTERVAL_MS,
   STARTER_STOCK,
+  MAX_PIXEL_RATIO,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
@@ -23,6 +24,7 @@ import { blockIntersectsBody } from './player/Physics';
 import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
+import { TouchControls } from './ui/TouchControls';
 import { loadSave, writeSave } from './SaveManager';
 import { MobManager } from './mobs/MobManager';
 
@@ -59,7 +61,7 @@ export class Game {
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -99,8 +101,12 @@ export class Game {
         this.hotbar.assignToSelected(id);
         this.toggleInventoryPanel();
       },
+      () => {
+        if (this.inventoryPanel.isOpen) this.toggleInventoryPanel();
+      },
     );
     this.mobManager = new MobManager(this.scene, this.world);
+    new TouchControls(this.input);
 
     this.underwaterOverlay = document.getElementById('underwater')!;
 
@@ -223,12 +229,12 @@ export class Game {
   private toggleInventoryPanel(): void {
     if (this.inventoryPanel.isOpen) {
       this.inventoryPanel.close();
-      this.input.inventoryOpen = false;
-      this.renderer.domElement.requestPointerLock();
+      this.input.setInventoryOpen(false);
+      if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
     } else {
       this.inventoryPanel.show();
-      this.input.inventoryOpen = true;
-      document.exitPointerLock();
+      this.input.setInventoryOpen(true);
+      if (!this.input.isTouchDevice) document.exitPointerLock();
     }
   }
 
@@ -370,7 +376,7 @@ export class Game {
   }
 
   private updateSelectionBox(): void {
-    const hit = this.input.locked ? this.raycastFromCamera() : null;
+    const hit = this.input.active ? this.raycastFromCamera() : null;
     if (hit) {
       this.selectionBox.position.set(hit.block.x + 0.5, hit.block.y + 0.5, hit.block.z + 0.5);
       this.selectionBox.visible = true;

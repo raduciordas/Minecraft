@@ -2,11 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Minecraft</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+      html, body {
+        width: 100%; height: 100%; overflow: hidden; background: #000;
+        touch-action: none; overscroll-behavior: none;
+        user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+      }
       #app { width: 100%; height: 100%; }
       #app canvas { display: block; }
 
@@ -28,8 +35,8 @@
         transform: translateX(-50%);
         display: flex; gap: 4px;
         padding: 4px; background: rgba(0, 0, 0, 0.35);
-        border-radius: 6px; z-index: 10;
-        pointer-events: none;
+        border-radius: 6px; z-index: 13;
+        pointer-events: auto;
       }
       .hotbar-slot {
         width: 48px; height: 48px;
@@ -64,7 +71,15 @@
         border: 2px solid #999; border-radius: 8px;
         padding: 18px 20px;
       }
-      .inv-title { color: #fff; font: 13px monospace; margin-bottom: 12px; }
+      .inv-title {
+        color: #fff; font: 13px monospace; margin-bottom: 12px;
+        display: flex; align-items: center; gap: 16px;
+      }
+      .inv-close {
+        margin-left: auto; cursor: pointer;
+        padding: 4px 8px; border: 1px solid #777; border-radius: 4px;
+      }
+      .inv-close:hover { border-color: #fff; }
       .inv-grid { display: grid; grid-template-columns: repeat(4, 72px); gap: 8px; }
       .inv-cell {
         height: 72px;
@@ -84,6 +99,55 @@
         pointer-events: none; z-index: 5;
       }
       #underwater.hidden { display: none; }
+
+      #touch-ui {
+        position: fixed; inset: 0;
+        z-index: 12; pointer-events: none;
+        display: none;
+      }
+      #touch-ui.active { display: block; }
+      #touch-look { position: absolute; inset: 0; pointer-events: auto; }
+      .joy-base {
+        position: absolute; left: 22px; bottom: 88px;
+        width: 128px; height: 128px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        pointer-events: auto;
+      }
+      .joy-knob {
+        position: absolute; left: 50%; top: 50%;
+        width: 54px; height: 54px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translate(-50%, -50%);
+      }
+      .touch-btn {
+        position: absolute;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(0, 0, 0, 0.35);
+        border: 2px solid rgba(255, 255, 255, 0.45);
+        color: #fff; font-size: 24px;
+        display: flex; align-items: center; justify-content: center;
+        pointer-events: auto;
+      }
+      .touch-btn:active { background: rgba(255, 255, 255, 0.3); }
+      #btn-jump { right: 26px; bottom: 92px; width: 72px; height: 72px; }
+      #btn-down { right: 112px; bottom: 84px; width: 52px; height: 52px; }
+      #btn-break { right: 40px; bottom: 188px; }
+      #btn-place { right: 118px; bottom: 168px; }
+      #btn-fly { right: 14px; top: 14px; width: 46px; height: 46px; font-size: 18px; }
+      #btn-inv { right: 70px; top: 14px; width: 46px; height: 46px; font-size: 18px; }
+      #btn-pause { left: 14px; top: 34px; width: 46px; height: 46px; font-size: 14px; }
+
+      @media (max-width: 760px) {
+        .hotbar-slot { width: 38px; height: 38px; }
+        .hotbar-slot canvas { width: 28px; height: 28px; }
+        .inv-grid { grid-template-columns: repeat(4, 58px); gap: 5px; }
+        .inv-cell { height: 58px; }
+        .inv-cell canvas { width: 24px; height: 24px; }
+        #overlay h1 { font-size: 30px; }
+        #overlay p { font-size: 11px; }
+      }
+      .inv-panel { max-width: 94vw; max-height: 85vh; overflow: auto; }
 
       #fps {
         position: fixed; top: 8px; left: 8px;

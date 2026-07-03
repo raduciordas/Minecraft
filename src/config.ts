@@ -1,7 +1,13 @@
 export const CHUNK_SIZE = 16;
 export const CHUNK_HEIGHT = 64;
 
-export const RENDER_DISTANCE = 6; // chunks, radius around the player
+// Touch devices get a smaller world radius and render scale to keep 60 fps
+export const IS_TOUCH =
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(pointer: coarse)')?.matches || 'ontouchstart' in window);
+
+export const RENDER_DISTANCE = IS_TOUCH ? 5 : 6; // chunks, radius around the player
+export const MAX_PIXEL_RATIO = IS_TOUCH ? 1.5 : 2;
 export const WORLD_SEED = 1337;
 
 // Terrain shape

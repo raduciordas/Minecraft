@@ -13,6 +13,12 @@ npm run preview  # servește build-ul de producție
 
 ## Controale
 
+### Pe telefon / tabletă
+
+Jocul detectează automat ecranele tactile și afișează controale dedicate: joystick virtual în stânga pentru mișcare, tragi cu degetul oriunde pe ecran ca să privești în jur, butoane pentru săritură (⤒), coborâre în zbor (⤓), spart (⛏, ține apăsat pentru spargere continuă), plasat (⬜), zbor (✈), inventar (🎒) și pauză (❚❚). Atingi un slot din hotbar ca să-l selectezi. Pe mobil raza de randare și rezoluția sunt reduse automat pentru fluiditate.
+
+### Pe desktop
+
 | Tastă / acțiune | Efect |
 | --- | --- |
 | Click | intră în joc (pointer lock) |

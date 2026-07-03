@@ -14,13 +14,23 @@ export class InventoryPanel {
     atlas: TextureAtlas,
     private inventory: Inventory,
     onPick: (id: (typeof PLACEABLE_BLOCKS)[number]) => void,
+    onRequestClose: () => void,
   ) {
     this.root = container;
+    // Tapping the backdrop (outside the panel) closes the inventory
+    this.root.addEventListener('click', (e) => {
+      if (e.target === this.root) onRequestClose();
+    });
     const panel = document.createElement('div');
     panel.className = 'inv-panel';
     const title = document.createElement('div');
     title.className = 'inv-title';
     title.textContent = 'Inventory — click a material to put it in the selected hotbar slot';
+    const closeButton = document.createElement('span');
+    closeButton.className = 'inv-close';
+    closeButton.textContent = '✕';
+    closeButton.addEventListener('click', onRequestClose);
+    title.appendChild(closeButton);
     panel.appendChild(title);
     const grid = document.createElement('div');
     grid.className = 'inv-grid';
