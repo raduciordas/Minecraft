@@ -9,9 +9,10 @@ import {
   MESH_BUDGET_MS,
   SKY_COLOR,
   SAVE_INTERVAL_MS,
+  STARTER_STOCK,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
-import { BlockType, isWater } from './world/Block';
+import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
@@ -23,6 +24,7 @@ import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { loadSave, writeSave } from './SaveManager';
+import { MobManager } from './mobs/MobManager';
 
 interface ChunkTask {
   cx: number;
@@ -42,6 +44,7 @@ export class Game {
   private hotbar: Hotbar;
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
+  private mobManager: MobManager;
   private selectionBox: THREE.LineSegments;
   private underwaterOverlay: HTMLElement;
   private lastSaveTime = 0;
@@ -92,11 +95,12 @@ export class Game {
       document.getElementById('inventory')!,
       atlas,
       this.inventory,
-      (slotIndex) => {
-        this.hotbar.select(slotIndex);
+      (id) => {
+        this.hotbar.assignToSelected(id);
         this.toggleInventoryPanel();
       },
     );
+    this.mobManager = new MobManager(this.scene, this.world);
 
     this.underwaterOverlay = document.getElementById('underwater')!;
 
@@ -127,6 +131,7 @@ export class Game {
     if (save && save.seed === WORLD_SEED) {
       this.world.loadEdits(save.edits);
       this.inventory.load(save.inventory);
+      if (save.hotbar) this.hotbar.setLayout(save.hotbar);
       this.hotbar.select(save.selectedSlot);
       this.player.body.x = save.player.x;
       this.player.body.y = save.player.y;
@@ -137,6 +142,8 @@ export class Game {
       const spawnHeight = this.world.generator.heightAt(0, 0);
       this.player.spawnAt(0.5, 0.5, spawnHeight);
     }
+    // Every session starts with a healthy stock of each material
+    for (const id of PLACEABLE_BLOCKS) this.inventory.ensureAtLeast(id, STARTER_STOCK);
 
     window.addEventListener('beforeunload', () => this.saveNow());
     document.addEventListener('visibilitychange', () => {
@@ -164,6 +171,7 @@ export class Game {
       let steps = 0;
       while (this.accumulator >= PHYSICS_STEP && steps < MAX_STEPS_PER_FRAME) {
         this.player.update(this.world, PHYSICS_STEP);
+        this.mobManager.update(PHYSICS_STEP, this.player.body);
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
@@ -207,6 +215,7 @@ export class Game {
       },
       inventory: this.inventory.serialize(),
       selectedSlot: this.hotbar.selectedIndex,
+      hotbar: this.hotbar.getLayout(),
       edits: this.world.serializeEdits(),
     });
   }

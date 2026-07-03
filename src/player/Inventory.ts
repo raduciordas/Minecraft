@@ -23,6 +23,14 @@ export class Inventory {
     return true;
   }
 
+  // Top up to at least n (session starter stock)
+  ensureAtLeast(id: BlockType, n: number): void {
+    if (this.count(id) < n) {
+      this.counts.set(id, n);
+      this.emit();
+    }
+  }
+
   onChange(fn: () => void): void {
     this.listeners.push(fn);
   }

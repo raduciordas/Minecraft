@@ -22,6 +22,7 @@ export class ChunkMeshManager {
     this.solidMaterial = new THREE.MeshLambertMaterial({
       map: atlas.texture,
       vertexColors: true,
+      alphaTest: 0.5, // glass tile has fully transparent pixels
     });
     this.waterMaterial = new THREE.MeshLambertMaterial({
       map: atlas.texture,

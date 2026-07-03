@@ -22,8 +22,8 @@ npm run preview  # servește build-ul de producție
 | Shift stânga | în zbor: coboară |
 | Click stânga | sparge blocul țintit (îl colectezi în inventar) |
 | Click dreapta | plasează blocul selectat (consumă din inventar) |
-| 1–7 / scroll | selectează blocul din hotbar |
-| E | deschide/închide inventarul |
+| 1–9 / scroll | selectează slotul din hotbar |
+| E | deschide inventarul — click pe un material îl pune în slotul selectat |
 | F | comută modul zbor |
 | Esc | pauză (eliberează mouse-ul) |
 
@@ -31,7 +31,9 @@ npm run preview  # servește build-ul de producție
 
 - Teren infinit generat procedural (simplex noise, seed determinist) cu dealuri, plaje de nisip și copaci
 - Apă la nivelul mării: lacuri și mări semi-transparente, înot (Space te ridică), tentă albastră când ești sub apă
-- Inventar în stil survival: spargi blocuri ca să le colectezi, plasarea consumă din stoc; contoare pe hotbar și panou de inventar pe tasta E
+- 12 materiale de construcție: iarbă, pământ, piatră, nisip, buștean, frunze, scânduri, cobblestone, cărămidă, zăpadă, sticlă (transparentă) și piatră cioplită
+- Inventar: fiecare sesiune pornește cu un stoc de 64 din fiecare material; spargerea blocurilor adaugă la stoc, plasarea consumă; hotbar cu 9 sloturi configurabile din panoul de inventar (tasta E)
+- Mobi pasivi care se plimbă prin lume: porci, oi și zombi cu AI de hoinărit, sar peste obstacole, plutesc în apă și animație de mers
 - Salvare automată în localStorage (la ~10 secunde și la închiderea paginii): modificările lumii, poziția jucătorului, inventarul și slotul selectat se păstrează la reîncărcare
 - Streaming de chunk-uri 16×64×16 în jurul jucătorului, cu buget de timp per frame
 - Meshing eficient: doar fețele vizibile, o singură geometrie per chunk, umbrire direcțională coaptă în vertex colors

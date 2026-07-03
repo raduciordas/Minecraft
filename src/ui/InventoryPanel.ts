@@ -3,7 +3,7 @@ import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
 // Full-screen inventory overlay (toggled with E). Shows the stock of every
-// block type; clicking a block selects its hotbar slot.
+// material; clicking one puts it in the currently selected hotbar slot.
 export class InventoryPanel {
   private root: HTMLElement;
   private countLabels: HTMLElement[] = [];
@@ -13,20 +13,20 @@ export class InventoryPanel {
     container: HTMLElement,
     atlas: TextureAtlas,
     private inventory: Inventory,
-    onPick: (slotIndex: number) => void,
+    onPick: (id: (typeof PLACEABLE_BLOCKS)[number]) => void,
   ) {
     this.root = container;
     const panel = document.createElement('div');
     panel.className = 'inv-panel';
     const title = document.createElement('div');
     title.className = 'inv-title';
-    title.textContent = 'Inventory — break blocks to collect them';
+    title.textContent = 'Inventory — click a material to put it in the selected hotbar slot';
     panel.appendChild(title);
     const grid = document.createElement('div');
     grid.className = 'inv-grid';
     panel.appendChild(grid);
 
-    PLACEABLE_BLOCKS.forEach((id, i) => {
+    PLACEABLE_BLOCKS.forEach((id) => {
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
       cell.appendChild(atlas.makeTileIcon(BLOCKS[id].textures.side));
@@ -37,7 +37,7 @@ export class InventoryPanel {
       const count = document.createElement('span');
       count.className = 'cnt';
       cell.appendChild(count);
-      cell.addEventListener('click', () => onPick(i));
+      cell.addEventListener('click', () => onPick(id));
       grid.appendChild(cell);
       this.countLabels.push(count);
     });

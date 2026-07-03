@@ -15,13 +15,17 @@ import {
 import { isWater } from '../world/Block';
 import type { World } from '../world/World';
 import type { InputController } from './InputController';
-import { stepBody, type Body } from './Physics';
+import { stepBody, makeBody, type Body } from './Physics';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../config';
 
 export class Player {
-  body: Body = { x: 0.5, y: 40, z: 0.5, vx: 0, vy: 0, vz: 0, onGround: false };
+  body: Body = makeBody(PLAYER_WIDTH / 2, PLAYER_HEIGHT);
   flying = false;
 
   constructor(private input: InputController) {
+    this.body.x = 0.5;
+    this.body.y = 40;
+    this.body.z = 0.5;
     input.onFlyToggle(() => {
       this.flying = !this.flying;
       this.body.vy = 0;

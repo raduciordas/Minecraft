@@ -8,6 +8,7 @@ const ATLAS_PX = ATLAS_TILES * TILE_PX;
 interface TileSpec {
   base: [number, number, number];
   variation: number; // per-pixel brightness noise amplitude (0..1)
+  transparentBase?: boolean; // base pixels are fully transparent (glass); draw() marks opaque ones
   draw?: (px: (x: number, y: number, r: number, g: number, b: number) => void, rand: () => number) => void;
 }
 
@@ -105,6 +106,65 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Cobble]: {
+    base: [112, 112, 112],
+    variation: 0.12,
+    draw: (px, rand) => {
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          const r = rand();
+          if (r < 0.14) px(x, y, 72, 72, 72);
+          else if (r > 0.92) px(x, y, 150, 150, 150);
+        }
+      }
+    },
+  },
+  [Tile.Brick]: {
+    base: [152, 72, 60],
+    variation: 0.08,
+    draw: (px) => {
+      // Mortar: horizontal courses + staggered vertical joints
+      for (let x = 0; x < TILE_PX; x++) {
+        for (const y of [3, 7, 11, 15]) px(x, y, 176, 168, 160);
+      }
+      for (const [x, y0] of [[7, 0], [3, 4], [11, 4], [7, 8], [3, 12], [11, 12]] as const) {
+        for (let y = y0; y < y0 + 3; y++) px(x, y, 176, 168, 160);
+      }
+    },
+  },
+  [Tile.Snow]: { base: [236, 241, 246], variation: 0.04 },
+  [Tile.Glass]: {
+    base: [0, 0, 0],
+    variation: 0,
+    transparentBase: true,
+    draw: (px) => {
+      // Frame + a couple of diagonal shine streaks
+      for (let i = 0; i < TILE_PX; i++) {
+        px(i, 0, 208, 228, 240);
+        px(i, 15, 208, 228, 240);
+        px(0, i, 208, 228, 240);
+        px(15, i, 208, 228, 240);
+      }
+      for (let i = 2; i < 7; i++) px(i + 4, i, 228, 242, 250);
+      for (let i = 6; i < 10; i++) px(i + 3, i, 228, 242, 250);
+    },
+  },
+  [Tile.StoneBrick]: {
+    base: [122, 122, 122],
+    variation: 0.08,
+    draw: (px) => {
+      // Two courses of large bricks with dark seams
+      for (let x = 0; x < TILE_PX; x++) {
+        px(x, 0, 84, 84, 84);
+        px(x, 8, 84, 84, 84);
+      }
+      for (let y = 1; y < 8; y++) px(7, y, 84, 84, 84);
+      for (let y = 9; y < 16; y++) {
+        px(3, y, 84, 84, 84);
+        px(11, y, 84, 84, 84);
+      }
+    },
+  },
 };
 
 export class TextureAtlas {
@@ -131,7 +191,7 @@ export class TextureAtlas {
           img.data[i] = Math.min(255, spec.base[0] * v);
           img.data[i + 1] = Math.min(255, spec.base[1] * v);
           img.data[i + 2] = Math.min(255, spec.base[2] * v);
-          img.data[i + 3] = 255;
+          img.data[i + 3] = spec.transparentBase ? 0 : 255;
         }
       }
       spec.draw?.((x, y, r, g, b) => {
@@ -139,6 +199,7 @@ export class TextureAtlas {
         img.data[i] = Math.min(255, r);
         img.data[i + 1] = Math.min(255, g);
         img.data[i + 2] = Math.min(255, b);
+        img.data[i + 3] = 255;
       }, mulberry32(seed + tile * 211));
       ctx.putImageData(img, ox, oy);
     }

@@ -40,6 +40,10 @@ export const MESH_BUDGET_MS = 7; // per-frame budget for chunk gen/meshing
 // Sky
 export const SKY_COLOR = 0x87ceeb;
 
+// Inventory
+export const HOTBAR_SIZE = 9;
+export const STARTER_STOCK = 64; // every session starts with at least this much of each material
+
 // Persistence
 export const SAVE_KEY = 'browser-minecraft-save-v1';
 export const SAVE_INTERVAL_MS = 10_000;

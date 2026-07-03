@@ -6,6 +6,7 @@ export interface SaveData {
   player: { x: number; y: number; z: number; yaw: number; pitch: number };
   inventory: Record<number, number>;
   selectedSlot: number;
+  hotbar?: number[]; // absent in saves from before assignable hotbar slots
   edits: EditsData;
 }
 

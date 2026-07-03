@@ -101,8 +101,11 @@ export function meshChunk(chunk: Chunk, world: World, atlas: TextureAtlas): Chun
           const neighbor = world.getBlock(wx + face.dir[0], ly + face.dir[1], wz + face.dir[2]);
           if (blockIsWater) {
             if (neighbor !== BlockType.Air) continue;
-          } else if (isOpaque(neighbor)) {
-            continue;
+          } else {
+            if (isOpaque(neighbor)) continue;
+            // Non-opaque solids (glass) skip faces between two blocks of the
+            // same type, so panes merge without internal seams
+            if (!def.opaque && neighbor === id) continue;
           }
           builder.addFace(face, wx, ly, wz, atlas.getUVs(def.textures[face.texture]));
         }
