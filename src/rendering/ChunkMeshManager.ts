@@ -5,17 +5,31 @@ import type { World } from '../world/World';
 import { meshChunk } from './ChunkMesher';
 import type { TextureAtlas } from './TextureAtlas';
 
+interface ChunkMeshes {
+  solid?: THREE.Mesh;
+  water?: THREE.Mesh;
+}
+
 export class ChunkMeshManager {
-  private meshes = new Map<string, THREE.Mesh>();
-  private material: THREE.MeshLambertMaterial;
+  private meshes = new Map<string, ChunkMeshes>();
+  private solidMaterial: THREE.MeshLambertMaterial;
+  private waterMaterial: THREE.MeshLambertMaterial;
 
   constructor(
     private scene: THREE.Scene,
     private atlas: TextureAtlas,
   ) {
-    this.material = new THREE.MeshLambertMaterial({
+    this.solidMaterial = new THREE.MeshLambertMaterial({
       map: atlas.texture,
       vertexColors: true,
+    });
+    this.waterMaterial = new THREE.MeshLambertMaterial({
+      map: atlas.texture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+      side: THREE.DoubleSide, // water surface stays visible from underneath
     });
   }
 
@@ -29,29 +43,40 @@ export class ChunkMeshManager {
 
   remesh(chunk: Chunk, world: World): void {
     const key = chunkKey(chunk.cx, chunk.cz);
-    const old = this.meshes.get(key);
-    if (old) {
-      this.scene.remove(old);
-      old.geometry.dispose();
-      this.meshes.delete(key);
-    }
+    this.disposeEntry(this.meshes.get(key));
+    this.meshes.delete(key);
 
-    const geometry = meshChunk(chunk, world, this.atlas);
+    const { solid, water } = meshChunk(chunk, world, this.atlas);
     chunk.dirty = false;
-    if (!geometry) return;
 
-    const mesh = new THREE.Mesh(geometry, this.material);
-    mesh.matrixAutoUpdate = false; // vertices are in world space already
-    this.meshes.set(key, mesh);
-    this.scene.add(mesh);
+    const entry: ChunkMeshes = {};
+    if (solid) {
+      entry.solid = new THREE.Mesh(solid, this.solidMaterial);
+      entry.solid.matrixAutoUpdate = false; // vertices are in world space already
+      this.scene.add(entry.solid);
+    }
+    if (water) {
+      entry.water = new THREE.Mesh(water, this.waterMaterial);
+      entry.water.matrixAutoUpdate = false;
+      this.scene.add(entry.water);
+    }
+    this.meshes.set(key, entry);
   }
 
   removeMesh(cx: number, cz: number): void {
     const key = chunkKey(cx, cz);
-    const mesh = this.meshes.get(key);
-    if (!mesh) return;
-    this.scene.remove(mesh);
-    mesh.geometry.dispose();
+    const entry = this.meshes.get(key);
+    if (!entry) return;
+    this.disposeEntry(entry);
     this.meshes.delete(key);
+  }
+
+  private disposeEntry(entry: ChunkMeshes | undefined): void {
+    if (!entry) return;
+    for (const mesh of [entry.solid, entry.water]) {
+      if (!mesh) continue;
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
   TERRAIN_AMP_2,
   TERRAIN_FREQ_2,
   SAND_HEIGHT,
+  SEA_LEVEL,
 } from '../config';
 import { BlockType } from './Block';
 import { Chunk } from './Chunk';
@@ -68,6 +69,9 @@ export class TerrainGenerator {
           else if (y >= height - 3) id = sandy ? BlockType.Sand : BlockType.Dirt;
           else id = BlockType.Stone;
           chunk.setBlock(lx, y, lz, id);
+        }
+        for (let y = height + 1; y <= SEA_LEVEL; y++) {
+          chunk.setBlock(lx, y, lz, BlockType.Water);
         }
       }
     }

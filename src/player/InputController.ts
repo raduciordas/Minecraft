@@ -5,6 +5,9 @@ export class InputController {
   yaw = 0;
   pitch = 0;
   locked = false;
+  // While the inventory panel is open the pause overlay stays hidden even
+  // though pointer lock is released.
+  inventoryOpen = false;
 
   private keys = new Set<string>();
   private breakListeners: (() => void)[] = [];
@@ -12,6 +15,7 @@ export class InputController {
   private hotbarListeners: ((slot: number) => void)[] = [];
   private scrollListeners: ((delta: number) => void)[] = [];
   private flyToggleListeners: (() => void)[] = [];
+  private inventoryToggleListeners: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement, overlay: HTMLElement) {
     overlay.addEventListener('click', () => {
@@ -20,7 +24,7 @@ export class InputController {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
-      overlay.classList.toggle('hidden', this.locked);
+      overlay.classList.toggle('hidden', this.locked || this.inventoryOpen);
       if (!this.locked) this.keys.clear();
     });
 
@@ -32,6 +36,10 @@ export class InputController {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyE' && (this.locked || this.inventoryOpen)) {
+        this.inventoryToggleListeners.forEach((fn) => fn());
+        return;
+      }
       if (!this.locked) return;
       this.keys.add(e.code);
       if (e.code === 'KeyF') this.flyToggleListeners.forEach((fn) => fn());
@@ -90,5 +98,8 @@ export class InputController {
   }
   onFlyToggle(fn: () => void): void {
     this.flyToggleListeners.push(fn);
+  }
+  onInventoryToggle(fn: () => void): void {
+    this.inventoryToggleListeners.push(fn);
   }
 }

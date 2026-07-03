@@ -7,6 +7,7 @@ export const enum BlockType {
   Log = 5,
   Leaves = 6,
   Plank = 7,
+  Water = 8,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -20,11 +21,12 @@ export const enum Tile {
   LogTop = 6,
   Leaves = 7,
   Plank = 8,
+  Water = 9,
 }
 
 export interface BlockDef {
   name: string;
-  solid: boolean;
+  solid: boolean; // participates in collision and can be targeted by the crosshair
   textures: { top: Tile; side: Tile; bottom: Tile };
 }
 
@@ -38,6 +40,7 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Log]: { name: 'Log', solid: true, textures: T(Tile.LogTop, Tile.LogSide, Tile.LogTop) },
   [BlockType.Leaves]: { name: 'Leaves', solid: true, textures: T(Tile.Leaves, Tile.Leaves, Tile.Leaves) },
   [BlockType.Plank]: { name: 'Plank', solid: true, textures: T(Tile.Plank, Tile.Plank, Tile.Plank) },
+  [BlockType.Water]: { name: 'Water', solid: false, textures: T(Tile.Water, Tile.Water, Tile.Water) },
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -50,6 +53,16 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Plank,
 ];
 
+// Collision / crosshair targeting: water and air are pass-through
 export function isSolid(id: number): boolean {
-  return id !== BlockType.Air;
+  return BLOCKS[id]?.solid ?? false;
+}
+
+// Face culling: only opaque blocks hide their neighbors' faces
+export function isOpaque(id: number): boolean {
+  return id !== BlockType.Air && id !== BlockType.Water;
+}
+
+export function isWater(id: number): boolean {
+  return id === BlockType.Water;
 }

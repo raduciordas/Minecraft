@@ -8,17 +8,21 @@ import {
   MAX_STEPS_PER_FRAME,
   MESH_BUDGET_MS,
   SKY_COLOR,
+  SAVE_INTERVAL_MS,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
-import { BlockType } from './world/Block';
+import { BlockType, isWater } from './world/Block';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
 import { InputController } from './player/InputController';
 import { Player } from './player/Player';
+import { Inventory } from './player/Inventory';
 import { blockIntersectsBody } from './player/Physics';
 import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
+import { InventoryPanel } from './ui/InventoryPanel';
+import { loadSave, writeSave } from './SaveManager';
 
 interface ChunkTask {
   cx: number;
@@ -34,9 +38,13 @@ export class Game {
   private meshManager: ChunkMeshManager;
   private input: InputController;
   private player: Player;
+  private inventory: Inventory;
   private hotbar: Hotbar;
   private hud: Hud;
+  private inventoryPanel: InventoryPanel;
   private selectionBox: THREE.LineSegments;
+  private underwaterOverlay: HTMLElement;
+  private lastSaveTime = 0;
 
   private taskQueue: ChunkTask[] = [];
   private queuedKeys = new Set<string>();
@@ -77,13 +85,26 @@ export class Game {
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
     this.player = new Player(this.input);
-    this.hotbar = new Hotbar(document.getElementById('hotbar')!, atlas);
+    this.inventory = new Inventory();
+    this.hotbar = new Hotbar(document.getElementById('hotbar')!, atlas, this.inventory);
     this.hud = new Hud(document.getElementById('fps')!);
+    this.inventoryPanel = new InventoryPanel(
+      document.getElementById('inventory')!,
+      atlas,
+      this.inventory,
+      (slotIndex) => {
+        this.hotbar.select(slotIndex);
+        this.toggleInventoryPanel();
+      },
+    );
+
+    this.underwaterOverlay = document.getElementById('underwater')!;
 
     this.input.onHotbarSelect((slot) => this.hotbar.select(slot));
     this.input.onScroll((delta) => this.hotbar.scroll(delta));
     this.input.onBreak(() => this.breakBlock());
     this.input.onPlace(() => this.placeBlock());
+    this.input.onInventoryToggle(() => this.toggleInventoryPanel());
 
     // Selection outline: slightly inflated unit cube wireframe
     const boxGeo = new THREE.BoxGeometry(1.001, 1.001, 1.001);
@@ -101,9 +122,29 @@ export class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Spawn: generate the spawn chunk synchronously, place the player on top
-    const spawnHeight = this.world.generator.heightAt(0, 0);
-    this.player.spawnAt(0.5, 0.5, spawnHeight);
+    // Restore a saved session if one exists; otherwise spawn fresh at origin
+    const save = loadSave();
+    if (save && save.seed === WORLD_SEED) {
+      this.world.loadEdits(save.edits);
+      this.inventory.load(save.inventory);
+      this.hotbar.select(save.selectedSlot);
+      this.player.body.x = save.player.x;
+      this.player.body.y = save.player.y;
+      this.player.body.z = save.player.z;
+      this.input.yaw = save.player.yaw;
+      this.input.pitch = save.player.pitch;
+    } else {
+      const spawnHeight = this.world.generator.heightAt(0, 0);
+      this.player.spawnAt(0.5, 0.5, spawnHeight);
+    }
+
+    window.addEventListener('beforeunload', () => this.saveNow());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.saveNow();
+    });
+
+    // Debug handle for the browser console
+    (window as unknown as { __game: Game }).__game = this;
   }
 
   start(): void {
@@ -133,9 +174,53 @@ export class Game {
     this.camera.rotation.y = this.input.yaw;
     this.camera.rotation.x = this.input.pitch;
 
+    // Blue screen tint while the camera is inside a water block
+    const eyeUnderwater = isWater(
+      this.world.getBlock(
+        Math.floor(this.camera.position.x),
+        Math.floor(this.camera.position.y),
+        Math.floor(this.camera.position.z),
+      ),
+    );
+    this.underwaterOverlay.classList.toggle('hidden', !eyeUnderwater);
+
     this.updateSelectionBox();
     this.hud.tick(now);
+
+    if (this.worldReady && now - this.lastSaveTime > SAVE_INTERVAL_MS) {
+      this.saveNow();
+      this.lastSaveTime = now;
+    }
+
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private saveNow(): void {
+    writeSave({
+      seed: WORLD_SEED,
+      player: {
+        x: this.player.body.x,
+        y: this.player.body.y,
+        z: this.player.body.z,
+        yaw: this.input.yaw,
+        pitch: this.input.pitch,
+      },
+      inventory: this.inventory.serialize(),
+      selectedSlot: this.hotbar.selectedIndex,
+      edits: this.world.serializeEdits(),
+    });
+  }
+
+  private toggleInventoryPanel(): void {
+    if (this.inventoryPanel.isOpen) {
+      this.inventoryPanel.close();
+      this.input.inventoryOpen = false;
+      this.renderer.domElement.requestPointerLock();
+    } else {
+      this.inventoryPanel.show();
+      this.input.inventoryOpen = true;
+      document.exitPointerLock();
+    }
   }
 
   // --- Chunk streaming ---
@@ -257,16 +342,20 @@ export class Game {
     if (!hit) return;
     const { x, y, z } = hit.block;
     if (y <= 0) return; // keep the bottom layer as bedrock
+    const broken = this.world.getBlock(x, y, z);
     const affected = this.world.setBlock(x, y, z, BlockType.Air);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
+    if (affected.length > 0) this.inventory.add(broken);
   }
 
   private placeBlock(): void {
     const hit = this.raycastFromCamera();
     if (!hit) return;
     const { x, y, z } = hit.previous;
-    if (this.world.getBlock(x, y, z) !== BlockType.Air) return;
+    const target = this.world.getBlock(x, y, z);
+    if (target !== BlockType.Air && target !== BlockType.Water) return;
     if (blockIntersectsBody(this.player.body, x, y, z)) return;
+    if (!this.inventory.remove(this.hotbar.selectedBlock)) return; // out of stock
     const affected = this.world.setBlock(x, y, z, this.hotbar.selectedBlock);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
   }

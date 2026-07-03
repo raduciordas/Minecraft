@@ -7,7 +7,12 @@ import {
   AIR_ACCEL,
   GROUND_FRICTION,
   PLAYER_EYE_HEIGHT,
+  WATER_SPEED_FACTOR,
+  WATER_GRAVITY_FACTOR,
+  SWIM_UP_SPEED,
+  WATER_MAX_SINK_SPEED,
 } from '../config';
+import { isWater } from '../world/Block';
 import type { World } from '../world/World';
 import type { InputController } from './InputController';
 import { stepBody, type Body } from './Physics';
@@ -60,10 +65,17 @@ export class Player {
       return;
     }
 
+    const bx = Math.floor(this.body.x);
+    const bz = Math.floor(this.body.z);
+    const inWater =
+      isWater(world.getBlock(bx, Math.floor(this.body.y + 0.3), bz)) ||
+      isWater(world.getBlock(bx, Math.floor(this.body.y + 1.4), bz));
+
     // Horizontal: accelerate toward wish velocity, friction on ground
     const accel = this.body.onGround ? GROUND_ACCEL : AIR_ACCEL;
-    const targetVx = wishX * WALK_SPEED;
-    const targetVz = wishZ * WALK_SPEED;
+    const speed = inWater ? WALK_SPEED * WATER_SPEED_FACTOR : WALK_SPEED;
+    const targetVx = wishX * speed;
+    const targetVz = wishZ * speed;
     this.body.vx += (targetVx - this.body.vx) * Math.min(1, accel * dt / WALK_SPEED);
     this.body.vz += (targetVz - this.body.vz) * Math.min(1, accel * dt / WALK_SPEED);
     if (this.body.onGround && move.x === 0 && move.z === 0) {
@@ -72,10 +84,18 @@ export class Player {
       this.body.vz *= damp;
     }
 
-    if (move.jump && this.body.onGround) {
-      this.body.vy = JUMP_SPEED;
+    if (inWater) {
+      if (move.jump) {
+        this.body.vy += (SWIM_UP_SPEED - this.body.vy) * Math.min(1, 8 * dt);
+      }
+      this.body.vy += GRAVITY * WATER_GRAVITY_FACTOR * dt;
+      if (this.body.vy < WATER_MAX_SINK_SPEED) this.body.vy = WATER_MAX_SINK_SPEED;
+    } else {
+      if (move.jump && this.body.onGround) {
+        this.body.vy = JUMP_SPEED;
+      }
+      this.body.vy += GRAVITY * dt;
     }
-    this.body.vy += GRAVITY * dt;
 
     stepBody(this.body, world, dt);
 

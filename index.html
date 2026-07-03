@@ -45,6 +45,45 @@
         font: 10px monospace; color: rgba(255, 255, 255, 0.8);
         text-shadow: 1px 1px 0 #000;
       }
+      .hotbar-slot .count {
+        position: absolute; bottom: 1px; right: 3px;
+        font: bold 11px monospace; color: #fff;
+        text-shadow: 1px 1px 0 #000;
+      }
+      .hotbar-slot.empty canvas { opacity: 0.3; }
+
+      #inventory {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 15;
+      }
+      #inventory.hidden { display: none; }
+      .inv-panel {
+        background: rgba(28, 28, 28, 0.95);
+        border: 2px solid #999; border-radius: 8px;
+        padding: 18px 20px;
+      }
+      .inv-title { color: #fff; font: 13px monospace; margin-bottom: 12px; }
+      .inv-grid { display: grid; grid-template-columns: repeat(4, 72px); gap: 8px; }
+      .inv-cell {
+        height: 72px;
+        border: 2px solid #666; border-radius: 4px;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 2px;
+        cursor: pointer;
+      }
+      .inv-cell:hover { border-color: #fff; background: rgba(255, 255, 255, 0.08); }
+      .inv-cell canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+      .inv-cell .name { font: 9px monospace; color: #bbb; }
+      .inv-cell .cnt { font: 10px monospace; color: #fff; }
+
+      #underwater {
+        position: fixed; inset: 0;
+        background: rgba(25, 70, 160, 0.38);
+        pointer-events: none; z-index: 5;
+      }
+      #underwater.hidden { display: none; }
 
       #fps {
         position: fixed; top: 8px; left: 8px;
@@ -72,13 +111,16 @@
     <div id="crosshair"></div>
     <div id="hotbar"></div>
     <div id="fps"></div>
+    <div id="inventory" class="hidden"></div>
+    <div id="underwater" class="hidden"></div>
     <div id="overlay">
       <h1>MINECRAFT</h1>
       <p>
         Click to play<br /><br />
-        WASD — move &nbsp;|&nbsp; Space — jump &nbsp;|&nbsp; Mouse — look<br />
-        Left click — break &nbsp;|&nbsp; Right click — place<br />
-        1-8 / scroll — select block &nbsp;|&nbsp; F — fly mode &nbsp;|&nbsp; Esc — pause
+        WASD — move &nbsp;|&nbsp; Space — jump / swim &nbsp;|&nbsp; Mouse — look<br />
+        Left click — break (collects the block) &nbsp;|&nbsp; Right click — place from inventory<br />
+        1-7 / scroll — select block &nbsp;|&nbsp; E — inventory &nbsp;|&nbsp; F — fly &nbsp;|&nbsp; Esc — pause<br />
+        Progress is saved automatically in your browser.
       </p>
     </div>
     <script type="module" src="/src/main.ts"></script>

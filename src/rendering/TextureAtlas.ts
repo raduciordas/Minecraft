@@ -93,6 +93,18 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Water]: {
+    base: [48, 96, 200],
+    variation: 0.08,
+    draw: (px, rand) => {
+      // Faint wave highlights
+      for (let y = 0; y < TILE_PX; y += 4) {
+        for (let x = 0; x < TILE_PX; x++) {
+          if (rand() < 0.4) px(x, y, 90, 140, 225);
+        }
+      }
+    },
+  },
 };
 
 export class TextureAtlas {
