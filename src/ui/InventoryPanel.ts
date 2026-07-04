@@ -1,4 +1,5 @@
 import { BLOCKS, PLACEABLE_BLOCKS } from '../world/Block';
+import { WEAPONS, WEAPON_IDS, makeWeaponIcon } from '../items/Weapon';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
@@ -13,7 +14,7 @@ export class InventoryPanel {
     container: HTMLElement,
     atlas: TextureAtlas,
     private inventory: Inventory,
-    onPick: (id: (typeof PLACEABLE_BLOCKS)[number]) => void,
+    onPick: (id: number) => void,
     onRequestClose: () => void,
   ) {
     this.root = container;
@@ -36,19 +37,28 @@ export class InventoryPanel {
     grid.className = 'inv-grid';
     panel.appendChild(grid);
 
-    PLACEABLE_BLOCKS.forEach((id) => {
+    const addCell = (id: number, icon: HTMLCanvasElement, label: string, isWeaponCell: boolean) => {
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
-      cell.appendChild(atlas.makeTileIcon(BLOCKS[id].textures.side));
+      cell.appendChild(icon);
       const name = document.createElement('span');
       name.className = 'name';
-      name.textContent = BLOCKS[id].name;
+      name.textContent = label;
       cell.appendChild(name);
       const count = document.createElement('span');
       count.className = 'cnt';
-      cell.appendChild(count);
+      if (isWeaponCell) count.textContent = '∞';
       cell.addEventListener('click', () => onPick(id));
+      cell.appendChild(count);
       grid.appendChild(cell);
+      return count;
+    };
+
+    for (const id of WEAPON_IDS) {
+      addCell(id, makeWeaponIcon(id), WEAPONS[id].name, true);
+    }
+    PLACEABLE_BLOCKS.forEach((id) => {
+      const count = addCell(id, atlas.makeTileIcon(BLOCKS[id].textures.side), BLOCKS[id].name, false);
       this.countLabels.push(count);
     });
 

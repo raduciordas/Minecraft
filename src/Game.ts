@@ -12,7 +12,6 @@ import {
   STARTER_STOCK,
   MAX_PIXEL_RATIO,
   FALL_SAFE_SPEED,
-  ZOMBIE_DAMAGE,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
@@ -30,14 +29,45 @@ import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
 import { MobManager } from './mobs/MobManager';
+import type { Mob, MobKind } from './mobs/Mob';
 import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
+import { WEAPONS, WeaponId, isWeapon, buildWeaponModel, disposeModel } from './items/Weapon';
 
 interface ChunkTask {
   cx: number;
   cz: number;
   kind: 'generate' | 'mesh';
+}
+
+// Slab-method ray vs axis-aligned box; returns entry distance or null
+function rayAABB(
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  minX: number, minY: number, minZ: number,
+  maxX: number, maxY: number, maxZ: number,
+): number | null {
+  let tMin = 0;
+  let tMax = Infinity;
+  const axes: [number, number, number, number][] = [
+    [ox, dx, minX, maxX],
+    [oy, dy, minY, maxY],
+    [oz, dz, minZ, maxZ],
+  ];
+  for (const [o, d, lo, hi] of axes) {
+    if (Math.abs(d) < 1e-9) {
+      if (o < lo || o > hi) return null;
+      continue;
+    }
+    let t1 = (lo - o) / d;
+    let t2 = (hi - o) / d;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tMin = Math.max(tMin, t1);
+    tMax = Math.min(tMax, t2);
+    if (tMin > tMax) return null;
+  }
+  return tMin;
 }
 
 export class Game {
@@ -62,6 +92,10 @@ export class Game {
   private lastSaveTime = 0;
   private stepDistance = 0;
   private wasFeetInWater = false;
+  private attackCooldown = 0;
+  private hand: THREE.Group | null = null;
+  private handWeaponId: number | null = null;
+  private handSwing = 0;
 
   private taskQueue: ChunkTask[] = [];
   private queuedKeys = new Set<string>();
@@ -89,6 +123,7 @@ export class Game {
       RENDER_DISTANCE * CHUNK_SIZE * 2,
     );
     this.camera.rotation.order = 'YXZ';
+    this.scene.add(this.camera); // so the first-person weapon renders
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambient);
@@ -147,7 +182,7 @@ export class Game {
 
     this.input.onHotbarSelect((slot) => this.hotbar.select(slot));
     this.input.onScroll((delta) => this.hotbar.scroll(delta));
-    this.input.onBreak(() => this.breakBlock());
+    this.input.onBreak(() => this.attack());
     this.input.onPlace(() => this.placeBlock());
     this.input.onInventoryToggle(() => this.toggleInventoryPanel());
 
@@ -214,8 +249,9 @@ export class Game {
         player: this.player.body,
         isNight: this.dayNight.isNight,
         playerDead: this.health.dead,
-        onZombieAttack: (mob: { body: { x: number; z: number } }) => this.zombieHit(mob),
-        onMobSound: (kind: 'pig' | 'sheep' | 'zombie') => this.sound.mob(kind),
+        onMobAttack: (mob: Mob) => this.mobHit(mob),
+        onMobSound: (kind: MobKind) => this.sound.mob(kind),
+        onTeleport: () => this.sound.teleport(),
       };
       this.accumulator += dt;
       let steps = 0;
@@ -264,6 +300,8 @@ export class Game {
       this.health.update(dt, eyeUnderwater && !this.player.flying);
     }
 
+    this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    this.updateHand(dt);
     this.updateSelectionBox();
     this.hud.tick(now);
 
@@ -275,15 +313,100 @@ export class Game {
     this.renderer.render(this.scene, this.camera);
   }
 
-  private zombieHit(mob: { body: { x: number; z: number } }): void {
-    this.health.damage(ZOMBIE_DAMAGE);
-    // Knock the player away from the zombie
+  private mobHit(mob: Mob): void {
+    this.health.damage(mob.damage);
+    // Knock the player away; heavier hitters push harder
     const dx = this.player.body.x - mob.body.x;
     const dz = this.player.body.z - mob.body.z;
     const len = Math.hypot(dx, dz) || 1;
-    this.player.body.vx += (dx / len) * 7;
-    this.player.body.vz += (dz / len) * 7;
+    const push = 4 + mob.damage * 1.5;
+    this.player.body.vx += (dx / len) * push;
+    this.player.body.vz += (dz / len) * push;
     this.player.body.vy = Math.max(this.player.body.vy, 4);
+  }
+
+  // Left click: strike a mob in reach, otherwise break the targeted block
+  private attack(): void {
+    if (this.health.dead || this.attackCooldown > 0) return;
+    const selected = this.hotbar.selectedItem;
+    const weapon = isWeapon(selected) ? WEAPONS[selected] : null;
+    const range = weapon ? weapon.range : 3;
+
+    const mob = this.raycastMob(range);
+    if (mob) {
+      const dx = mob.body.x - this.player.body.x;
+      const dz = mob.body.z - this.player.body.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const knockback = weapon ? weapon.knockback : 5;
+      mob.hit(
+        weapon ? weapon.damage : 2,
+        (dx / len) * knockback,
+        (dz / len) * knockback,
+        weapon?.slowSeconds ?? 0,
+      );
+      if (mob.dying) this.sound.mobDeath();
+      else this.sound.hitMob();
+      this.attackCooldown = weapon ? weapon.cooldown : 0.3;
+    } else {
+      this.sound.swing();
+      this.breakBlock();
+      this.attackCooldown = 0.25;
+    }
+    this.handSwing = 0.25;
+  }
+
+  // Nearest mob whose AABB the camera ray hits within range (terrain blocks the swing)
+  private raycastMob(range: number): Mob | null {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const o = this.camera.position;
+
+    let best: Mob | null = null;
+    let bestT = Infinity;
+    for (const mob of this.mobManager.all()) {
+      if (mob.dying) continue;
+      const b = mob.body;
+      const t = rayAABB(
+        o.x, o.y, o.z, dir.x, dir.y, dir.z,
+        b.x - b.halfWidth, b.y, b.z - b.halfWidth,
+        b.x + b.halfWidth, b.y + b.height, b.z + b.halfWidth,
+      );
+      if (t !== null && t <= range && t < bestT) {
+        best = mob;
+        bestT = t;
+      }
+    }
+    if (!best) return null;
+    // Blocked by terrain? A solid block closer than the mob stops the hit
+    const blockHit = raycastVoxels(this.world, { x: o.x, y: o.y, z: o.z }, dir, bestT);
+    if (blockHit) return null;
+    return best;
+  }
+
+  // Rebuilds the first-person weapon model when the selection changes,
+  // and plays the swing animation
+  private updateHand(dt: number): void {
+    const selected = this.hotbar.selectedItem;
+    const weaponId = isWeapon(selected) ? selected : null;
+    if (weaponId !== this.handWeaponId) {
+      if (this.hand) {
+        this.camera.remove(this.hand);
+        disposeModel(this.hand);
+        this.hand = null;
+      }
+      if (weaponId !== null) {
+        this.hand = buildWeaponModel(weaponId as WeaponId);
+        this.hand.position.set(0.42, -0.42, -0.7);
+        this.hand.rotation.set(0.25, -0.35, -0.25);
+        this.camera.add(this.hand);
+      }
+      this.handWeaponId = weaponId;
+    }
+    if (this.hand) {
+      this.handSwing = Math.max(0, this.handSwing - dt);
+      const p = this.handSwing / 0.25;
+      this.hand.rotation.x = 0.25 - Math.sin(p * Math.PI) * 1.1;
+    }
   }
 
   private respawn(): void {
@@ -459,14 +582,16 @@ export class Game {
 
   private placeBlock(): void {
     if (this.health.dead) return;
+    const selected = this.hotbar.selectedItem;
+    if (isWeapon(selected)) return; // weapons can't be placed
     const hit = this.raycastFromCamera();
     if (!hit) return;
     const { x, y, z } = hit.previous;
     const target = this.world.getBlock(x, y, z);
     if (target !== BlockType.Air && target !== BlockType.Water) return;
     if (blockIntersectsBody(this.player.body, x, y, z)) return;
-    if (!this.inventory.remove(this.hotbar.selectedBlock)) return; // out of stock
-    const affected = this.world.setBlock(x, y, z, this.hotbar.selectedBlock);
+    if (!this.inventory.remove(selected as BlockType)) return; // out of stock
+    const affected = this.world.setBlock(x, y, z, selected);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
     this.sound.place();
   }

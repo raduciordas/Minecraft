@@ -94,6 +94,23 @@ export class SoundManager {
     this.tone(240, 1.1, 'sawtooth', 0.3, 55);
   }
 
+  swing(): void {
+    this.noise(0.12, 2600, 0.12, 500);
+  }
+
+  hitMob(): void {
+    this.noise(0.08, 500, 0.3);
+    this.tone(140, 0.1, 'triangle', 0.2, 90);
+  }
+
+  mobDeath(): void {
+    this.tone(300, 0.4, 'square', 0.22, 60);
+  }
+
+  teleport(): void {
+    this.tone(200, 0.18, 'sine', 0.18, 900);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);
@@ -101,6 +118,17 @@ export class SoundManager {
     } else if (kind === 'sheep') {
       this.tone(470 + Math.random() * 60, 0.14, 'sawtooth', 0.12, 420);
       setTimeout(() => this.tone(430, 0.28, 'sawtooth', 0.12, 380), 150);
+    } else if (kind === 'wasp') {
+      // Angry buzz
+      this.tone(160 + Math.random() * 30, 0.5, 'sawtooth', 0.08, 190);
+    } else if (kind === 'golem') {
+      // Deep stone rumble
+      this.tone(55 + Math.random() * 10, 0.7, 'triangle', 0.28, 40);
+      this.noise(0.5, 160, 0.2);
+    } else if (kind === 'shadow') {
+      // Eerie whisper: descending airy hiss
+      this.noise(0.6, 3000, 0.07, 400);
+      this.tone(600, 0.5, 'sine', 0.05, 200);
     } else {
       // Zombie groan: low descending wobble
       this.tone(110 + Math.random() * 30, 0.55, 'sawtooth', 0.16, 65);

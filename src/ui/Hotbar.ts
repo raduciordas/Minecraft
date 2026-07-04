@@ -1,12 +1,13 @@
-import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
+import { BLOCKS, PLACEABLE_BLOCKS } from '../world/Block';
+import { WEAPONS, WeaponId, isWeapon, makeWeaponIcon } from '../items/Weapon';
 import { HOTBAR_SIZE } from '../config';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
-// 9 assignable slots; the inventory panel (E) assigns any material to the
-// currently selected slot.
+// 9 assignable slots holding blocks or weapons; the inventory panel (E)
+// assigns any item to the currently selected slot.
 export class Hotbar {
-  private layout: BlockType[];
+  private layout: number[];
   private selected = 0;
   private slotEls: HTMLElement[] = [];
   private iconEls: HTMLCanvasElement[] = [];
@@ -17,7 +18,8 @@ export class Hotbar {
     private atlas: TextureAtlas,
     private inventory: Inventory,
   ) {
-    this.layout = PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE);
+    // The Storm Sword starts in slot 1; blocks fill the rest
+    this.layout = [WeaponId.StormSword, ...PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE - 1)];
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const slot = document.createElement('div');
       slot.className = 'hotbar-slot';
@@ -25,12 +27,12 @@ export class Hotbar {
       key.className = 'key';
       key.textContent = String(i + 1);
       slot.appendChild(key);
-      const icon = atlas.makeTileIcon(BLOCKS[this.layout[i]].textures.side);
+      const icon = this.makeIcon(this.layout[i]);
       slot.appendChild(icon);
       const count = document.createElement('span');
       count.className = 'count';
       slot.appendChild(count);
-      slot.title = BLOCKS[this.layout[i]].name;
+      slot.title = this.itemName(this.layout[i]);
       slot.addEventListener('click', () => this.select(i)); // tap-to-select on touch
       container.appendChild(slot);
       this.slotEls.push(slot);
@@ -42,7 +44,7 @@ export class Hotbar {
     inventory.onChange(() => this.refreshCounts());
   }
 
-  get selectedBlock(): BlockType {
+  get selectedItem(): number {
     return this.layout[this.selected];
   }
 
@@ -56,7 +58,7 @@ export class Hotbar {
 
   setLayout(layout: number[]): void {
     layout.forEach((id, i) => {
-      if (i < HOTBAR_SIZE && BLOCKS[id]) this.assign(i, id as BlockType);
+      if (i < HOTBAR_SIZE && (BLOCKS[id] || WEAPONS[id])) this.assign(i, id);
     });
   }
 
@@ -71,21 +73,37 @@ export class Hotbar {
     this.select((this.selected + delta + HOTBAR_SIZE) % HOTBAR_SIZE);
   }
 
-  assignToSelected(id: BlockType): void {
+  assignToSelected(id: number): void {
     this.assign(this.selected, id);
   }
 
-  private assign(index: number, id: BlockType): void {
+  private assign(index: number, id: number): void {
     this.layout[index] = id;
-    const icon = this.atlas.makeTileIcon(BLOCKS[id].textures.side);
+    const icon = this.makeIcon(id);
     this.slotEls[index].replaceChild(icon, this.iconEls[index]);
     this.iconEls[index] = icon;
-    this.slotEls[index].title = BLOCKS[id].name;
+    this.slotEls[index].title = this.itemName(id);
     this.refreshCounts();
+  }
+
+  private makeIcon(id: number): HTMLCanvasElement {
+    return isWeapon(id)
+      ? makeWeaponIcon(id as WeaponId)
+      : this.atlas.makeTileIcon(BLOCKS[id].textures.side);
+  }
+
+  private itemName(id: number): string {
+    return isWeapon(id) ? WEAPONS[id].name : BLOCKS[id].name;
   }
 
   private refreshCounts(): void {
     this.layout.forEach((id, i) => {
+      if (isWeapon(id)) {
+        // Weapons are never consumed
+        this.countEls[i].textContent = '';
+        this.slotEls[i].classList.remove('empty');
+        return;
+      }
       const count = this.inventory.count(id);
       this.countEls[i].textContent = count > 0 ? String(count) : '';
       this.slotEls[i].classList.toggle('empty', count === 0);

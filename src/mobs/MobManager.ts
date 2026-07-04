@@ -12,6 +12,22 @@ const SPAWN_MIN_DIST = 14;
 const SPAWN_MAX_DIST = 45;
 const DESPAWN_DIST = 80;
 const PASSIVE_KINDS: MobKind[] = ['pig', 'sheep'];
+// Night spawn table: mostly zombies, spiced with the invented monsters
+const HOSTILE_TABLE: [MobKind, number][] = [
+  ['zombie', 0.4],
+  ['wasp', 0.25],
+  ['shadow', 0.2],
+  ['golem', 0.15],
+];
+
+function pickHostile(): MobKind {
+  let r = Math.random();
+  for (const [kind, weight] of HOSTILE_TABLE) {
+    r -= weight;
+    if (r <= 0) return kind;
+  }
+  return 'zombie';
+}
 
 export class MobManager {
   private mobs: Mob[] = [];
@@ -36,14 +52,18 @@ export class MobManager {
 
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const mob = this.mobs[i];
-      // Sunrise sets the surviving zombies on fire
-      if (mob.kind === 'zombie' && !ctx.isNight && !mob.burning) mob.burning = true;
+      // Sunrise sets the surviving night monsters on fire
+      if (mob.hostile && !ctx.isNight && !mob.burning && !mob.dying) mob.burning = true;
       mob.update(this.world, dt, ctx);
       const dist = Math.hypot(mob.body.x - ctx.player.x, mob.body.z - ctx.player.z);
-      if (mob.burnedOut || dist > DESPAWN_DIST || mob.body.y < -10) {
+      if (mob.removeMe || dist > DESPAWN_DIST || mob.body.y < -10) {
         this.remove(i);
       }
     }
+  }
+
+  all(): readonly Mob[] {
+    return this.mobs;
   }
 
   // Also used by tests/debugging via the window.__game handle
@@ -82,13 +102,14 @@ export class MobManager {
     if (this.world.getBlock(wx, groundY + 1, wz) !== BlockType.Air) return;
     if (this.world.getBlock(wx, groundY + 2, wz) !== BlockType.Air) return;
 
-    // Zombies rise at night; passive animals prefer daylight
+    // Monsters rise at night; passive animals prefer daylight
     let kind: MobKind;
     if (ctx.isNight) {
-      kind = Math.random() < 0.75 ? 'zombie' : PASSIVE_KINDS[Math.floor(Math.random() * 2)];
+      kind = Math.random() < 0.85 ? pickHostile() : PASSIVE_KINDS[Math.floor(Math.random() * 2)];
     } else {
       kind = PASSIVE_KINDS[Math.floor(Math.random() * 2)];
     }
-    this.spawnMobAt(kind, wx + 0.5, groundY + 1.01, wz + 0.5);
+    const spawnY = kind === 'wasp' ? groundY + 3 : groundY + 1.01;
+    this.spawnMobAt(kind, wx + 0.5, spawnY, wz + 0.5);
   }
 }

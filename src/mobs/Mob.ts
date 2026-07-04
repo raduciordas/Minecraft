@@ -1,48 +1,64 @@
 import * as THREE from 'three';
-import {
-  GRAVITY,
-  ZOMBIE_CHASE_RANGE,
-  ZOMBIE_CHASE_SPEED,
-  ZOMBIE_ATTACK_RANGE,
-  ZOMBIE_ATTACK_COOLDOWN,
-  ZOMBIE_BURN_SECONDS,
-} from '../config';
-import { isWater } from '../world/Block';
+import { GRAVITY, ZOMBIE_ATTACK_COOLDOWN, ZOMBIE_BURN_SECONDS } from '../config';
+import { isWater, isSolid } from '../world/Block';
 import type { World } from '../world/World';
 import { stepBody, makeBody, type Body } from '../player/Physics';
+
+export type MobKind = 'pig' | 'sheep' | 'zombie' | 'shadow' | 'golem' | 'wasp';
 
 export interface MobContext {
   player: Body;
   isNight: boolean;
   playerDead: boolean;
-  onZombieAttack: (mob: Mob) => void;
+  onMobAttack: (mob: Mob) => void;
   onMobSound: (kind: MobKind) => void;
+  onTeleport: () => void;
 }
-
-export type MobKind = 'pig' | 'sheep' | 'zombie';
 
 interface MobSpec {
   halfWidth: number;
   height: number;
   speed: number;
   jumpSpeed: number;
+  hp: number;
+  damage: number;
+  attackRange: number;
+  chaseRange: number;
+  chaseSpeed: number;
+  hostile: boolean;
+  flying?: boolean;
+  teleports?: boolean;
 }
 
 const SPECS: Record<MobKind, MobSpec> = {
-  pig: { halfWidth: 0.35, height: 0.85, speed: 1.7, jumpSpeed: 7.5 },
-  sheep: { halfWidth: 0.35, height: 1.0, speed: 1.4, jumpSpeed: 7.5 },
-  zombie: { halfWidth: 0.25, height: 1.85, speed: 1.1, jumpSpeed: 7.5 },
+  pig: { halfWidth: 0.35, height: 0.85, speed: 1.7, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false },
+  sheep: { halfWidth: 0.35, height: 1.0, speed: 1.4, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false },
+  zombie: { halfWidth: 0.25, height: 1.85, speed: 1.1, jumpSpeed: 7.5, hp: 8, damage: 2, attackRange: 1.4, chaseRange: 20, chaseSpeed: 2.6, hostile: true },
+  // Umbra: fast, fragile wraith that blinks toward you through the dark
+  shadow: { halfWidth: 0.25, height: 1.9, speed: 1.3, jumpSpeed: 7.5, hp: 6, damage: 2, attackRange: 1.3, chaseRange: 26, chaseSpeed: 3.2, hostile: true, teleports: true },
+  // Stone golem: slow walking wall of rock that hits like a truck
+  golem: { halfWidth: 0.55, height: 2.1, speed: 0.7, jumpSpeed: 8, hp: 20, damage: 4, attackRange: 1.9, chaseRange: 16, chaseSpeed: 1.2, hostile: true },
+  // Night wasp: flying stinger, dies fast but is hard to hit
+  wasp: { halfWidth: 0.3, height: 0.6, speed: 1.5, jumpSpeed: 0, hp: 4, damage: 1, attackRange: 1.3, chaseRange: 24, chaseSpeed: 3.2, hostile: true, flying: true },
 };
 
 const TURN_SPEED = 3; // rad/s
+const DEATH_SECONDS = 0.4;
+const HIT_FLASH_SECONDS = 0.18;
 
 function box(
   parent: THREE.Object3D,
   w: number, h: number, d: number,
   color: number,
   x: number, y: number, z: number,
+  opacity = 1,
 ): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+  const material = new THREE.MeshLambertMaterial({ color });
+  if (opacity < 1) {
+    material.transparent = true;
+    material.opacity = opacity;
+  }
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   mesh.position.set(x, y, z);
   parent.add(mesh);
   return mesh;
@@ -59,23 +75,29 @@ function leg(parent: THREE.Object3D, w: number, len: number, color: number, x: n
 }
 
 function eyes(head: THREE.Mesh, headSize: number, color = 0x222222): void {
-  // Two small boxes on the front (-Z) face of the head
   for (const side of [-1, 1]) {
     box(head, 0.08, 0.08, 0.02, color, side * headSize * 0.22, headSize * 0.1, -headSize / 2 - 0.01);
   }
 }
 
+interface MobModel {
+  group: THREE.Group;
+  legs: THREE.Mesh[];
+  wings: THREE.Mesh[];
+}
+
 // All models face -Z, matching forward = (-sin yaw, 0, -cos yaw)
-function buildModel(kind: MobKind): { group: THREE.Group; legs: THREE.Mesh[] } {
+function buildModel(kind: MobKind): MobModel {
   const group = new THREE.Group();
   const legs: THREE.Mesh[] = [];
+  const wings: THREE.Mesh[] = [];
 
   if (kind === 'pig') {
     const pink = 0xeda3ab;
     const darkPink = 0xd18189;
     box(group, 0.65, 0.45, 0.95, pink, 0, 0.55, 0.05);
     const head = box(group, 0.45, 0.45, 0.4, pink, 0, 0.62, -0.6);
-    box(head, 0.2, 0.14, 0.06, darkPink, 0, -0.05, -0.23); // snout
+    box(head, 0.2, 0.14, 0.06, darkPink, 0, -0.05, -0.23);
     eyes(head, 0.45);
     for (const [x, z] of [[-0.2, -0.3], [0.2, -0.3], [-0.2, 0.35], [0.2, 0.35]]) {
       legs.push(leg(group, 0.18, 0.35, darkPink, x, 0.36, z));
@@ -85,19 +107,18 @@ function buildModel(kind: MobKind): { group: THREE.Group; legs: THREE.Mesh[] } {
     const skin = 0xb08d6e;
     box(group, 0.7, 0.55, 1.0, wool, 0, 0.72, 0.05);
     const head = box(group, 0.35, 0.38, 0.35, skin, 0, 0.92, -0.6);
-    box(head, 0.4, 0.3, 0.2, wool, 0, 0.12, 0.05); // wool cap
+    box(head, 0.4, 0.3, 0.2, wool, 0, 0.12, 0.05);
     eyes(head, 0.35);
     for (const [x, z] of [[-0.22, -0.3], [0.22, -0.3], [-0.22, 0.35], [0.22, 0.35]]) {
       legs.push(leg(group, 0.16, 0.48, skin, x, 0.48, z));
     }
-  } else {
+  } else if (kind === 'zombie') {
     const skin = 0x53a053;
     const shirt = 0x3a7ba8;
     const pants = 0x3c3c72;
     box(group, 0.5, 0.7, 0.26, shirt, 0, 1.05, 0);
     const head = box(group, 0.45, 0.45, 0.45, skin, 0, 1.63, 0);
     eyes(head, 0.45, 0x101010);
-    // Arms stretched forward, classic zombie pose
     for (const side of [-1, 1]) {
       const armGeo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
       armGeo.translate(0, -0.3, 0);
@@ -109,20 +130,85 @@ function buildModel(kind: MobKind): { group: THREE.Group; legs: THREE.Mesh[] } {
     for (const side of [-1, 1]) {
       legs.push(leg(group, 0.16, 0.7, pants, side * 0.13, 0.7, 0));
     }
+  } else if (kind === 'shadow') {
+    // Umbra: tall translucent wraith with glowing violet eyes
+    const dark = 0x14141d;
+    const darker = 0x0c0c13;
+    box(group, 0.44, 0.85, 0.24, dark, 0, 1.1, 0, 0.75);
+    const head = box(group, 0.4, 0.4, 0.4, darker, 0, 1.7, 0, 0.85);
+    for (const side of [-1, 1]) {
+      const eye = box(head, 0.09, 0.09, 0.02, 0xc9a7ff, side * 0.1, 0.03, -0.21);
+      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0x9a6cff);
+    }
+    // Ragged floating cloak instead of feet
+    for (const side of [-1, 1]) {
+      legs.push(leg(group, 0.16, 0.55, darker, side * 0.11, 0.68, 0));
+    }
+  } else if (kind === 'golem') {
+    const rock = 0x8d8d8d;
+    const moss = 0x6f7a64;
+    const dark = 0x5f5f5f;
+    box(group, 1.0, 0.85, 0.55, rock, 0, 1.25, 0);
+    box(group, 1.02, 0.12, 0.57, moss, 0, 1.0, 0);
+    const head = box(group, 0.5, 0.45, 0.5, dark, 0, 1.9, 0);
+    for (const side of [-1, 1]) {
+      const eye = box(head, 0.1, 0.06, 0.02, 0xffc14d, side * 0.11, 0.02, -0.26);
+      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xcc7a00);
+    }
+    for (const side of [-1, 1]) {
+      const armGeo = new THREE.BoxGeometry(0.28, 0.95, 0.28);
+      armGeo.translate(0, -0.45, 0);
+      const arm = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: rock }));
+      arm.position.set(side * 0.66, 1.6, 0);
+      group.add(arm);
+    }
+    for (const side of [-1, 1]) {
+      legs.push(leg(group, 0.3, 0.8, dark, side * 0.25, 0.8, 0));
+    }
+  } else {
+    // Night wasp: striped flying stinger with buzzing wings
+    const body = 0xd8b93a;
+    const stripe = 0x2b2b20;
+    box(group, 0.42, 0.34, 0.62, body, 0, 0.3, 0.05);
+    box(group, 0.44, 0.36, 0.1, stripe, 0, 0.3, 0.06);
+    box(group, 0.44, 0.36, 0.1, stripe, 0, 0.3, 0.28);
+    const head = box(group, 0.3, 0.3, 0.24, stripe, 0, 0.32, -0.4);
+    for (const side of [-1, 1]) {
+      const eye = box(head, 0.07, 0.07, 0.02, 0xff5555, side * 0.07, 0.02, -0.13);
+      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xaa2222);
+    }
+    box(group, 0.06, 0.06, 0.2, stripe, 0, 0.26, 0.45); // stinger
+    for (const side of [-1, 1]) {
+      const wingGeo = new THREE.BoxGeometry(0.4, 0.02, 0.28);
+      wingGeo.translate(side * 0.2, 0, 0);
+      const wingMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+      const wing = new THREE.Mesh(wingGeo, wingMat);
+      wing.position.set(side * 0.18, 0.5, 0.05);
+      group.add(wing);
+      wings.push(wing);
+    }
   }
-  return { group, legs };
+  return { group, legs, wings };
 }
 
 export class Mob {
   readonly kind: MobKind;
   readonly body: Body;
   readonly group: THREE.Group;
+  hp: number;
+  dying = false;
+  removeMe = false;
   burning = false;
-  burnedOut = false; // true when the burn finished; manager removes the mob
   private burnTimer = 0;
+  private dieTimer = 0;
+  private hitFlashTimer = 0;
+  private slowTimer = 0;
+  private teleportTimer = 2;
+  private emissiveDirty = false;
   private attackCooldown = 0;
   private soundTimer = 4 + Math.random() * 8;
   private legs: THREE.Mesh[];
+  private wings: THREE.Mesh[];
   private spec: MobSpec;
   private yaw: number;
   private targetYaw: number;
@@ -133,6 +219,7 @@ export class Mob {
   constructor(kind: MobKind, x: number, y: number, z: number) {
     this.kind = kind;
     this.spec = SPECS[kind];
+    this.hp = this.spec.hp;
     this.body = makeBody(this.spec.halfWidth, this.spec.height);
     this.body.x = x;
     this.body.y = y;
@@ -142,26 +229,56 @@ export class Mob {
     const model = buildModel(kind);
     this.group = model.group;
     this.legs = model.legs;
+    this.wings = model.wings;
     this.syncTransform();
   }
 
+  get hostile(): boolean {
+    return this.spec.hostile;
+  }
+
+  get damage(): number {
+    return this.spec.damage;
+  }
+
+  // A weapon (or fist) strike: damage, knockback impulse, optional chill
+  hit(damage: number, knockX: number, knockZ: number, slowSeconds = 0): void {
+    if (this.dying) return;
+    this.hp -= damage;
+    this.hitFlashTimer = HIT_FLASH_SECONDS;
+    this.body.vx += knockX;
+    this.body.vz += knockZ;
+    if (!this.spec.flying) this.body.vy = Math.max(this.body.vy, 4.5);
+    if (slowSeconds > 0) this.slowTimer = Math.max(this.slowTimer, slowSeconds);
+    if (this.hp <= 0) {
+      this.dying = true;
+      this.dieTimer = DEATH_SECONDS;
+    }
+  }
+
   update(world: World, dt: number, ctx?: MobContext): void {
-    // Zombies caught in daylight burn out
+    if (this.dying) {
+      this.dieTimer -= dt;
+      const p = 1 - Math.max(0, this.dieTimer) / DEATH_SECONDS;
+      this.group.rotation.z = (p * Math.PI) / 2;
+      this.group.scale.setScalar(Math.max(0.05, 1 - p * 0.6));
+      if (this.dieTimer <= 0) this.removeMe = true;
+      return;
+    }
+
+    // Hostiles caught in daylight burn out
     if (this.burning) {
       this.burnTimer += dt;
-      const flicker = 0.35 + 0.35 * Math.sin(this.burnTimer * 25);
-      this.group.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-          (obj.material as THREE.MeshLambertMaterial).emissive.setRGB(flicker, flicker * 0.35, 0);
-        }
-      });
       if (this.burnTimer >= ZOMBIE_BURN_SECONDS) {
-        this.burnedOut = true;
+        this.removeMe = true;
         return;
       }
     }
+    this.updateEmissive();
 
     this.attackCooldown -= dt;
+    this.hitFlashTimer -= dt;
+    this.slowTimer -= dt;
 
     // Ambient sounds when the player is close enough to hear
     if (ctx) {
@@ -173,22 +290,32 @@ export class Mob {
       }
     }
 
-    // Night zombies hunt the player; everyone else just wanders
+    // Hostile mobs hunt the player at night; everyone else wanders
     let chasing = false;
-    if (this.kind === 'zombie' && ctx && ctx.isNight && !ctx.playerDead && !this.burning) {
+    let distToPlayer = Infinity;
+    if (this.spec.hostile && ctx && ctx.isNight && !ctx.playerDead && !this.burning) {
       const dx = ctx.player.x - this.body.x;
       const dz = ctx.player.z - this.body.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist < ZOMBIE_CHASE_RANGE) {
+      distToPlayer = Math.hypot(dx, dz);
+      if (distToPlayer < this.spec.chaseRange) {
         chasing = true;
         this.walking = true;
         this.targetYaw = Math.atan2(-dx, -dz);
         const verticalOverlap =
-          ctx.player.y < this.body.y + this.spec.height && ctx.player.y + 1.8 > this.body.y;
-        if (dist < ZOMBIE_ATTACK_RANGE && verticalOverlap && this.attackCooldown <= 0) {
+          ctx.player.y < this.body.y + this.spec.height + 0.3 && ctx.player.y + 1.8 > this.body.y - 0.3;
+        if (distToPlayer < this.spec.attackRange && verticalOverlap && this.attackCooldown <= 0) {
           this.attackCooldown = ZOMBIE_ATTACK_COOLDOWN;
-          ctx.onZombieAttack(this);
+          ctx.onMobAttack(this);
         }
+      }
+    }
+
+    // Umbra blinks a few blocks closer every couple of seconds
+    if (this.spec.teleports && ctx && chasing && distToPlayer > 6) {
+      this.teleportTimer -= dt;
+      if (this.teleportTimer <= 0) {
+        this.teleportTimer = 2.5 + Math.random() * 2;
+        this.tryTeleportToward(ctx.player, world) && ctx.onTeleport();
       }
     }
 
@@ -207,30 +334,108 @@ export class Mob {
     const turnSpeed = chasing ? TURN_SPEED * 2 : TURN_SPEED;
     this.yaw += Math.max(-turnSpeed * dt, Math.min(turnSpeed * dt, deltaYaw));
 
-    const speed = this.walking ? (chasing ? ZOMBIE_CHASE_SPEED : this.spec.speed) : 0;
-    this.body.vx = -Math.sin(this.yaw) * speed;
-    this.body.vz = -Math.cos(this.yaw) * speed;
+    let speed = this.walking ? (chasing ? this.spec.chaseSpeed : this.spec.speed) : 0;
+    if (this.slowTimer > 0) speed *= 0.45;
 
-    const inWater = isWater(
-      world.getBlock(Math.floor(this.body.x), Math.floor(this.body.y + 0.3), Math.floor(this.body.z)),
-    );
-    if (inWater) {
-      // Float up and paddle out
-      this.body.vy += (2.5 - this.body.vy) * Math.min(1, 5 * dt);
+    if (this.spec.flying) {
+      this.updateFlying(world, dt, ctx, chasing, speed);
     } else {
-      this.body.vy += GRAVITY * dt;
+      this.body.vx = -Math.sin(this.yaw) * speed;
+      this.body.vz = -Math.cos(this.yaw) * speed;
+      const inWater = isWater(
+        world.getBlock(Math.floor(this.body.x), Math.floor(this.body.y + 0.3), Math.floor(this.body.z)),
+      );
+      if (inWater) {
+        this.body.vy += (2.5 - this.body.vy) * Math.min(1, 5 * dt);
+      } else {
+        this.body.vy += GRAVITY * dt;
+      }
+      stepBody(this.body, world, dt);
+      // Hop over 1-block obstacles; if still stuck, pick a new direction
+      if (this.body.hitWall) {
+        if (this.body.onGround) this.body.vy = this.spec.jumpSpeed;
+        else if (Math.random() < 0.1) this.targetYaw = Math.random() * Math.PI * 2;
+      }
     }
 
-    stepBody(this.body, world, dt);
-
-    // Hop over 1-block obstacles; if still stuck, pick a new direction
-    if (this.body.hitWall) {
-      if (this.body.onGround) this.body.vy = this.spec.jumpSpeed;
-      else if (Math.random() < 0.1) this.targetYaw = Math.random() * Math.PI * 2;
-    }
-
-    this.legPhase += dt * (this.walking ? 7 : 0);
+    this.legPhase += dt * (this.walking ? (chasing ? 10 : 7) : 0);
     this.syncTransform();
+  }
+
+  private updateFlying(world: World, dt: number, ctx: MobContext | undefined, chasing: boolean, speed: number): void {
+    if (chasing && ctx) {
+      // Fly straight at the player's head
+      const dx = ctx.player.x - this.body.x;
+      const dy = ctx.player.y + 1.5 - (this.body.y + 0.3);
+      const dz = ctx.player.z - this.body.z;
+      const len = Math.hypot(dx, dy, dz) || 1;
+      this.body.vx = (dx / len) * speed;
+      this.body.vy = (dy / len) * speed;
+      this.body.vz = (dz / len) * speed;
+    } else {
+      this.body.vx = -Math.sin(this.yaw) * speed;
+      this.body.vz = -Math.cos(this.yaw) * speed;
+      // Hover 2-4 blocks above the ground with a gentle bob
+      let drop = 0;
+      const bx = Math.floor(this.body.x);
+      const bz = Math.floor(this.body.z);
+      const by = Math.floor(this.body.y);
+      while (drop < 5 && !isSolid(world.getBlock(bx, by - 1 - drop, bz))) drop++;
+      if (drop >= 5) this.body.vy = -2;
+      else if (drop <= 1) this.body.vy = 1.5;
+      else this.body.vy = Math.sin(this.legPhase * 1.5) * 0.6;
+    }
+    stepBody(this.body, world, dt);
+    if (this.body.hitWall) {
+      this.body.vy = Math.max(this.body.vy, 2); // climb over obstacles
+      if (!chasing) this.targetYaw = Math.random() * Math.PI * 2;
+    }
+    this.legPhase += dt * 6; // wings always beat
+  }
+
+  private tryTeleportToward(player: Body, world: World): boolean {
+    const dx = this.body.x - player.x;
+    const dz = this.body.z - player.z;
+    const len = Math.hypot(dx, dz) || 1;
+    // Land 3 blocks from the player, on our side
+    const tx = player.x + (dx / len) * 3;
+    const tz = player.z + (dz / len) * 3;
+    const bx = Math.floor(tx);
+    const bz = Math.floor(tz);
+    for (let by = Math.floor(player.y) + 3; by >= Math.floor(player.y) - 4; by--) {
+      if (
+        isSolid(world.getBlock(bx, by - 1, bz)) &&
+        !isSolid(world.getBlock(bx, by, bz)) &&
+        !isSolid(world.getBlock(bx, by + 1, bz))
+      ) {
+        this.body.x = bx + 0.5;
+        this.body.y = by + 0.01;
+        this.body.z = bz + 0.5;
+        this.body.vx = 0;
+        this.body.vy = 0;
+        this.body.vz = 0;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private updateEmissive(): void {
+    const active = this.burning || this.hitFlashTimer > 0;
+    if (!active && !this.emissiveDirty) return;
+    this.group.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const material = obj.material as THREE.MeshLambertMaterial;
+      if (this.burning) {
+        const flicker = 0.35 + 0.35 * Math.sin(this.burnTimer * 25);
+        material.emissive.setRGB(flicker, flicker * 0.35, 0);
+      } else if (this.hitFlashTimer > 0) {
+        material.emissive.setRGB(0.8, 0.05, 0.05);
+      } else {
+        material.emissive.setRGB(0, 0, 0);
+      }
+    });
+    this.emissiveDirty = active;
   }
 
   private syncTransform(): void {
@@ -239,6 +444,9 @@ export class Mob {
     const swing = this.walking ? 0.55 : 0;
     this.legs.forEach((legMesh, i) => {
       legMesh.rotation.x = Math.sin(this.legPhase + (i % 2) * Math.PI) * swing;
+    });
+    this.wings.forEach((wing, i) => {
+      wing.rotation.z = (i === 0 ? 1 : -1) * Math.sin(this.legPhase * 6) * 0.7;
     });
   }
 

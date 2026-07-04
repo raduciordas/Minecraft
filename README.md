@@ -42,7 +42,9 @@ Jocul detectează automat ecranele tactile și afișează controale dedicate: jo
 - Mobi care se plimbă prin lume: porci, oi și zombi cu AI de hoinărit, sar peste obstacole, plutesc în apă și animație de mers
 - **Ciclu zi/noapte** (~4 minute): soarele și luna traversează cerul, apusuri portocalii, stele noaptea, lumina scenei se schimbă gradual
 - **Supraviețuire**: 10 inimi, daune de cădere, înec cu bară de oxigen (bule), regenerare lentă, ecran de moarte cu respawn
-- **Zombi ostili noaptea**: te vânează de la 20 de blocuri, te lovesc cu knockback, iar la răsărit ard și dispar; noaptea spawn-ul e dominat de zombi
+- **Zombi ostili noaptea**: te vânează de la 20 de blocuri, te lovesc cu knockback, iar la răsărit ard și dispar; noaptea spawn-ul e dominat de monștri
+- **4 arme inventate** (nelimitate, în inventar): Sabia Furtunii (4 daune — omoară zombiul din 2 lovituri), Sabia de Cristal (6), Ciocanul de Magmă (8, lent, knockback uriaș) și Sulița de Gheață (3, rază lungă, îngheață ținta 2s); armele apar în mâna jucătorului cu animație de lovire, iar mobii au viață, flash roșu la lovitură și animație de moarte
+- **3 monștri de noapte inventați**: **Umbra** (spectru translucid cu ochi violet care se teleportează spre tine), **Golemul de Piatră** (tanc lent cu 20 viață și lovituri de 2 inimi) și **Viespea Nopții** (zboară spre capul tău, fragilă dar rapidă)
 - **Sunete procedurale** (Web Audio, fără fișiere): pași, spart/plasat, pleoscăit, aterizare, rănire, moarte și vocile mobilor (grohăit, behăit, geamăt de zombi)
 - Salvare automată în localStorage (la ~10 secunde și la închiderea paginii): modificările lumii, poziția jucătorului, inventarul și slotul selectat se păstrează la reîncărcare
 - Streaming de chunk-uri 16×64×16 în jurul jucătorului, cu buget de timp per frame
