@@ -21,6 +21,8 @@ import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../config';
 export class Player {
   body: Body = makeBody(PLAYER_WIDTH / 2, PLAYER_HEIGHT);
   flying = false;
+  // Called with the impact speed when landing from a real fall
+  onLand?: (impactSpeed: number) => void;
 
   constructor(private input: InputController) {
     this.body.x = 0.5;
@@ -101,7 +103,11 @@ export class Player {
       this.body.vy += GRAVITY * dt;
     }
 
+    const preStepVy = this.body.vy;
     stepBody(this.body, world, dt);
+    if (this.body.onGround && preStepVy < -8) {
+      this.onLand?.(-preStepVy);
+    }
 
     // Safety net: fell out of the world (e.g. dug straight down to bedrockless void)
     if (this.body.y < -20) {

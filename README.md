@@ -39,7 +39,11 @@ Jocul detectează automat ecranele tactile și afișează controale dedicate: jo
 - Apă la nivelul mării: lacuri și mări semi-transparente, înot (Space te ridică), tentă albastră când ești sub apă
 - 12 materiale de construcție: iarbă, pământ, piatră, nisip, buștean, frunze, scânduri, cobblestone, cărămidă, zăpadă, sticlă (transparentă) și piatră cioplită
 - Inventar: fiecare sesiune pornește cu un stoc de 64 din fiecare material; spargerea blocurilor adaugă la stoc, plasarea consumă; hotbar cu 9 sloturi configurabile din panoul de inventar (tasta E)
-- Mobi pasivi care se plimbă prin lume: porci, oi și zombi cu AI de hoinărit, sar peste obstacole, plutesc în apă și animație de mers
+- Mobi care se plimbă prin lume: porci, oi și zombi cu AI de hoinărit, sar peste obstacole, plutesc în apă și animație de mers
+- **Ciclu zi/noapte** (~4 minute): soarele și luna traversează cerul, apusuri portocalii, stele noaptea, lumina scenei se schimbă gradual
+- **Supraviețuire**: 10 inimi, daune de cădere, înec cu bară de oxigen (bule), regenerare lentă, ecran de moarte cu respawn
+- **Zombi ostili noaptea**: te vânează de la 20 de blocuri, te lovesc cu knockback, iar la răsărit ard și dispar; noaptea spawn-ul e dominat de zombi
+- **Sunete procedurale** (Web Audio, fără fișiere): pași, spart/plasat, pleoscăit, aterizare, rănire, moarte și vocile mobilor (grohăit, behăit, geamăt de zombi)
 - Salvare automată în localStorage (la ~10 secunde și la închiderea paginii): modificările lumii, poziția jucătorului, inventarul și slotul selectat se păstrează la reîncărcare
 - Streaming de chunk-uri 16×64×16 în jurul jucătorului, cu buget de timp per frame
 - Meshing eficient: doar fețele vizibile, o singură geometrie per chunk, umbrire direcțională coaptă în vertex colors

@@ -11,6 +11,8 @@ import {
   SAVE_INTERVAL_MS,
   STARTER_STOCK,
   MAX_PIXEL_RATIO,
+  FALL_SAFE_SPEED,
+  ZOMBIE_DAMAGE,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
@@ -25,8 +27,12 @@ import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { TouchControls } from './ui/TouchControls';
+import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
 import { MobManager } from './mobs/MobManager';
+import { DayNightCycle } from './DayNightCycle';
+import { Health } from './player/Health';
+import { SoundManager } from './Sound';
 
 interface ChunkTask {
   cx: number;
@@ -47,9 +53,15 @@ export class Game {
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
   private mobManager: MobManager;
+  private dayNight: DayNightCycle;
+  private health: Health;
+  private healthHud: HealthHud;
+  private sound: SoundManager;
   private selectionBox: THREE.LineSegments;
   private underwaterOverlay: HTMLElement;
   private lastSaveTime = 0;
+  private stepDistance = 0;
+  private wasFeetInWater = false;
 
   private taskQueue: ChunkTask[] = [];
   private queuedKeys = new Set<string>();
@@ -78,10 +90,12 @@ export class Game {
     );
     this.camera.rotation.order = 'YXZ';
 
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    this.scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
     sun.position.set(0.5, 1, 0.3);
     this.scene.add(sun);
+    this.dayNight = new DayNightCycle(this.scene, ambient, sun);
 
     const atlas = new TextureAtlas(WORLD_SEED);
     this.world = new World(WORLD_SEED);
@@ -107,6 +121,27 @@ export class Game {
     );
     this.mobManager = new MobManager(this.scene, this.world);
     new TouchControls(this.input);
+
+    this.sound = new SoundManager();
+    window.addEventListener('pointerdown', () => this.sound.unlock());
+
+    this.health = new Health();
+    this.healthHud = new HealthHud(this.health, () => this.respawn());
+    this.health.onDamage(() => this.sound.hurt());
+    this.health.onDeath(() => {
+      this.sound.death();
+      this.healthHud.showDeath();
+      this.input.setDeathShown(true);
+      if (!this.input.isTouchDevice) document.exitPointerLock();
+    });
+    this.player.onLand = (impactSpeed) => {
+      this.sound.land(impactSpeed > FALL_SAFE_SPEED);
+      if (!this.player.flying) {
+        // ~ (fall height in blocks) - 3, derived from v² = 2·g·h
+        const damage = Math.floor((impactSpeed * impactSpeed) / (2 * 25) - 3);
+        if (damage > 0) this.health.damage(damage);
+      }
+    };
 
     this.underwaterOverlay = document.getElementById('underwater')!;
 
@@ -144,6 +179,8 @@ export class Game {
       this.player.body.z = save.player.z;
       this.input.yaw = save.player.yaw;
       this.input.pitch = save.player.pitch;
+      if (save.time !== undefined) this.dayNight.time = save.time;
+      if (save.hp !== undefined) this.health.setHp(save.hp);
     } else {
       const spawnHeight = this.world.generator.heightAt(0, 0);
       this.player.spawnAt(0.5, 0.5, spawnHeight);
@@ -172,21 +209,47 @@ export class Game {
     this.updateChunkQueue();
     this.processTasks();
 
-    if (this.worldReady) {
+    if (this.worldReady && !this.health.dead) {
+      const mobContext = {
+        player: this.player.body,
+        isNight: this.dayNight.isNight,
+        playerDead: this.health.dead,
+        onZombieAttack: (mob: { body: { x: number; z: number } }) => this.zombieHit(mob),
+        onMobSound: (kind: 'pig' | 'sheep' | 'zombie') => this.sound.mob(kind),
+      };
       this.accumulator += dt;
       let steps = 0;
       while (this.accumulator >= PHYSICS_STEP && steps < MAX_STEPS_PER_FRAME) {
         this.player.update(this.world, PHYSICS_STEP);
-        this.mobManager.update(PHYSICS_STEP, this.player.body);
+        this.mobManager.update(PHYSICS_STEP, mobContext);
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
       if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
+
+      // Footsteps while walking on the ground
+      const body = this.player.body;
+      const horizontalSpeed = Math.hypot(body.vx, body.vz);
+      if (body.onGround && !this.player.flying && horizontalSpeed > 0.5) {
+        this.stepDistance += horizontalSpeed * dt;
+        if (this.stepDistance > 2.2) {
+          this.stepDistance = 0;
+          this.sound.step();
+        }
+      }
+      // Splash when the feet enter water
+      const feetInWater = isWater(
+        this.world.getBlock(Math.floor(body.x), Math.floor(body.y + 0.3), Math.floor(body.z)),
+      );
+      if (feetInWater && !this.wasFeetInWater) this.sound.splash();
+      this.wasFeetInWater = feetInWater;
     }
 
     this.camera.position.set(this.player.eyeX, this.player.eyeY, this.player.eyeZ);
     this.camera.rotation.y = this.input.yaw;
     this.camera.rotation.x = this.input.pitch;
+
+    this.dayNight.update(dt, this.camera);
 
     // Blue screen tint while the camera is inside a water block
     const eyeUnderwater = isWater(
@@ -197,6 +260,9 @@ export class Game {
       ),
     );
     this.underwaterOverlay.classList.toggle('hidden', !eyeUnderwater);
+    if (this.worldReady) {
+      this.health.update(dt, eyeUnderwater && !this.player.flying);
+    }
 
     this.updateSelectionBox();
     this.hud.tick(now);
@@ -209,9 +275,33 @@ export class Game {
     this.renderer.render(this.scene, this.camera);
   }
 
+  private zombieHit(mob: { body: { x: number; z: number } }): void {
+    this.health.damage(ZOMBIE_DAMAGE);
+    // Knock the player away from the zombie
+    const dx = this.player.body.x - mob.body.x;
+    const dz = this.player.body.z - mob.body.z;
+    const len = Math.hypot(dx, dz) || 1;
+    this.player.body.vx += (dx / len) * 7;
+    this.player.body.vz += (dz / len) * 7;
+    this.player.body.vy = Math.max(this.player.body.vy, 4);
+  }
+
+  private respawn(): void {
+    const spawnHeight = this.world.generator.heightAt(0, 0);
+    this.player.spawnAt(0.5, 0.5, spawnHeight);
+    this.player.flying = false;
+    this.health.respawn();
+    this.healthHud.hideDeath();
+    // Back through the start overlay (click/tap to resume)
+    this.input.setDeathShown(false);
+    if (this.input.isTouchDevice) this.input.setTouchActive(false);
+  }
+
   private saveNow(): void {
     writeSave({
       seed: WORLD_SEED,
+      time: this.dayNight.time,
+      hp: this.health.hp,
       player: {
         x: this.player.body.x,
         y: this.player.body.y,
@@ -353,6 +443,7 @@ export class Game {
   }
 
   private breakBlock(): void {
+    if (this.health.dead) return;
     const hit = this.raycastFromCamera();
     if (!hit) return;
     const { x, y, z } = hit.block;
@@ -360,10 +451,14 @@ export class Game {
     const broken = this.world.getBlock(x, y, z);
     const affected = this.world.setBlock(x, y, z, BlockType.Air);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
-    if (affected.length > 0) this.inventory.add(broken);
+    if (affected.length > 0) {
+      this.inventory.add(broken);
+      this.sound.breakBlock();
+    }
   }
 
   private placeBlock(): void {
+    if (this.health.dead) return;
     const hit = this.raycastFromCamera();
     if (!hit) return;
     const { x, y, z } = hit.previous;
@@ -373,6 +468,7 @@ export class Game {
     if (!this.inventory.remove(this.hotbar.selectedBlock)) return; // out of stock
     const affected = this.world.setBlock(x, y, z, this.hotbar.selectedBlock);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
+    this.sound.place();
   }
 
   private updateSelectionBox(): void {

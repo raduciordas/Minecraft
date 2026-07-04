@@ -1,8 +1,23 @@
 import * as THREE from 'three';
-import { GRAVITY } from '../config';
+import {
+  GRAVITY,
+  ZOMBIE_CHASE_RANGE,
+  ZOMBIE_CHASE_SPEED,
+  ZOMBIE_ATTACK_RANGE,
+  ZOMBIE_ATTACK_COOLDOWN,
+  ZOMBIE_BURN_SECONDS,
+} from '../config';
 import { isWater } from '../world/Block';
 import type { World } from '../world/World';
 import { stepBody, makeBody, type Body } from '../player/Physics';
+
+export interface MobContext {
+  player: Body;
+  isNight: boolean;
+  playerDead: boolean;
+  onZombieAttack: (mob: Mob) => void;
+  onMobSound: (kind: MobKind) => void;
+}
 
 export type MobKind = 'pig' | 'sheep' | 'zombie';
 
@@ -102,6 +117,11 @@ export class Mob {
   readonly kind: MobKind;
   readonly body: Body;
   readonly group: THREE.Group;
+  burning = false;
+  burnedOut = false; // true when the burn finished; manager removes the mob
+  private burnTimer = 0;
+  private attackCooldown = 0;
+  private soundTimer = 4 + Math.random() * 8;
   private legs: THREE.Mesh[];
   private spec: MobSpec;
   private yaw: number;
@@ -125,20 +145,69 @@ export class Mob {
     this.syncTransform();
   }
 
-  update(world: World, dt: number): void {
-    this.decisionTimer -= dt;
-    if (this.decisionTimer <= 0) {
-      this.walking = Math.random() < 0.75;
-      this.targetYaw = Math.random() * Math.PI * 2;
-      this.decisionTimer = 2 + Math.random() * 3;
+  update(world: World, dt: number, ctx?: MobContext): void {
+    // Zombies caught in daylight burn out
+    if (this.burning) {
+      this.burnTimer += dt;
+      const flicker = 0.35 + 0.35 * Math.sin(this.burnTimer * 25);
+      this.group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          (obj.material as THREE.MeshLambertMaterial).emissive.setRGB(flicker, flicker * 0.35, 0);
+        }
+      });
+      if (this.burnTimer >= ZOMBIE_BURN_SECONDS) {
+        this.burnedOut = true;
+        return;
+      }
+    }
+
+    this.attackCooldown -= dt;
+
+    // Ambient sounds when the player is close enough to hear
+    if (ctx) {
+      this.soundTimer -= dt;
+      if (this.soundTimer <= 0) {
+        this.soundTimer = 5 + Math.random() * 9;
+        const d = Math.hypot(ctx.player.x - this.body.x, ctx.player.z - this.body.z);
+        if (d < 18) ctx.onMobSound(this.kind);
+      }
+    }
+
+    // Night zombies hunt the player; everyone else just wanders
+    let chasing = false;
+    if (this.kind === 'zombie' && ctx && ctx.isNight && !ctx.playerDead && !this.burning) {
+      const dx = ctx.player.x - this.body.x;
+      const dz = ctx.player.z - this.body.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < ZOMBIE_CHASE_RANGE) {
+        chasing = true;
+        this.walking = true;
+        this.targetYaw = Math.atan2(-dx, -dz);
+        const verticalOverlap =
+          ctx.player.y < this.body.y + this.spec.height && ctx.player.y + 1.8 > this.body.y;
+        if (dist < ZOMBIE_ATTACK_RANGE && verticalOverlap && this.attackCooldown <= 0) {
+          this.attackCooldown = ZOMBIE_ATTACK_COOLDOWN;
+          ctx.onZombieAttack(this);
+        }
+      }
+    }
+
+    if (!chasing) {
+      this.decisionTimer -= dt;
+      if (this.decisionTimer <= 0) {
+        this.walking = Math.random() < 0.75;
+        this.targetYaw = Math.random() * Math.PI * 2;
+        this.decisionTimer = 2 + Math.random() * 3;
+      }
     }
 
     // Turn smoothly toward the target heading
     let deltaYaw = this.targetYaw - this.yaw;
     deltaYaw = Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
-    this.yaw += Math.max(-TURN_SPEED * dt, Math.min(TURN_SPEED * dt, deltaYaw));
+    const turnSpeed = chasing ? TURN_SPEED * 2 : TURN_SPEED;
+    this.yaw += Math.max(-turnSpeed * dt, Math.min(turnSpeed * dt, deltaYaw));
 
-    const speed = this.walking ? this.spec.speed : 0;
+    const speed = this.walking ? (chasing ? ZOMBIE_CHASE_SPEED : this.spec.speed) : 0;
     this.body.vx = -Math.sin(this.yaw) * speed;
     this.body.vz = -Math.cos(this.yaw) * speed;
 

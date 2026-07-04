@@ -138,7 +138,50 @@
       #btn-inv { right: 70px; top: 14px; width: 46px; height: 46px; font-size: 18px; }
       #btn-pause { left: 14px; top: 34px; width: 46px; height: 46px; font-size: 14px; }
 
+      #status {
+        position: fixed; left: 50%; bottom: 78px;
+        transform: translateX(-50%);
+        display: flex; flex-direction: column; gap: 2px;
+        z-index: 10; pointer-events: none;
+      }
+      .heart-row span, .bubble-row span {
+        font-size: 17px; margin-right: 1px;
+        text-shadow: 1px 1px 0 #000;
+      }
+      .heart-row .full { color: #e63c3c; }
+      .heart-row .half { color: #8f2525; }
+      .heart-row .empty { color: rgba(255, 255, 255, 0.25); }
+      .bubble-row { visibility: hidden; }
+      .bubble-row .full { color: #7fc7ff; }
+      .bubble-row .empty { color: rgba(255, 255, 255, 0.15); }
+
+      #damage-flash {
+        position: fixed; inset: 0;
+        background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 0, 0, 0.55) 100%);
+        opacity: 0; transition: opacity 0.25s;
+        pointer-events: none; z-index: 8;
+      }
+      #damage-flash.show { opacity: 1; transition: opacity 0.05s; }
+
+      #death {
+        position: fixed; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 20px;
+        background: rgba(90, 0, 0, 0.55);
+        z-index: 25; font-family: monospace; color: #fff;
+      }
+      #death.hidden { display: none; }
+      #death h1 { font-size: 40px; letter-spacing: 3px; }
+      #death button {
+        font: 16px monospace; color: #fff;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid #fff; border-radius: 6px;
+        padding: 10px 28px; cursor: pointer;
+      }
+      #death button:hover { background: rgba(255, 255, 255, 0.2); }
+
       @media (max-width: 760px) {
+        #status { bottom: 66px; }
         .hotbar-slot { width: 38px; height: 38px; }
         .hotbar-slot canvas { width: 28px; height: 28px; }
         .inv-grid { grid-template-columns: repeat(4, 58px); gap: 5px; }
@@ -177,6 +220,12 @@
     <div id="fps"></div>
     <div id="inventory" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
+    <div id="status"></div>
+    <div id="damage-flash"></div>
+    <div id="death" class="hidden">
+      <h1>YOU DIED</h1>
+      <button>Respawn</button>
+    </div>
     <div id="overlay">
       <h1>MINECRAFT</h1>
       <p>

@@ -106,8 +106,15 @@ export class InputController {
     this.updateOverlay();
   }
 
+  // While the death screen is up, the pause overlay stays hidden
+  setDeathShown(shown: boolean): void {
+    this.deathShown = shown;
+    this.updateOverlay();
+  }
+  private deathShown = false;
+
   private updateOverlay(): void {
-    this.overlay.classList.toggle('hidden', this.active || this.inventoryOpen);
+    this.overlay.classList.toggle('hidden', this.active || this.inventoryOpen || this.deathShown);
   }
 
   isDown(code: string): boolean {

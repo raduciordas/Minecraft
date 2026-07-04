@@ -46,6 +46,24 @@ export const MESH_BUDGET_MS = 7; // per-frame budget for chunk gen/meshing
 // Sky
 export const SKY_COLOR = 0x87ceeb;
 
+// Day/night cycle
+export const FULL_DAY_SECONDS = 240; // one full day+night
+export const DAY_START_TIME = 0.35; // fresh worlds start mid-morning
+
+// Survival
+export const MAX_HP = 20; // half-hearts
+export const MAX_OXYGEN_SECONDS = 10;
+export const DROWN_DAMAGE_INTERVAL = 1.2;
+export const REGEN_DELAY_SECONDS = 8;
+export const REGEN_INTERVAL_SECONDS = 3;
+export const FALL_SAFE_SPEED = 12; // impact speed with no damage (~3 blocks)
+export const ZOMBIE_DAMAGE = 2;
+export const ZOMBIE_CHASE_RANGE = 20;
+export const ZOMBIE_CHASE_SPEED = 2.6;
+export const ZOMBIE_ATTACK_RANGE = 1.4;
+export const ZOMBIE_ATTACK_COOLDOWN = 1.0;
+export const ZOMBIE_BURN_SECONDS = 4;
+
 // Inventory
 export const HOTBAR_SIZE = 9;
 export const STARTER_STOCK = 64; // every session starts with at least this much of each material

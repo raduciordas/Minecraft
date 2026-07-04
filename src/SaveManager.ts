@@ -3,6 +3,8 @@ import type { EditsData } from './world/World';
 
 export interface SaveData {
   seed: number;
+  time?: number; // day/night cycle position
+  hp?: number;
   player: { x: number; y: number; z: number; yaw: number; pitch: number };
   inventory: Record<number, number>;
   selectedSlot: number;
