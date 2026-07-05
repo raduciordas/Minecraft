@@ -13,6 +13,7 @@ export const enum BlockType {
   Snow = 11,
   Glass = 12,
   StoneBrick = 13,
+  Crystal = 14,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -32,6 +33,7 @@ export const enum Tile {
   Snow = 12,
   Glass = 13,
   StoneBrick = 14,
+  Crystal = 15,
 }
 
 export interface BlockDef {
@@ -58,6 +60,7 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Snow]: S('Snow', Tile.Snow),
   [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass) },
   [BlockType.StoneBrick]: S('Stone Brick', Tile.StoneBrick),
+  [BlockType.Crystal]: S('Crystal', Tile.Crystal),
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -73,6 +76,7 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Snow,
   BlockType.Glass,
   BlockType.StoneBrick,
+  BlockType.Crystal,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through

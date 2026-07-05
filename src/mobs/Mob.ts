@@ -4,13 +4,14 @@ import { isWater, isSolid } from '../world/Block';
 import type { World } from '../world/World';
 import { stepBody, makeBody, type Body } from '../player/Physics';
 
-export type MobKind = 'pig' | 'sheep' | 'zombie' | 'shadow' | 'golem' | 'wasp';
+export type MobKind = 'pig' | 'sheep' | 'zombie' | 'shadow' | 'golem' | 'wasp' | 'zmeu' | 'capcaun';
 
 export interface MobContext {
   player: Body;
   isNight: boolean;
   playerDead: boolean;
   onMobAttack: (mob: Mob) => void;
+  onRangedAttack: (mob: Mob) => void;
   onMobSound: (kind: MobKind) => void;
   onTeleport: () => void;
 }
@@ -28,6 +29,8 @@ interface MobSpec {
   hostile: boolean;
   flying?: boolean;
   teleports?: boolean;
+  ranged?: boolean;
+  fireCooldown?: number;
 }
 
 const SPECS: Record<MobKind, MobSpec> = {
@@ -40,6 +43,10 @@ const SPECS: Record<MobKind, MobSpec> = {
   golem: { halfWidth: 0.55, height: 2.1, speed: 0.7, jumpSpeed: 8, hp: 20, damage: 4, attackRange: 1.9, chaseRange: 16, chaseSpeed: 1.2, hostile: true },
   // Night wasp: flying stinger, dies fast but is hard to hit
   wasp: { halfWidth: 0.3, height: 0.6, speed: 1.5, jumpSpeed: 0, hp: 4, damage: 1, attackRange: 1.3, chaseRange: 24, chaseSpeed: 3.2, hostile: true, flying: true },
+  // Zmeu: fire-breathing dragon of the Carpathians, attacks from range only
+  zmeu: { halfWidth: 0.5, height: 1.1, speed: 1.8, jumpSpeed: 0, hp: 14, damage: 3, attackRange: 14, chaseRange: 30, chaseSpeed: 2.4, hostile: true, flying: true, ranged: true, fireCooldown: 2.2 },
+  // Capcaun: a slow, towering giant that hits devastatingly hard
+  capcaun: { halfWidth: 0.7, height: 2.6, speed: 0.9, jumpSpeed: 8, hp: 30, damage: 6, attackRange: 2.3, chaseRange: 18, chaseSpeed: 1.4, hostile: true },
 };
 
 const TURN_SPEED = 3; // rad/s
@@ -165,7 +172,7 @@ function buildModel(kind: MobKind): MobModel {
     for (const side of [-1, 1]) {
       legs.push(leg(group, 0.3, 0.8, dark, side * 0.25, 0.8, 0));
     }
-  } else {
+  } else if (kind === 'wasp') {
     // Night wasp: striped flying stinger with buzzing wings
     const body = 0xd8b93a;
     const stripe = 0x2b2b20;
@@ -186,6 +193,61 @@ function buildModel(kind: MobKind): MobModel {
       wing.position.set(side * 0.18, 0.5, 0.05);
       group.add(wing);
       wings.push(wing);
+    }
+  } else if (kind === 'zmeu') {
+    // Zmeu: fire-breathing dragon with a tapering tail and angled wings
+    const scale = 0xb23a1f;
+    const belly = 0xe8b34d;
+    const darkScale = 0x7a2416;
+    box(group, 0.55, 0.5, 1.1, scale, 0, 0.6, 0.1);
+    box(group, 0.4, 0.22, 1.0, belly, 0, 0.42, 0.1);
+    box(group, 0.32, 0.28, 0.6, scale, 0, 0.58, 0.75);
+    box(group, 0.22, 0.2, 0.5, darkScale, 0, 0.55, 1.15);
+    box(group, 0.12, 0.12, 0.4, darkScale, 0, 0.52, 1.5);
+    const head = box(group, 0.42, 0.36, 0.5, scale, 0, 0.75, -0.65);
+    box(head, 0.08, 0.22, 0.08, darkScale, -0.14, 0.25, 0.05);
+    box(head, 0.08, 0.22, 0.08, darkScale, 0.14, 0.25, 0.05);
+    for (const side of [-1, 1]) {
+      const eye = box(head, 0.08, 0.08, 0.02, 0xffcc33, side * 0.13, 0.05, -0.24);
+      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xff8800);
+    }
+    for (const side of [-1, 1]) {
+      const wingGeo = new THREE.BoxGeometry(1.3, 0.04, 0.7);
+      wingGeo.translate(side * 0.65, 0, 0);
+      const wingMat = new THREE.MeshLambertMaterial({ color: darkScale, transparent: true, opacity: 0.85 });
+      const wing = new THREE.Mesh(wingGeo, wingMat);
+      wing.position.set(side * 0.28, 0.72, 0.05);
+      wing.rotation.z = side * 0.35;
+      wing.userData.baseZ = side * 0.35;
+      group.add(wing);
+      wings.push(wing);
+    }
+    for (const [x, z] of [[-0.22, -0.15], [0.22, -0.15], [-0.22, 0.35], [0.22, 0.35]]) {
+      legs.push(leg(group, 0.14, 0.28, darkScale, x, 0.42, z));
+    }
+  } else {
+    // Capcaun: a hulking, slow giant in ragged clothing
+    const skin = 0x6b7d4f;
+    const skinDark = 0x51603c;
+    const cloth = 0x5a3a2a;
+    box(group, 1.1, 1.0, 0.6, cloth, 0, 1.3, 0);
+    const head = box(group, 0.55, 0.55, 0.55, skin, 0, 2.15, 0);
+    for (const side of [-1, 1]) {
+      const eye = box(head, 0.08, 0.08, 0.02, 0xffe066, side * 0.13, 0.05, -0.28);
+      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xccaa33);
+    }
+    for (const side of [-1, 1]) {
+      box(head, 0.06, 0.14, 0.06, 0xf2eee0, side * 0.16, -0.2, -0.24);
+    }
+    for (const side of [-1, 1]) {
+      const armGeo = new THREE.BoxGeometry(0.32, 1.0, 0.32);
+      armGeo.translate(0, -0.5, 0);
+      const arm = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: skin }));
+      arm.position.set(side * 0.68, 1.75, 0);
+      group.add(arm);
+    }
+    for (const side of [-1, 1]) {
+      legs.push(leg(group, 0.34, 0.9, skinDark, side * 0.26, 0.9, 0));
     }
   }
   return { group, legs, wings };
@@ -301,11 +363,18 @@ export class Mob {
         chasing = true;
         this.walking = true;
         this.targetYaw = Math.atan2(-dx, -dz);
-        const verticalOverlap =
-          ctx.player.y < this.body.y + this.spec.height + 0.3 && ctx.player.y + 1.8 > this.body.y - 0.3;
-        if (distToPlayer < this.spec.attackRange && verticalOverlap && this.attackCooldown <= 0) {
-          this.attackCooldown = ZOMBIE_ATTACK_COOLDOWN;
-          ctx.onMobAttack(this);
+        if (this.spec.ranged) {
+          if (distToPlayer < this.spec.attackRange && this.attackCooldown <= 0) {
+            this.attackCooldown = this.spec.fireCooldown ?? 2.5;
+            ctx.onRangedAttack(this);
+          }
+        } else {
+          const verticalOverlap =
+            ctx.player.y < this.body.y + this.spec.height + 0.3 && ctx.player.y + 1.8 > this.body.y - 0.3;
+          if (distToPlayer < this.spec.attackRange && verticalOverlap && this.attackCooldown <= 0) {
+            this.attackCooldown = ZOMBIE_ATTACK_COOLDOWN;
+            ctx.onMobAttack(this);
+          }
         }
       }
     }
@@ -446,7 +515,8 @@ export class Mob {
       legMesh.rotation.x = Math.sin(this.legPhase + (i % 2) * Math.PI) * swing;
     });
     this.wings.forEach((wing, i) => {
-      wing.rotation.z = (i === 0 ? 1 : -1) * Math.sin(this.legPhase * 6) * 0.7;
+      const base = (wing.userData.baseZ as number | undefined) ?? 0;
+      wing.rotation.z = base + (i % 2 === 0 ? 1 : -1) * Math.sin(this.legPhase * 6) * 0.7;
     });
   }
 

@@ -1,5 +1,5 @@
 export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 64;
+export const CHUNK_HEIGHT = 96;
 
 // Touch devices get a smaller world radius and render scale to keep 60 fps
 export const IS_TOUCH =
@@ -18,6 +18,20 @@ export const TERRAIN_AMP_2 = 4;
 export const TERRAIN_FREQ_2 = 1 / 30;
 export const SAND_HEIGHT = 24; // columns at or below this get sand tops
 export const SEA_LEVEL = 23; // water fills empty space up to this height
+
+// "Carpații de Cristal" biome: a curved mountain ridge like the real
+// Carpathian arc, with an opening on one side, snow caps, and crystal spires
+export const MOUNTAIN_RING_RADIUS = 80;
+export const MOUNTAIN_RING_WIDTH = 24;
+export const MOUNTAIN_GAP_ANGLE = (40 * Math.PI) / 180; // half-width of the open side
+export const MOUNTAIN_GAP_CENTER = Math.PI; // the arc opens toward -X
+export const MOUNTAIN_FREQ = 1 / 50;
+export const MOUNTAIN_BASE_HEIGHT = 34;
+export const MOUNTAIN_AMP = 42;
+export const SNOW_LINE = 56;
+export const CRYSTAL_LINE = 62;
+export const CRYSTAL_SPIRE_PROBABILITY = 0.02;
+export const CRYSTAL_VEIN_PROBABILITY = 0.015;
 
 // Player
 export const PLAYER_WIDTH = 0.6;
@@ -69,5 +83,5 @@ export const HOTBAR_SIZE = 9;
 export const STARTER_STOCK = 64; // every session starts with at least this much of each material
 
 // Persistence
-export const SAVE_KEY = 'browser-minecraft-save-v1';
+export const SAVE_KEY = 'cuburia-save-v1';
 export const SAVE_INTERVAL_MS = 10_000;

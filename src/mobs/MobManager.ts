@@ -14,10 +14,12 @@ const DESPAWN_DIST = 80;
 const PASSIVE_KINDS: MobKind[] = ['pig', 'sheep'];
 // Night spawn table: mostly zombies, spiced with the invented monsters
 const HOSTILE_TABLE: [MobKind, number][] = [
-  ['zombie', 0.4],
-  ['wasp', 0.25],
-  ['shadow', 0.2],
-  ['golem', 0.15],
+  ['zombie', 0.3],
+  ['wasp', 0.15],
+  ['shadow', 0.15],
+  ['golem', 0.1],
+  ['capcaun', 0.15],
+  ['zmeu', 0.15],
 ];
 
 function pickHostile(): MobKind {
@@ -109,7 +111,7 @@ export class MobManager {
     } else {
       kind = PASSIVE_KINDS[Math.floor(Math.random() * 2)];
     }
-    const spawnY = kind === 'wasp' ? groundY + 3 : groundY + 1.01;
+    const spawnY = kind === 'wasp' || kind === 'zmeu' ? groundY + 3 : groundY + 1.01;
     this.spawnMobAt(kind, wx + 0.5, spawnY, wz + 0.5);
   }
 }

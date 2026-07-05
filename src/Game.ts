@@ -30,6 +30,7 @@ import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
 import { MobManager } from './mobs/MobManager';
 import type { Mob, MobKind } from './mobs/Mob';
+import { ProjectileManager } from './mobs/Projectile';
 import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
@@ -83,6 +84,7 @@ export class Game {
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
   private mobManager: MobManager;
+  private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
   private health: Health;
   private healthHud: HealthHud;
@@ -155,6 +157,7 @@ export class Game {
       },
     );
     this.mobManager = new MobManager(this.scene, this.world);
+    this.projectiles = new ProjectileManager(this.scene);
     new TouchControls(this.input);
 
     this.sound = new SoundManager();
@@ -250,6 +253,7 @@ export class Game {
         isNight: this.dayNight.isNight,
         playerDead: this.health.dead,
         onMobAttack: (mob: Mob) => this.mobHit(mob),
+        onRangedAttack: (mob: Mob) => this.zmeuFire(mob),
         onMobSound: (kind: MobKind) => this.sound.mob(kind),
         onTeleport: () => this.sound.teleport(),
       };
@@ -258,6 +262,13 @@ export class Game {
       while (this.accumulator >= PHYSICS_STEP && steps < MAX_STEPS_PER_FRAME) {
         this.player.update(this.world, PHYSICS_STEP);
         this.mobManager.update(PHYSICS_STEP, mobContext);
+        this.projectiles.update(
+          PHYSICS_STEP,
+          this.world,
+          this.player.body,
+          (damage) => this.health.damage(damage),
+          () => this.sound.fireballImpact(),
+        );
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
@@ -407,6 +418,15 @@ export class Game {
       const p = this.handSwing / 0.25;
       this.hand.rotation.x = 0.25 - Math.sin(p * Math.PI) * 1.1;
     }
+  }
+
+  private zmeuFire(mob: Mob): void {
+    const originY = mob.body.y + mob.body.height * 0.5;
+    const dx = this.player.body.x - mob.body.x;
+    const dy = this.player.body.y + 0.9 - originY;
+    const dz = this.player.body.z - mob.body.z;
+    this.projectiles.spawnFireball(mob.body.x, originY, mob.body.z, dx, dy, dz, mob.damage);
+    this.sound.fireballCast();
   }
 
   private respawn(): void {

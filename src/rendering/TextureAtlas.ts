@@ -165,6 +165,22 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Crystal]: {
+    base: [138, 92, 214],
+    variation: 0.16,
+    draw: (px, rand) => {
+      // Faceted violet crystal: a bright diagonal shard plus scattered sparkle
+      for (let i = 0; i < TILE_PX; i++) {
+        px(i, (i + 3) % TILE_PX, 210, 170, 255);
+        px((i + 8) % TILE_PX, (TILE_PX - 1 - i), 100, 60, 170);
+      }
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.07) px(x, y, 235, 220, 255);
+        }
+      }
+    },
+  },
 };
 
 export class TextureAtlas {

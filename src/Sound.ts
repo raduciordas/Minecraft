@@ -111,6 +111,16 @@ export class SoundManager {
     this.tone(200, 0.18, 'sine', 0.18, 900);
   }
 
+  fireballCast(): void {
+    this.tone(180, 0.3, 'sawtooth', 0.22, 500);
+    this.noise(0.35, 2000, 0.15, 600);
+  }
+
+  fireballImpact(): void {
+    this.noise(0.25, 800, 0.3, 150);
+    this.tone(120, 0.2, 'square', 0.2, 60);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);
@@ -129,6 +139,14 @@ export class SoundManager {
       // Eerie whisper: descending airy hiss
       this.noise(0.6, 3000, 0.07, 400);
       this.tone(600, 0.5, 'sine', 0.05, 200);
+    } else if (kind === 'zmeu') {
+      // Dragon roar: harsh descending growl
+      this.tone(90 + Math.random() * 20, 0.6, 'sawtooth', 0.22, 45);
+      this.noise(0.3, 1200, 0.1);
+    } else if (kind === 'capcaun') {
+      // Giant's guttural bellow
+      this.tone(70, 0.5, 'square', 0.26, 40);
+      this.noise(0.3, 300, 0.12);
     } else {
       // Zombie groan: low descending wobble
       this.tone(110 + Math.random() * 30, 0.55, 'sawtooth', 0.16, 65);
