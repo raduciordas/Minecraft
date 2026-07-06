@@ -82,17 +82,23 @@ export const ZOMBIE_BURN_SECONDS = 4;
 export const HOTBAR_SIZE = 9;
 export const STARTER_STOCK = 64; // every session starts with at least this much of each material
 
-// Multiplayer. Defaults to the same host the page was loaded from (so
-// opening the game via a LAN IP — e.g. from a phone — automatically points
-// at a multiplayer server running on that same machine). Override at
-// runtime with ?server=wss://your-host without a rebuild. If unreachable,
-// the game falls back to solo/offline play.
+// Multiplayer server address, resolved with the most specific override
+// winning:
+//   1. ?server=wss://your-host in the page URL (no rebuild needed)
+//   2. VITE_MULTIPLAYER_SERVER_URL set at build time — required in
+//      production, where the client and server live on different hosts
+//      (e.g. a Vercel/Netlify site + a Render server)
+//   3. same-host fallback for local/LAN dev: opening the game via a LAN IP
+//      (e.g. from a phone) automatically points at a server running on
+//      that same machine
+// If the resolved server is unreachable, the game falls back to solo play.
 function defaultServerUrl(): string {
   if (typeof location === 'undefined') return 'ws://localhost:8787';
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${scheme}://${location.hostname}:8787`;
 }
-export const MULTIPLAYER_SERVER_URL = defaultServerUrl();
+const buildTimeServerUrl = import.meta.env.VITE_MULTIPLAYER_SERVER_URL as string | undefined;
+export const MULTIPLAYER_SERVER_URL = buildTimeServerUrl || defaultServerUrl();
 export const MOVE_SEND_INTERVAL = 0.1; // seconds between position broadcasts
 export const CONNECT_TIMEOUT_MS = 6000;
 

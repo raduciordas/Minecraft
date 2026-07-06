@@ -29,12 +29,42 @@ Serverul e un proces Node.js simplu (WebSocket, fără build), ușor de găzduit
 
 ### Conectarea clientului la un server
 
-Implicit, clientul încearcă `ws://localhost:8787` (bun pentru dezvoltare locală). Pentru un server real, ai două opțiuni:
+Adresa serverului se rezolvă în ordine, prima variabilă găsită câștigă:
 
-- **Rapid, fără rebuild**: deschide jocul cu `?server=wss://adresa-serverului-tau` în URL
-- **Permanent**: schimbă `MULTIPLAYER_SERVER_URL` din `src/config.ts` și rulează din nou `npm run build`
+1. **`?server=wss://adresa-ta`** în URL-ul jocului — rapid, fără rebuild, bun pentru testare
+2. **`VITE_MULTIPLAYER_SERVER_URL`**, o variabilă de mediu setată la build (`npm run build`) — varianta permanentă, necesară în producție, unde clientul și serverul sunt pe domenii diferite (ex. clientul pe Vercel, serverul pe Render)
+3. **Fallback local/LAN**: dacă niciuna de mai sus nu e setată, clientul încearcă un server pe același host de pe care a fost încărcată pagina, port 8787 — util pentru dezvoltare și pentru joc în rețeaua locală (deschis pe telefon prin IP-ul calculatorului, vezi mai jos)
 
-Dacă site-ul jocului rulează pe `https://` (cazul obișnuit pe Vercel/Netlify), serverul trebuie accesat prin `wss://` (cu TLS) — găzduirile de mai sus oferă asta automat.
+Dacă site-ul jocului rulează pe `https://` (cazul obișnuit pe orice găzduire publică), serverul trebuie accesat prin `wss://` (cu TLS) — găzduirile menționate mai sus oferă asta automat.
+
+### Testare în rețeaua locală (calculator + telefon, fără internet)
+
+`vite.config.ts` are deja `server.host`/`preview.host` activate, deci `npm run dev` sau `npm run preview` sunt vizibile din rețeaua Wi-Fi, nu doar de pe calculatorul tău:
+
+1. Pornește serverul: `cd server && npm start`
+2. Pornește jocul: `npm run build && npm run preview` — terminalul arată și o adresă „Network" (ex. `http://192.168.1.23:4173`)
+3. Pe calculator, deschide adresa locală; pe telefon (**același Wi-Fi**), deschide adresa „Network" — ambele detectează automat serverul de pe același IP, fără configurare suplimentară
+
+### Publicare live (accesibil din orice rețea)
+
+Pentru ca prietenii să se conecteze de oriunde (nu doar din același Wi-Fi), clientul și serverul trebuie găzduite public, separat:
+
+**1. Serverul → [Render.com](https://render.com) (plan gratuit)**
+
+- Cont gratuit, conectat cu GitHub
+- „New +" → „Web Service" → alege repo-ul jocului
+- Setări: **Root Directory** = `server`, **Build Command** = `npm install`, **Start Command** = `npm start`, tip **Free**
+- Deploy — obții o adresă gen `https://numele-tau.onrender.com`; pentru joc, folosește-o cu `wss://` în loc de `https://`
+
+⚠️ **Limitare de reținut pe planul gratuit Render**: nu are disc persistent, deci lumea construită (`server/data/world.json`) se poate reseta la repornirea serverului, iar primul jucător după o pauză lungă de inactivitate așteaptă ~30–60 secunde până serverul „se trezește". Pentru persistență garantată, alternativele sunt un plan Render plătit cu disc atașat, sau mutarea serverului pe o platformă cu disc persistent gratuit (ex. Fly.io).
+
+**2. Clientul → orice găzduire statică** (Vercel, Netlify etc., la fel ca pentru orice site static din `dist/`)
+
+La configurarea proiectului pe găzduirea aleasă, adaugi variabila de mediu de build:
+```
+VITE_MULTIPLAYER_SERVER_URL=wss://numele-tau.onrender.com
+```
+cu adresa reală de la pasul 1, apoi declanșezi build-ul.
 
 ### Ce e sincronizat între jucători
 
