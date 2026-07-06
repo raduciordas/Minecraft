@@ -11,6 +11,11 @@ const STAR_COUNT = 350;
 export class DayNightCycle {
   time = DAY_START_TIME;
 
+  // When set (multiplayer), time is derived from wall-clock time relative to
+  // this epoch instead of accumulated locally, so every connected player
+  // sees the same sky.
+  private networkEpoch: number | null = null;
+
   private sun: THREE.Sprite;
   private moon: THREE.Sprite;
   private stars: THREE.Points;
@@ -71,8 +76,17 @@ export class DayNightCycle {
     return this.elevation < 0;
   }
 
+  setNetworkEpoch(epochMs: number): void {
+    this.networkEpoch = epochMs;
+  }
+
   update(dt: number, camera: THREE.Camera): void {
-    this.time = (this.time + dt / FULL_DAY_SECONDS) % 1;
+    if (this.networkEpoch !== null) {
+      const elapsedSeconds = (Date.now() - this.networkEpoch) / 1000;
+      this.time = (((elapsedSeconds / FULL_DAY_SECONDS + DAY_START_TIME) % 1) + 1) % 1;
+    } else {
+      this.time = (this.time + dt / FULL_DAY_SECONDS) % 1;
+    }
 
     const angle = (this.time - 0.25) * Math.PI * 2;
     this.sunDir.set(Math.cos(angle), Math.sin(angle), 0.35).normalize();

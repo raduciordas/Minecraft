@@ -112,6 +112,17 @@ export class World {
     }
   }
 
+  // Chunks generated in the brief window before a multiplayer connection's
+  // initial edits arrive miss those edits (generateChunk only applies them
+  // once, at generation time) — patch already-loaded chunks back in.
+  applyStoredEditsToAllLoadedChunks(): void {
+    for (const chunk of this.chunks.values()) {
+      const chunkEdits = this.edits.get(chunkKey(chunk.cx, chunk.cz));
+      if (!chunkEdits) continue;
+      for (const [index, id] of chunkEdits) chunk.blocks[index] = id;
+    }
+  }
+
   get hasEdits(): boolean {
     return this.edits.size > 0;
   }

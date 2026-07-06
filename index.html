@@ -215,6 +215,46 @@
       }
       #overlay p { font-size: 14px; line-height: 1.8; color: #ccc; }
       #overlay.hidden { display: none; }
+
+      #name-entry {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 30; font-family: monospace;
+      }
+      #name-entry.hidden { display: none; }
+      .name-card {
+        display: flex; flex-direction: column; align-items: center; gap: 14px;
+        background: rgba(20, 20, 28, 0.9);
+        border: 2px solid #6fa8c9; border-radius: 10px;
+        padding: 32px 40px; color: #fff; text-align: center;
+      }
+      .name-card h1 { font-size: 34px; letter-spacing: 3px; margin: 0; }
+      .name-card .subtitle {
+        font-size: 12px; letter-spacing: 4px; color: #9dd8e8;
+        text-transform: uppercase; margin-top: -10px;
+      }
+      .name-card p { font-size: 13px; color: #ccc; margin: 4px 0 0; }
+      .name-card input {
+        font: 16px monospace; padding: 10px 14px; width: 220px;
+        background: rgba(255, 255, 255, 0.08); color: #fff;
+        border: 2px solid #6fa8c9; border-radius: 6px; text-align: center;
+      }
+      .name-card input:focus { outline: none; border-color: #fff; }
+      .name-card button {
+        font: 15px monospace; color: #fff; cursor: pointer;
+        background: #3d7ea6; border: 2px solid #6fa8c9; border-radius: 6px;
+        padding: 10px 26px;
+      }
+      .name-card button:hover { background: #4d8fb8; }
+
+      #mp-status {
+        position: fixed; top: 26px; left: 8px;
+        font: 12px monospace; z-index: 10; pointer-events: none;
+        text-shadow: 1px 1px 0 #000;
+      }
+      #mp-status.online { color: #7dffa0; }
+      #mp-status.offline { color: #bbb; }
     </style>
   </head>
   <body>
@@ -222,6 +262,7 @@
     <div id="crosshair"></div>
     <div id="hotbar"></div>
     <div id="fps"></div>
+    <div id="mp-status" class="offline">● Solo (offline)</div>
     <div id="inventory" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
@@ -242,6 +283,15 @@
         1-9 / scroll — select slot &nbsp;|&nbsp; E — inventory (pick materials) &nbsp;|&nbsp; F — fly &nbsp;|&nbsp; Esc — pause<br />
         Progress is saved automatically in your browser.
       </p>
+    </div>
+    <div id="name-entry">
+      <div class="name-card">
+        <h1>CUBURIA</h1>
+        <div class="subtitle">Carpații de Cristal</div>
+        <p>Alege-ți numele de explorator</p>
+        <input id="name-input" maxlength="16" placeholder="Numele tău" autocomplete="off" />
+        <button id="name-submit">Intră în joc</button>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

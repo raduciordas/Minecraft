@@ -12,6 +12,8 @@ import {
   STARTER_STOCK,
   MAX_PIXEL_RATIO,
   FALL_SAFE_SPEED,
+  MULTIPLAYER_SERVER_URL,
+  MOVE_SEND_INTERVAL,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
@@ -35,6 +37,9 @@ import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
 import { WEAPONS, WeaponId, isWeapon, buildWeaponModel, disposeModel } from './items/Weapon';
+import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
+import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
+import { RemotePlayerManager } from './net/RemotePlayer';
 
 interface ChunkTask {
   cx: number;
@@ -98,6 +103,12 @@ export class Game {
   private hand: THREE.Group | null = null;
   private handWeaponId: number | null = null;
   private handSwing = 0;
+  private playerName: string;
+  private network = new NetworkClient();
+  private remotePlayers: RemotePlayerManager;
+  private multiplayer = false;
+  private moveSendTimer = 0;
+  private mpStatusEl: HTMLElement;
 
   private taskQueue: ChunkTask[] = [];
   private queuedKeys = new Set<string>();
@@ -106,7 +117,8 @@ export class Game {
   private accumulator = 0;
   private lastTime = 0;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, playerName: string) {
+    this.playerName = playerName;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
@@ -158,6 +170,8 @@ export class Game {
     );
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
+    this.remotePlayers = new RemotePlayerManager(this.scene);
+    this.mpStatusEl = document.getElementById('mp-status')!;
     new TouchControls(this.input);
 
     this.sound = new SoundManager();
@@ -233,6 +247,68 @@ export class Game {
 
     // Debug handle for the browser console
     (window as unknown as { __game: Game }).__game = this;
+
+    void this.connectMultiplayer();
+  }
+
+  // Attempts to join the shared multiplayer world; on success, block edits
+  // and the day/night clock become server-authoritative and other players
+  // become visible. If the server is unreachable, play continues solo with
+  // the existing localStorage save.
+  private async connectMultiplayer(): Promise<void> {
+    const url = resolveServerUrl(MULTIPLAYER_SERVER_URL);
+    if (!url) return;
+
+    this.network.on('join', (p: RemotePlayerState) => {
+      this.remotePlayers.add(p);
+      this.updateMpStatus();
+    });
+    this.network.on('leave', (id: string) => {
+      this.remotePlayers.remove(id);
+      this.updateMpStatus();
+    });
+    this.network.on('move', (e: MoveEvent) => {
+      this.remotePlayers.applyMove(e.id, e.x, e.y, e.z, e.yaw, e.moving);
+    });
+    this.network.on('blockEdit', (e: BlockEditEvent) => this.applyRemoteBlockEdit(e));
+    this.network.onDisconnect(() => {
+      this.multiplayer = false;
+      this.remotePlayers.clear();
+      this.updateMpStatus();
+      console.warn('[CUBURIA] Lost connection to the multiplayer server — continuing solo.');
+    });
+
+    const init = await this.network.connect(url, this.playerName);
+    if (!init) {
+      console.warn('[CUBURIA] Multiplayer server unreachable — playing solo.');
+      this.updateMpStatus();
+      return;
+    }
+
+    this.multiplayer = true;
+    this.world.loadEdits(init.edits);
+    this.world.applyStoredEditsToAllLoadedChunks();
+    for (const chunk of this.world.allChunks()) this.meshManager.remesh(chunk, this.world);
+    this.dayNight.setNetworkEpoch(init.epoch);
+    for (const p of init.players) this.remotePlayers.add(p);
+    this.updateMpStatus();
+  }
+
+  private applyRemoteBlockEdit(e: BlockEditEvent): void {
+    const affected = this.world.setBlock(e.x, e.y, e.z, e.blockId);
+    for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
+  }
+
+  private updateMpStatus(): void {
+    if (this.multiplayer) {
+      const total = this.remotePlayers.count + 1;
+      const word = total === 1 ? 'explorator' : 'exploratori';
+      this.mpStatusEl.textContent = `● Online — ${total} ${word}`;
+      this.mpStatusEl.className = 'online';
+    } else {
+      this.mpStatusEl.textContent = '● Solo (offline)';
+      this.mpStatusEl.className = 'offline';
+    }
   }
 
   start(): void {
@@ -290,7 +366,17 @@ export class Game {
       );
       if (feetInWater && !this.wasFeetInWater) this.sound.splash();
       this.wasFeetInWater = feetInWater;
+
+      if (this.multiplayer) {
+        this.moveSendTimer += dt;
+        if (this.moveSendTimer >= MOVE_SEND_INTERVAL) {
+          this.moveSendTimer = 0;
+          this.network.sendMove(body.x, body.y, body.z, this.input.yaw, horizontalSpeed > 0.5, feetInWater);
+        }
+      }
     }
+
+    this.remotePlayers.update(dt);
 
     this.camera.position.set(this.player.eyeX, this.player.eyeY, this.player.eyeZ);
     this.camera.rotation.y = this.input.yaw;
@@ -441,6 +527,9 @@ export class Game {
   }
 
   private saveNow(): void {
+    // The multiplayer world is authoritative on the server; local edits are
+    // already sent there as they happen, so skip the redundant local save.
+    if (this.multiplayer) return;
     writeSave({
       seed: WORLD_SEED,
       time: this.dayNight.time,
@@ -597,6 +686,7 @@ export class Game {
     if (affected.length > 0) {
       this.inventory.add(broken);
       this.sound.breakBlock();
+      if (this.multiplayer) this.network.sendBlockEdit(x, y, z, BlockType.Air);
     }
   }
 
@@ -614,6 +704,7 @@ export class Game {
     const affected = this.world.setBlock(x, y, z, selected);
     for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
     this.sound.place();
+    if (this.multiplayer) this.network.sendBlockEdit(x, y, z, selected);
   }
 
   private updateSelectionBox(): void {

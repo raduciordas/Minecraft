@@ -82,6 +82,12 @@ export const ZOMBIE_BURN_SECONDS = 4;
 export const HOTBAR_SIZE = 9;
 export const STARTER_STOCK = 64; // every session starts with at least this much of each material
 
+// Multiplayer. Override at runtime with ?server=wss://your-host without a
+// rebuild. If unreachable, the game falls back to solo/offline play.
+export const MULTIPLAYER_SERVER_URL = 'ws://localhost:8787';
+export const MOVE_SEND_INTERVAL = 0.1; // seconds between position broadcasts
+export const CONNECT_TIMEOUT_MS = 6000;
+
 // Persistence
 export const SAVE_KEY = 'cuburia-save-v1';
 export const SAVE_INTERVAL_MS = 10_000;
