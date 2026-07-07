@@ -181,6 +181,105 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Mamaliga]: {
+    base: [235, 199, 86],
+    variation: 0.1,
+    draw: (px, rand) => {
+      // Toasted crust speckles on a corn-yellow slab
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.06) px(x, y, 179, 133, 46);
+          else if (rand() < 0.03) px(x, y, 250, 226, 150);
+        }
+      }
+    },
+  },
+  [Tile.Lamp]: {
+    base: [255, 227, 150],
+    variation: 0.05,
+    draw: (px) => {
+      // Lantern casing: a darker frame around a bright glowing pane
+      for (let i = 0; i < TILE_PX; i++) {
+        px(i, 0, 120, 96, 55);
+        px(i, 15, 120, 96, 55);
+        px(0, i, 120, 96, 55);
+        px(15, i, 120, 96, 55);
+      }
+      for (let x = 3; x < 13; x++) {
+        for (let y = 3; y < 13; y++) px(x, y, 255, 245, 200);
+      }
+    },
+  },
+  [Tile.DoorClosed]: {
+    base: [150, 112, 66],
+    variation: 0.05,
+    draw: (px) => {
+      // Two raised panels plus a knob, like a plank door
+      for (let i = 0; i < TILE_PX; i++) {
+        px(i, 0, 96, 70, 38);
+        px(i, 15, 96, 70, 38);
+        px(0, i, 96, 70, 38);
+        px(15, i, 96, 70, 38);
+      }
+      px(7, 7, 96, 70, 38);
+      px(8, 7, 96, 70, 38);
+      for (const y of [5, 10]) for (let x = 2; x < 14; x++) px(x, y, 110, 82, 46);
+      px(12, 8, 224, 190, 90); // knob
+    },
+  },
+  [Tile.DoorOpen]: {
+    base: [0, 0, 0],
+    variation: 0,
+    transparentBase: true,
+    draw: (px) => {
+      // Just the empty frame — reads as an open doorway
+      for (let i = 0; i < TILE_PX; i++) {
+        px(i, 0, 96, 70, 38);
+        px(i, 15, 96, 70, 38);
+        px(0, i, 96, 70, 38);
+        px(15, i, 96, 70, 38);
+      }
+    },
+  },
+  [Tile.Chirpici]: {
+    base: [196, 168, 110],
+    variation: 0.1,
+    draw: (px, rand) => {
+      // Straw flecks through sun-dried clay
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.05) px(x, y, 226, 202, 120);
+          else if (rand() < 0.02) px(x, y, 140, 110, 70);
+        }
+      }
+    },
+  },
+  [Tile.Obsidian]: {
+    base: [24, 18, 36],
+    variation: 0.06,
+    draw: (px, rand) => {
+      // Glassy volcanic sheen: scattered violet highlights
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.05) px(x, y, 90, 70, 130);
+        }
+      }
+    },
+  },
+  [Tile.Hay]: {
+    base: [199, 163, 58],
+    variation: 0.08,
+    draw: (px) => {
+      // Bound straw bundle: horizontal courses plus a couple of twine wraps
+      for (let x = 0; x < TILE_PX; x++) {
+        for (const y of [2, 5, 8, 11, 14]) px(x, y, 160, 128, 40);
+      }
+      for (let y = 0; y < TILE_PX; y++) {
+        px(3, y, 110, 84, 30);
+        px(12, y, 110, 84, 30);
+      }
+    },
+  },
 };
 
 export class TextureAtlas {

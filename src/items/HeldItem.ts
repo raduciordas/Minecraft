@@ -3,6 +3,7 @@ import { BLOCKS, type BlockType } from '../world/Block';
 import { FACES, FACE_UVS } from '../rendering/ChunkMesher';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import { isWeapon, buildWeaponModel, disposeModel, type WeaponId } from './Weapon';
+import { isThrowable, buildThrowableModel, type ThrowableId } from './Throwable';
 
 const SKIN_COLOR = 0xe0a878;
 const BLOCK_ITEM_SIZE = 0.16;
@@ -70,6 +71,8 @@ export function buildHeldItem(id: number, atlas: TextureAtlas): THREE.Group {
   group.add(buildFist());
   if (isWeapon(id)) {
     group.add(buildWeaponModel(id as WeaponId));
+  } else if (isThrowable(id)) {
+    group.add(buildThrowableModel(id as ThrowableId));
   } else {
     group.add(buildBlockModel(id as BlockType, atlas));
   }

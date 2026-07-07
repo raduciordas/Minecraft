@@ -1,5 +1,6 @@
 import { BLOCKS, PLACEABLE_BLOCKS } from '../world/Block';
 import { WEAPONS, WeaponId, isWeapon, makeWeaponIcon } from '../items/Weapon';
+import { THROWABLES, ThrowableId, isThrowable, makeThrowableIcon } from '../items/Throwable';
 import { HOTBAR_SIZE } from '../config';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
@@ -18,8 +19,8 @@ export class Hotbar {
     private atlas: TextureAtlas,
     private inventory: Inventory,
   ) {
-    // The Storm Sword starts in slot 1; blocks fill the rest
-    this.layout = [WeaponId.StormSword, ...PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE - 1)];
+    // The Storm Sword and a bottle of țuică start in slots 1-2; blocks fill the rest
+    this.layout = [WeaponId.StormSword, ThrowableId.TuicaBottle, ...PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE - 2)];
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const slot = document.createElement('div');
       slot.className = 'hotbar-slot';
@@ -58,7 +59,7 @@ export class Hotbar {
 
   setLayout(layout: number[]): void {
     layout.forEach((id, i) => {
-      if (i < HOTBAR_SIZE && (BLOCKS[id] || WEAPONS[id])) this.assign(i, id);
+      if (i < HOTBAR_SIZE && (BLOCKS[id] || WEAPONS[id] || THROWABLES[id])) this.assign(i, id);
     });
   }
 
@@ -87,13 +88,15 @@ export class Hotbar {
   }
 
   private makeIcon(id: number): HTMLCanvasElement {
-    return isWeapon(id)
-      ? makeWeaponIcon(id as WeaponId)
-      : this.atlas.makeTileIcon(BLOCKS[id].textures.side);
+    if (isWeapon(id)) return makeWeaponIcon(id as WeaponId);
+    if (isThrowable(id)) return makeThrowableIcon(id as ThrowableId);
+    return this.atlas.makeTileIcon(BLOCKS[id].textures.side);
   }
 
   private itemName(id: number): string {
-    return isWeapon(id) ? WEAPONS[id].name : BLOCKS[id].name;
+    if (isWeapon(id)) return WEAPONS[id].name;
+    if (isThrowable(id)) return THROWABLES[id].name;
+    return BLOCKS[id].name;
   }
 
   private refreshCounts(): void {

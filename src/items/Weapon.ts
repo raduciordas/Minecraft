@@ -61,8 +61,9 @@ export const WEAPON_IDS: WeaponId[] = [
   WeaponId.IceSpear,
 ];
 
+// Weapon ids occupy [100, 200); throwables (see Throwable.ts) start at 200
 export function isWeapon(id: number): boolean {
-  return id >= 100;
+  return id >= 100 && id < 200;
 }
 
 const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;

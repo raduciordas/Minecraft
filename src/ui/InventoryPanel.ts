@@ -1,5 +1,6 @@
-import { BLOCKS, PLACEABLE_BLOCKS } from '../world/Block';
+import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
 import { WEAPONS, WEAPON_IDS, makeWeaponIcon } from '../items/Weapon';
+import { THROWABLES, THROWABLE_IDS, makeThrowableIcon } from '../items/Throwable';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
@@ -7,7 +8,7 @@ import type { Inventory } from '../player/Inventory';
 // material; clicking one puts it in the currently selected hotbar slot.
 export class InventoryPanel {
   private root: HTMLElement;
-  private countLabels: HTMLElement[] = [];
+  private countedCells: { id: number; el: HTMLElement }[] = [];
   isOpen = false;
 
   constructor(
@@ -57,9 +58,13 @@ export class InventoryPanel {
     for (const id of WEAPON_IDS) {
       addCell(id, makeWeaponIcon(id), WEAPONS[id].name, true);
     }
+    THROWABLE_IDS.forEach((id) => {
+      const count = addCell(id, makeThrowableIcon(id), THROWABLES[id].name, false);
+      this.countedCells.push({ id, el: count });
+    });
     PLACEABLE_BLOCKS.forEach((id) => {
       const count = addCell(id, atlas.makeTileIcon(BLOCKS[id].textures.side), BLOCKS[id].name, false);
-      this.countLabels.push(count);
+      this.countedCells.push({ id, el: count });
     });
 
     this.root.appendChild(panel);
@@ -78,9 +83,9 @@ export class InventoryPanel {
   }
 
   private refreshCounts(): void {
-    PLACEABLE_BLOCKS.forEach((id, i) => {
-      const count = this.inventory.count(id);
-      this.countLabels[i].textContent = count > 0 ? `x${count}` : '—';
+    this.countedCells.forEach(({ id, el }) => {
+      const count = this.inventory.count(id as BlockType);
+      el.textContent = count > 0 ? `x${count}` : '—';
     });
   }
 }

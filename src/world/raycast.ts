@@ -15,6 +15,7 @@ export function raycastVoxels(
   origin: { x: number; y: number; z: number },
   direction: { x: number; y: number; z: number },
   maxDistance: number,
+  isTarget: (id: number) => boolean = isSolid,
 ): RaycastHit | null {
   let x = Math.floor(origin.x);
   let y = Math.floor(origin.y);
@@ -41,7 +42,7 @@ export function raycastVoxels(
   let t = 0;
 
   while (t <= maxDistance) {
-    if (isSolid(world.getBlock(x, y, z))) {
+    if (isTarget(world.getBlock(x, y, z))) {
       return { block: { x, y, z }, previous: { x: prevX, y: prevY, z: prevZ } };
     }
     prevX = x;

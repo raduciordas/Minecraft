@@ -16,10 +16,12 @@ import {
   MOVE_SEND_INTERVAL,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
-import { BlockType, isWater, PLACEABLE_BLOCKS } from './world/Block';
+import type { Chunk } from './world/Chunk';
+import { BlockType, isWater, isSolid, isDoor, PLACEABLE_BLOCKS } from './world/Block';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
+import { LightManager } from './rendering/LightManager';
 import { InputController } from './player/InputController';
 import { Player } from './player/Player';
 import { Inventory } from './player/Inventory';
@@ -37,10 +39,13 @@ import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
 import { WEAPONS, isWeapon } from './items/Weapon';
+import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Throwable';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
 import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
 import { RemotePlayerManager } from './net/RemotePlayer';
+
+const THROWABLE_STARTER_STOCK = 6;
 
 interface ChunkTask {
   cx: number;
@@ -83,6 +88,7 @@ export class Game {
   private camera: THREE.PerspectiveCamera;
   private world: World;
   private meshManager: ChunkMeshManager;
+  private lightManager: LightManager;
   private input: InputController;
   private player: Player;
   private inventory: Inventory;
@@ -152,6 +158,7 @@ export class Game {
     this.atlas = atlas;
     this.world = new World(WORLD_SEED);
     this.meshManager = new ChunkMeshManager(this.scene, atlas);
+    this.lightManager = new LightManager(this.scene);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -242,6 +249,7 @@ export class Game {
     }
     // Every session starts with a healthy stock of each material
     for (const id of PLACEABLE_BLOCKS) this.inventory.ensureAtLeast(id, STARTER_STOCK);
+    for (const id of THROWABLE_IDS) this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
 
     window.addEventListener('beforeunload', () => this.saveNow());
     document.addEventListener('visibilitychange', () => {
@@ -291,15 +299,28 @@ export class Game {
     this.multiplayer = true;
     this.world.loadEdits(init.edits);
     this.world.applyStoredEditsToAllLoadedChunks();
-    for (const chunk of this.world.allChunks()) this.meshManager.remesh(chunk, this.world);
+    for (const chunk of this.world.allChunks()) {
+      this.meshManager.remesh(chunk, this.world);
+      this.lightManager.syncChunk(chunk);
+    }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
     this.updateMpStatus();
   }
 
   private applyRemoteBlockEdit(e: BlockEditEvent): void {
-    const affected = this.world.setBlock(e.x, e.y, e.z, e.blockId);
-    for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
+    this.applyBlockChange(e.x, e.y, e.z, e.blockId);
+  }
+
+  // Writes a block, remeshes whichever chunks it touched, and keeps lamp
+  // lighting in sync. Returns the affected chunks (empty if unloaded).
+  private applyBlockChange(x: number, y: number, z: number, id: number): Chunk[] {
+    const affected = this.world.setBlock(x, y, z, id);
+    for (const chunk of affected) {
+      this.meshManager.remesh(chunk, this.world);
+      this.lightManager.syncChunk(chunk);
+    }
+    return affected;
   }
 
   private updateMpStatus(): void {
@@ -348,6 +369,7 @@ export class Game {
           (damage) => this.health.damage(damage),
           () => this.sound.fireballImpact(),
         );
+        this.projectiles.updateBottles(PHYSICS_STEP, this.world, this.mobManager.all(), (x, y, z) => this.explodeAt(x, y, z));
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
@@ -425,10 +447,15 @@ export class Game {
     this.player.body.vy = Math.max(this.player.body.vy, 4);
   }
 
-  // Left click: strike a mob in reach, otherwise break the targeted block
+  // Left click: throw the bottle if one's selected, strike a mob in reach,
+  // or otherwise break the targeted block
   private attack(): void {
     if (this.health.dead || this.attackCooldown > 0) return;
     const selected = this.hotbar.selectedItem;
+    if (isThrowable(selected)) {
+      this.throwBottle(selected);
+      return;
+    }
     const weapon = isWeapon(selected) ? WEAPONS[selected] : null;
     const range = weapon ? weapon.range : 3;
 
@@ -481,6 +508,35 @@ export class Game {
     const blockHit = raycastVoxels(this.world, { x: o.x, y: o.y, z: o.z }, dir, bestT);
     if (blockHit) return null;
     return best;
+  }
+
+  // Throws a bottle of țuică from the camera; it arcs under gravity and
+  // detonates on the first mob or block it touches (see explodeAt).
+  private throwBottle(id: number): void {
+    if (!this.inventory.remove(id as BlockType)) return;
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const o = this.camera.position;
+    this.projectiles.spawnBottle(o.x, o.y, o.z, dir.x, dir.y, dir.z);
+    this.sound.throwBottle();
+    this.attackCooldown = 0.5;
+    this.handSwing = 0.25;
+  }
+
+  // A țuică bottle's impact: every mob caught in the blast radius dies outright
+  private explodeAt(x: number, y: number, z: number): void {
+    const radius = THROWABLES[ThrowableId.TuicaBottle].blastRadius;
+    for (const mob of this.mobManager.all()) {
+      if (mob.dying) continue;
+      const dx = mob.body.x - x;
+      const dz = mob.body.z - z;
+      const dist = Math.hypot(dx, dz, mob.body.y - y);
+      if (dist > radius) continue;
+      const len = Math.hypot(dx, dz) || 1;
+      mob.hit(9999, (dx / len) * 10, (dz / len) * 10);
+      this.sound.mobDeath();
+    }
+    this.sound.explosion();
   }
 
   // Rebuilds the first-person hand model when the selection changes (a fist
@@ -642,6 +698,7 @@ export class Game {
       this.queuedKeys.delete(`mesh:${chunkKey(task.cx, task.cz)}`);
       const chunk = this.world.getChunk(task.cx, task.cz)!;
       this.meshManager.remesh(chunk, this.world);
+      this.lightManager.syncChunk(chunk);
     }
 
     if (!this.worldReady) {
@@ -661,12 +718,15 @@ export class Game {
     }
     for (const { cx, cz } of toRemove) {
       this.meshManager.removeMesh(cx, cz);
+      this.lightManager.removeChunk(cx, cz);
       this.world.removeChunk(cx, cz);
     }
   }
 
   // --- Block interaction ---
 
+  // Doors aren't solid once open, but should still be targetable so a right
+  // click can swing them shut again — so the reach raycast also stops on them.
   private raycastFromCamera() {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
@@ -675,7 +735,18 @@ export class Game {
       { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
       { x: dir.x, y: dir.y, z: dir.z },
       REACH_DISTANCE,
+      (id) => isSolid(id) || isDoor(id),
     );
+  }
+
+  // A door is always 2 blocks tall; given either half, returns [bottomY, topY].
+  private doorSpan(x: number, y: number, z: number): [number, number] {
+    const id = this.world.getBlock(x, y, z);
+    return this.world.getBlock(x, y + 1, z) === id ? [y, y + 1] : [y - 1, y];
+  }
+
+  private sendEdit(x: number, y: number, z: number, id: number): void {
+    if (this.multiplayer) this.network.sendBlockEdit(x, y, z, id);
   }
 
   private breakBlock(): void {
@@ -685,30 +756,66 @@ export class Game {
     const { x, y, z } = hit.block;
     if (y <= 0) return; // keep the bottom layer as bedrock
     const broken = this.world.getBlock(x, y, z);
-    const affected = this.world.setBlock(x, y, z, BlockType.Air);
-    for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
-    if (affected.length > 0) {
+
+    if (isDoor(broken)) {
+      const [y0, y1] = this.doorSpan(x, y, z);
+      if (this.applyBlockChange(x, y0, z, BlockType.Air).length === 0) return;
+      this.applyBlockChange(x, y1, z, BlockType.Air);
+      this.sendEdit(x, y0, z, BlockType.Air);
+      this.sendEdit(x, y1, z, BlockType.Air);
+      this.inventory.add(BlockType.DoorClosed);
+      this.sound.breakBlock();
+      return;
+    }
+
+    if (this.applyBlockChange(x, y, z, BlockType.Air).length > 0) {
       this.inventory.add(broken);
       this.sound.breakBlock();
-      if (this.multiplayer) this.network.sendBlockEdit(x, y, z, BlockType.Air);
+      this.sendEdit(x, y, z, BlockType.Air);
     }
   }
 
   private placeBlock(): void {
     if (this.health.dead) return;
-    const selected = this.hotbar.selectedItem;
-    if (isWeapon(selected)) return; // weapons can't be placed
     const hit = this.raycastFromCamera();
     if (!hit) return;
+
+    const targetedId = this.world.getBlock(hit.block.x, hit.block.y, hit.block.z);
+    if (isDoor(targetedId)) {
+      const { x, y, z } = hit.block;
+      const [y0, y1] = this.doorSpan(x, y, z);
+      const next = this.world.getBlock(x, y0, z) === BlockType.DoorClosed ? BlockType.DoorOpen : BlockType.DoorClosed;
+      this.applyBlockChange(x, y0, z, next);
+      this.applyBlockChange(x, y1, z, next);
+      this.sendEdit(x, y0, z, next);
+      this.sendEdit(x, y1, z, next);
+      this.sound.doorToggle();
+      return;
+    }
+
+    const selected = this.hotbar.selectedItem;
+    if (isWeapon(selected) || isThrowable(selected)) return; // can't be placed
+
     const { x, y, z } = hit.previous;
     const target = this.world.getBlock(x, y, z);
     if (target !== BlockType.Air && target !== BlockType.Water) return;
     if (blockIntersectsBody(this.player.body, x, y, z)) return;
+
+    if (selected === BlockType.DoorClosed) {
+      if (this.world.getBlock(x, y + 1, z) !== BlockType.Air) return; // no room for the top half
+      if (!this.inventory.remove(BlockType.DoorClosed)) return;
+      this.applyBlockChange(x, y, z, BlockType.DoorClosed);
+      this.applyBlockChange(x, y + 1, z, BlockType.DoorClosed);
+      this.sendEdit(x, y, z, BlockType.DoorClosed);
+      this.sendEdit(x, y + 1, z, BlockType.DoorClosed);
+      this.sound.place();
+      return;
+    }
+
     if (!this.inventory.remove(selected as BlockType)) return; // out of stock
-    const affected = this.world.setBlock(x, y, z, selected);
-    for (const chunk of affected) this.meshManager.remesh(chunk, this.world);
+    this.applyBlockChange(x, y, z, selected);
     this.sound.place();
-    if (this.multiplayer) this.network.sendBlockEdit(x, y, z, selected);
+    this.sendEdit(x, y, z, selected);
   }
 
   private updateSelectionBox(): void {

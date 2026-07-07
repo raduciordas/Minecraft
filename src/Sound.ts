@@ -121,6 +121,19 @@ export class SoundManager {
     this.tone(120, 0.2, 'square', 0.2, 60);
   }
 
+  throwBottle(): void {
+    this.tone(400, 0.15, 'sine', 0.16, 700);
+  }
+
+  explosion(): void {
+    this.noise(0.5, 1600, 0.35, 90);
+    this.tone(80, 0.5, 'sawtooth', 0.3, 30);
+  }
+
+  doorToggle(): void {
+    this.noise(0.18, 500, 0.16, 250);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);
