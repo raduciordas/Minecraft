@@ -13,7 +13,7 @@ interface FaceDef {
   texture: 'top' | 'side' | 'bottom';
 }
 
-const FACES: FaceDef[] = [
+export const FACES: FaceDef[] = [
   { dir: [0, 1, 0], corners: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], shade: 1.0, texture: 'top' },
   { dir: [0, -1, 0], corners: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], shade: 0.5, texture: 'bottom' },
   { dir: [1, 0, 0], corners: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]], shade: 0.6, texture: 'side' },
@@ -24,7 +24,7 @@ const FACES: FaceDef[] = [
 
 // UV corner order matching the vertex corner order of each face.
 // Maps corner index -> (u, v) selector into the tile's UV rect.
-const FACE_UVS: [number, number][] = [
+export const FACE_UVS: [number, number][] = [
   [0, 0],
   [1, 0],
   [1, 1],

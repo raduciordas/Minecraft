@@ -23,6 +23,7 @@ import {
 } from '../config';
 import { BlockType } from './Block';
 import { Chunk } from './Chunk';
+import { buildGrandmaVillage, buildVladCastle, type StructureTemplate } from './Structures';
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -44,17 +45,50 @@ function hash2D(x: number, z: number, seed: number): number {
 
 const TREE_PROBABILITY = 0.008;
 
+// World landmarks: fixed points of interest stamped into the terrain wherever
+// their footprint overlaps a chunk (see placeStructures).
+interface PlacedStructure extends StructureTemplate {
+  groundY: number;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
 export class TerrainGenerator {
   private noise1: NoiseFunction2D;
   private noise2: NoiseFunction2D;
   private mountainNoise: NoiseFunction2D;
   private seed: number;
+  private structures: PlacedStructure[];
 
   constructor(seed: number) {
     this.seed = seed;
     this.noise1 = createNoise2D(mulberry32(seed));
     this.noise2 = createNoise2D(mulberry32(seed + 1));
     this.mountainNoise = createNoise2D(mulberry32(seed + 2));
+
+    // Satul Bunicii sits in the flatland just outside the mountain ring;
+    // Castelul lui Vlad Tepes crowns a peak on the ring itself.
+    this.structures = [buildGrandmaVillage(36, 36), buildVladCastle(80, 0)].map((t) => this.placeTemplate(t));
+  }
+
+  private placeTemplate(t: StructureTemplate): PlacedStructure {
+    let minX = 0, maxX = 0, minZ = 0, maxZ = 0;
+    for (const b of t.blocks) {
+      minX = Math.min(minX, b.dx);
+      maxX = Math.max(maxX, b.dx);
+      minZ = Math.min(minZ, b.dz);
+      maxZ = Math.max(maxZ, b.dz);
+    }
+    return {
+      ...t,
+      groundY: this.heightAt(t.originX, t.originZ),
+      minX: t.originX + minX - t.pad,
+      maxX: t.originX + maxX + t.pad,
+      minZ: t.originZ + minZ - t.pad,
+      maxZ: t.originZ + maxZ + t.pad,
+    };
   }
 
   // 0 outside the mountain band, ramping to 1 along the Carpathian-style
@@ -127,6 +161,42 @@ export class TerrainGenerator {
 
     this.placeTrees(chunk);
     this.placeCrystalSpires(chunk);
+    this.placeStructures(chunk);
+  }
+
+  // Flattens each landmark's footprint (so it sits on a clean pad regardless
+  // of the natural terrain underneath) and stamps its blocks, one chunk at a
+  // time; a structure spanning several chunks is handled correctly since
+  // every chunk only ever touches its own local slice of the shared template.
+  private placeStructures(chunk: Chunk): void {
+    const baseX = chunk.cx * CHUNK_SIZE;
+    const baseZ = chunk.cz * CHUNK_SIZE;
+
+    for (const s of this.structures) {
+      if (baseX + CHUNK_SIZE <= s.minX || baseX >= s.maxX) continue;
+      if (baseZ + CHUNK_SIZE <= s.minZ || baseZ >= s.maxZ) continue;
+
+      const x0 = Math.max(baseX, s.minX);
+      const x1 = Math.min(baseX + CHUNK_SIZE - 1, s.maxX);
+      const z0 = Math.max(baseZ, s.minZ);
+      const z1 = Math.min(baseZ + CHUNK_SIZE - 1, s.maxZ);
+      for (let wx = x0; wx <= x1; wx++) {
+        for (let wz = z0; wz <= z1; wz++) {
+          const lx = wx - baseX;
+          const lz = wz - baseZ;
+          for (let y = 1; y < s.groundY; y++) chunk.setBlock(lx, y, lz, BlockType.Stone);
+          chunk.setBlock(lx, s.groundY, lz, s.surface);
+          for (let y = s.groundY + 1; y <= s.groundY + s.clearAbove; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
+        }
+      }
+
+      for (const b of s.blocks) {
+        const wx = s.originX + b.dx;
+        const wz = s.originZ + b.dz;
+        if (wx < baseX || wx >= baseX + CHUNK_SIZE || wz < baseZ || wz >= baseZ + CHUNK_SIZE) continue;
+        chunk.setBlock(wx - baseX, s.groundY + b.dy, wz - baseZ, b.block);
+      }
+    }
   }
 
   // Trees are kept fully inside their own chunk (trunk at 2..13) so generation

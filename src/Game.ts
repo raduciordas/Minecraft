@@ -36,7 +36,8 @@ import { ProjectileManager } from './mobs/Projectile';
 import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
-import { WEAPONS, WeaponId, isWeapon, buildWeaponModel, disposeModel } from './items/Weapon';
+import { WEAPONS, isWeapon } from './items/Weapon';
+import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
 import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
 import { RemotePlayerManager } from './net/RemotePlayer';
@@ -100,8 +101,9 @@ export class Game {
   private stepDistance = 0;
   private wasFeetInWater = false;
   private attackCooldown = 0;
+  private atlas!: TextureAtlas;
   private hand: THREE.Group | null = null;
-  private handWeaponId: number | null = null;
+  private handItemId: number | null = null;
   private handSwing = 0;
   private playerName: string;
   private network = new NetworkClient();
@@ -147,6 +149,7 @@ export class Game {
     this.dayNight = new DayNightCycle(this.scene, ambient, sun);
 
     const atlas = new TextureAtlas(WORLD_SEED);
+    this.atlas = atlas;
     this.world = new World(WORLD_SEED);
     this.meshManager = new ChunkMeshManager(this.scene, atlas);
 
@@ -480,24 +483,25 @@ export class Game {
     return best;
   }
 
-  // Rebuilds the first-person weapon model when the selection changes,
-  // and plays the swing animation
+  // Rebuilds the first-person hand model when the selection changes (a fist
+  // gripping the sword, or the currently held block once the player actually
+  // has some in stock), and plays the swing animation
   private updateHand(dt: number): void {
     const selected = this.hotbar.selectedItem;
-    const weaponId = isWeapon(selected) ? selected : null;
-    if (weaponId !== this.handWeaponId) {
+    const held = isWeapon(selected) || this.inventory.count(selected as BlockType) > 0 ? selected : null;
+    if (held !== this.handItemId) {
       if (this.hand) {
         this.camera.remove(this.hand);
         disposeModel(this.hand);
         this.hand = null;
       }
-      if (weaponId !== null) {
-        this.hand = buildWeaponModel(weaponId as WeaponId);
+      if (held !== null) {
+        this.hand = buildHeldItem(held, this.atlas);
         this.hand.position.set(0.42, -0.42, -0.7);
         this.hand.rotation.set(0.25, -0.35, -0.25);
         this.camera.add(this.hand);
       }
-      this.handWeaponId = weaponId;
+      this.handItemId = held;
     }
     if (this.hand) {
       this.handSwing = Math.max(0, this.handSwing - dt);
