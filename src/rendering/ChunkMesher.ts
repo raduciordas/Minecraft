@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../config';
-import { BLOCKS, BlockType, isOpaque, isWater } from '../world/Block';
+import { BLOCKS, BlockType, isOpaque, isWater, isDoor } from '../world/Block';
 import type { Chunk } from '../world/Chunk';
 import type { World } from '../world/World';
 import type { TextureAtlas } from './TextureAtlas';
@@ -88,7 +88,8 @@ export function meshChunk(chunk: Chunk, world: World, atlas: TextureAtlas): Chun
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
         const id = chunk.getBlock(lx, ly, lz);
-        if (id === BlockType.Air) continue;
+        // Doors render as a thin swinging panel (DoorRenderer), not a cube
+        if (id === BlockType.Air || isDoor(id)) continue;
         const def = BLOCKS[id];
         if (!def) continue;
 

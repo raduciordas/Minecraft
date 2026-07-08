@@ -16,11 +16,17 @@ export const enum BlockType {
   Crystal = 14,
   Mamaliga = 15,
   Lamp = 16,
-  DoorClosed = 17,
-  DoorOpen = 18,
+  Door = 17, // hotbar/inventory item only; placing it writes one of the DoorClosed* ids below
   Chirpici = 19,
   Obsidian = 20,
   Hay = 21,
+  // A door is rendered as a thin swinging panel (see DoorRenderer), not a
+  // cube, so its world-grid id also carries which wall it fills (X-running
+  // or Z-running) and whether it's open or closed.
+  DoorClosedX = 22,
+  DoorClosedZ = 23,
+  DoorOpenX = 24,
+  DoorOpenZ = 25,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -43,8 +49,7 @@ export const enum Tile {
   Crystal = 15,
   Mamaliga = 16,
   Lamp = 17,
-  DoorClosed = 18,
-  DoorOpen = 19,
+  DoorClosed = 18, // the door panel's front/back texture; reused for open and closed alike
   Chirpici = 20,
   Obsidian = 21,
   Hay = 22,
@@ -77,11 +82,18 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Crystal]: S('Crystal', Tile.Crystal),
   [BlockType.Mamaliga]: S('Mămăligă', Tile.Mamaliga),
   [BlockType.Lamp]: S('Lampă', Tile.Lamp),
-  [BlockType.DoorClosed]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
-  [BlockType.DoorOpen]: { name: 'Ușă (deschisă)', solid: false, opaque: false, textures: T(Tile.DoorOpen, Tile.DoorOpen, Tile.DoorOpen) },
+  // The hotbar/inventory item; placeBlock() converts it to an oriented
+  // DoorClosedX/Z below and never writes BlockType.Door into the world.
+  [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.Chirpici]: S('Chirpici', Tile.Chirpici),
   [BlockType.Obsidian]: S('Obsidian', Tile.Obsidian),
   [BlockType.Hay]: S('Balot de Fân', Tile.Hay),
+  // Not opaque: these render as a thin custom panel (DoorRenderer), not a
+  // cube, so neighboring block faces must still draw right up against them.
+  [BlockType.DoorClosedX]: { name: 'Ușă', solid: true, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
+  [BlockType.DoorClosedZ]: { name: 'Ușă', solid: true, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
+  [BlockType.DoorOpenX]: { name: 'Ușă (deschisă)', solid: false, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
+  [BlockType.DoorOpenZ]: { name: 'Ușă (deschisă)', solid: false, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -100,7 +112,7 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Crystal,
   BlockType.Mamaliga,
   BlockType.Lamp,
-  BlockType.DoorClosed,
+  BlockType.Door,
   BlockType.Chirpici,
   BlockType.Obsidian,
   BlockType.Hay,
@@ -120,7 +132,24 @@ export function isWater(id: number): boolean {
   return id === BlockType.Water;
 }
 
-// Either half of a placed door, open or closed — always 2 blocks tall
+// Either half of a placed door, any orientation or open state — always 2 blocks tall
 export function isDoor(id: number): boolean {
-  return id === BlockType.DoorClosed || id === BlockType.DoorOpen;
+  return (
+    id === BlockType.DoorClosedX ||
+    id === BlockType.DoorClosedZ ||
+    id === BlockType.DoorOpenX ||
+    id === BlockType.DoorOpenZ
+  );
+}
+
+const DOOR_TOGGLE: Partial<Record<BlockType, BlockType>> = {
+  [BlockType.DoorClosedX]: BlockType.DoorOpenX,
+  [BlockType.DoorOpenX]: BlockType.DoorClosedX,
+  [BlockType.DoorClosedZ]: BlockType.DoorOpenZ,
+  [BlockType.DoorOpenZ]: BlockType.DoorClosedZ,
+};
+
+// The id a door swings to when toggled; returns the same id if it isn't a door.
+export function toggleDoorId(id: number): number {
+  return DOOR_TOGGLE[id as BlockType] ?? id;
 }

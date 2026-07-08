@@ -227,20 +227,6 @@ const TILE_SPECS: Record<number, TileSpec> = {
       px(12, 8, 224, 190, 90); // knob
     },
   },
-  [Tile.DoorOpen]: {
-    base: [0, 0, 0],
-    variation: 0,
-    transparentBase: true,
-    draw: (px) => {
-      // Just the empty frame — reads as an open doorway
-      for (let i = 0; i < TILE_PX; i++) {
-        px(i, 0, 96, 70, 38);
-        px(i, 15, 96, 70, 38);
-        px(0, i, 96, 70, 38);
-        px(15, i, 96, 70, 38);
-      }
-    },
-  },
   [Tile.Chirpici]: {
     base: [196, 168, 110],
     variation: 0.1,

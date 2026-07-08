@@ -17,11 +17,12 @@ import {
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import type { Chunk } from './world/Chunk';
-import { BlockType, isWater, isSolid, isDoor, PLACEABLE_BLOCKS } from './world/Block';
+import { BlockType, isWater, isSolid, isDoor, toggleDoorId, PLACEABLE_BLOCKS } from './world/Block';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
 import { LightManager } from './rendering/LightManager';
+import { DoorRenderer } from './rendering/DoorRenderer';
 import { InputController } from './player/InputController';
 import { Player } from './player/Player';
 import { Inventory } from './player/Inventory';
@@ -89,6 +90,7 @@ export class Game {
   private world: World;
   private meshManager: ChunkMeshManager;
   private lightManager: LightManager;
+  private doorRenderer: DoorRenderer;
   private input: InputController;
   private player: Player;
   private inventory: Inventory;
@@ -159,6 +161,7 @@ export class Game {
     this.world = new World(WORLD_SEED);
     this.meshManager = new ChunkMeshManager(this.scene, atlas);
     this.lightManager = new LightManager(this.scene);
+    this.doorRenderer = new DoorRenderer(this.scene, atlas);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -302,6 +305,7 @@ export class Game {
     for (const chunk of this.world.allChunks()) {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
+      this.doorRenderer.syncChunk(chunk);
     }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
@@ -313,12 +317,13 @@ export class Game {
   }
 
   // Writes a block, remeshes whichever chunks it touched, and keeps lamp
-  // lighting in sync. Returns the affected chunks (empty if unloaded).
+  // lighting and door panels in sync. Returns the affected chunks (empty if unloaded).
   private applyBlockChange(x: number, y: number, z: number, id: number): Chunk[] {
     const affected = this.world.setBlock(x, y, z, id);
     for (const chunk of affected) {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
+      this.doorRenderer.syncChunk(chunk);
     }
     return affected;
   }
@@ -699,6 +704,7 @@ export class Game {
       const chunk = this.world.getChunk(task.cx, task.cz)!;
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
+      this.doorRenderer.syncChunk(chunk);
     }
 
     if (!this.worldReady) {
@@ -719,6 +725,7 @@ export class Game {
     for (const { cx, cz } of toRemove) {
       this.meshManager.removeMesh(cx, cz);
       this.lightManager.removeChunk(cx, cz);
+      this.doorRenderer.removeChunk(cx, cz);
       this.world.removeChunk(cx, cz);
     }
   }
@@ -763,7 +770,7 @@ export class Game {
       this.applyBlockChange(x, y1, z, BlockType.Air);
       this.sendEdit(x, y0, z, BlockType.Air);
       this.sendEdit(x, y1, z, BlockType.Air);
-      this.inventory.add(BlockType.DoorClosed);
+      this.inventory.add(BlockType.Door);
       this.sound.breakBlock();
       return;
     }
@@ -784,7 +791,7 @@ export class Game {
     if (isDoor(targetedId)) {
       const { x, y, z } = hit.block;
       const [y0, y1] = this.doorSpan(x, y, z);
-      const next = this.world.getBlock(x, y0, z) === BlockType.DoorClosed ? BlockType.DoorOpen : BlockType.DoorClosed;
+      const next = toggleDoorId(this.world.getBlock(x, y0, z));
       this.applyBlockChange(x, y0, z, next);
       this.applyBlockChange(x, y1, z, next);
       this.sendEdit(x, y0, z, next);
@@ -801,13 +808,18 @@ export class Game {
     if (target !== BlockType.Air && target !== BlockType.Water) return;
     if (blockIntersectsBody(this.player.body, x, y, z)) return;
 
-    if (selected === BlockType.DoorClosed) {
+    if (selected === BlockType.Door) {
       if (this.world.getBlock(x, y + 1, z) !== BlockType.Air) return; // no room for the top half
-      if (!this.inventory.remove(BlockType.DoorClosed)) return;
-      this.applyBlockChange(x, y, z, BlockType.DoorClosed);
-      this.applyBlockChange(x, y + 1, z, BlockType.DoorClosed);
-      this.sendEdit(x, y, z, BlockType.DoorClosed);
-      this.sendEdit(x, y + 1, z, BlockType.DoorClosed);
+      if (!this.inventory.remove(BlockType.Door)) return;
+      // Orient the panel to fill whichever wall it's set into: if there's
+      // solid rock beside it along X, the wall runs along X (panel spans X);
+      // otherwise assume a Z-running wall (panel spans Z).
+      const wallRunsAlongX = isSolid(this.world.getBlock(x - 1, y, z)) || isSolid(this.world.getBlock(x + 1, y, z));
+      const doorId = wallRunsAlongX ? BlockType.DoorClosedX : BlockType.DoorClosedZ;
+      this.applyBlockChange(x, y, z, doorId);
+      this.applyBlockChange(x, y + 1, z, doorId);
+      this.sendEdit(x, y, z, doorId);
+      this.sendEdit(x, y + 1, z, doorId);
       this.sound.place();
       return;
     }
