@@ -23,6 +23,7 @@ import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
 import { LightManager } from './rendering/LightManager';
 import { DoorRenderer } from './rendering/DoorRenderer';
+import { MeltManager } from './world/MeltManager';
 import { InputController } from './player/InputController';
 import { Player } from './player/Player';
 import { Inventory } from './player/Inventory';
@@ -91,6 +92,7 @@ export class Game {
   private meshManager: ChunkMeshManager;
   private lightManager: LightManager;
   private doorRenderer: DoorRenderer;
+  private meltManager = new MeltManager();
   private input: InputController;
   private player: Player;
   private inventory: Inventory;
@@ -306,6 +308,7 @@ export class Game {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
+      this.meltManager.syncChunk(chunk);
     }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
@@ -317,13 +320,15 @@ export class Game {
   }
 
   // Writes a block, remeshes whichever chunks it touched, and keeps lamp
-  // lighting and door panels in sync. Returns the affected chunks (empty if unloaded).
+  // lighting, door panels, and melt tracking in sync. Returns the affected
+  // chunks (empty if unloaded).
   private applyBlockChange(x: number, y: number, z: number, id: number): Chunk[] {
     const affected = this.world.setBlock(x, y, z, id);
     for (const chunk of affected) {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
+      this.meltManager.syncChunk(chunk);
     }
     return affected;
   }
@@ -379,6 +384,13 @@ export class Game {
         steps++;
       }
       if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
+
+      // Mămăligă blocks sitting against water dissolve away after a couple of seconds
+      for (const { x, y, z } of this.meltManager.update(dt, this.world)) {
+        this.applyBlockChange(x, y, z, BlockType.Air);
+        this.sendEdit(x, y, z, BlockType.Air);
+        this.sound.melt();
+      }
 
       // Footsteps while walking on the ground
       const body = this.player.body;
@@ -705,6 +717,7 @@ export class Game {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
+      this.meltManager.syncChunk(chunk);
     }
 
     if (!this.worldReady) {
@@ -726,6 +739,7 @@ export class Game {
       this.meshManager.removeMesh(cx, cz);
       this.lightManager.removeChunk(cx, cz);
       this.doorRenderer.removeChunk(cx, cz);
+      this.meltManager.removeChunk(cx, cz);
       this.world.removeChunk(cx, cz);
     }
   }

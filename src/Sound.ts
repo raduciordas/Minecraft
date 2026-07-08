@@ -134,6 +134,11 @@ export class SoundManager {
     this.noise(0.18, 500, 0.16, 250);
   }
 
+  melt(): void {
+    this.noise(0.35, 900, 0.2, 200);
+    this.tone(260, 0.3, 'sine', 0.12, 140);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);
