@@ -66,8 +66,8 @@ export class Fireball {
   }
 }
 
-// A thrown bottle of țuică: lobbed like a potion, arcs under gravity, and
-// shatters on the first mob or solid block it touches.
+// A thrown bottle of socată fermentată: lobbed like a potion, arcs under
+// gravity, and shatters on the first mob or solid block it touches.
 class Bottle {
   readonly mesh: THREE.Group;
   removeMe = false;
@@ -85,11 +85,11 @@ class Bottle {
     this.mesh = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.SphereGeometry(0.13, 8, 6),
-      new THREE.MeshLambertMaterial({ color: 0xd9a441 }),
+      new THREE.MeshLambertMaterial({ color: 0xe6d9a3 }),
     );
     const glass = new THREE.Mesh(
       new THREE.CylinderGeometry(0.06, 0.09, 0.14, 8),
-      new THREE.MeshLambertMaterial({ color: 0x6b8f4e }),
+      new THREE.MeshLambertMaterial({ color: 0x9fbf8a }),
     );
     glass.position.y = 0.14;
     this.mesh.add(body, glass);

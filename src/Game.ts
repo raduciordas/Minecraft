@@ -45,7 +45,7 @@ import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
 import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
 import { RemotePlayerManager } from './net/RemotePlayer';
 
-const THROWABLE_STARTER_STOCK = 6;
+const THROWABLE_STARTER_STOCK = 20;
 
 interface ChunkTask {
   cx: number;
@@ -510,8 +510,8 @@ export class Game {
     return best;
   }
 
-  // Throws a bottle of țuică from the camera; it arcs under gravity and
-  // detonates on the first mob or block it touches (see explodeAt).
+  // Throws a bottle of socată fermentată from the camera; it arcs under
+  // gravity and detonates on the first mob or block it touches (see explodeAt).
   private throwBottle(id: number): void {
     if (!this.inventory.remove(id as BlockType)) return;
     const dir = new THREE.Vector3();
@@ -523,9 +523,9 @@ export class Game {
     this.handSwing = 0.25;
   }
 
-  // A țuică bottle's impact: every mob caught in the blast radius dies outright
+  // A socată bottle's impact: every mob caught in the blast radius dies outright
   private explodeAt(x: number, y: number, z: number): void {
-    const radius = THROWABLES[ThrowableId.TuicaBottle].blastRadius;
+    const radius = THROWABLES[ThrowableId.SocataBottle].blastRadius;
     for (const mob of this.mobManager.all()) {
       if (mob.dying) continue;
       const dx = mob.body.x - x;

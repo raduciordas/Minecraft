@@ -19,8 +19,8 @@ export class Hotbar {
     private atlas: TextureAtlas,
     private inventory: Inventory,
   ) {
-    // The Storm Sword and a bottle of țuică start in slots 1-2; blocks fill the rest
-    this.layout = [WeaponId.StormSword, ThrowableId.TuicaBottle, ...PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE - 2)];
+    // The Storm Sword and a bottle of socată start in slots 1-2; blocks fill the rest
+    this.layout = [WeaponId.StormSword, ThrowableId.SocataBottle, ...PLACEABLE_BLOCKS.slice(0, HOTBAR_SIZE - 2)];
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const slot = document.createElement('div');
       slot.className = 'hotbar-slot';

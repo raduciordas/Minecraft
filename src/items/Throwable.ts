@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Throwable ids live in [200, 300), above weapons and below any future
 // category, so isWeapon/isThrowable never collide.
 export const enum ThrowableId {
-  TuicaBottle = 200,
+  SocataBottle = 200,
 }
 
 export interface ThrowableDef {
@@ -13,14 +13,14 @@ export interface ThrowableDef {
 }
 
 export const THROWABLES: Record<number, ThrowableDef> = {
-  [ThrowableId.TuicaBottle]: {
-    name: 'Sticlă cu Țuică',
+  [ThrowableId.SocataBottle]: {
+    name: 'Socată Fermentată',
     blastRadius: 3.5,
-    colors: { glass: 0x6b8f4e, liquid: 0xd9a441, cork: 0x8a5a2e },
+    colors: { glass: 0x9fbf8a, liquid: 0xe6d9a3, cork: 0x8a5a2e },
   },
 };
 
-export const THROWABLE_IDS: ThrowableId[] = [ThrowableId.TuicaBottle];
+export const THROWABLE_IDS: ThrowableId[] = [ThrowableId.SocataBottle];
 
 export function isThrowable(id: number): boolean {
   return id >= 200 && id < 300;
