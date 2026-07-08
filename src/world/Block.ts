@@ -81,7 +81,9 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.StoneBrick]: S('Stone Brick', Tile.StoneBrick),
   [BlockType.Crystal]: S('Crystal', Tile.Crystal),
   [BlockType.Mamaliga]: S('Mămăligă', Tile.Mamaliga),
-  [BlockType.Lamp]: S('Lampă', Tile.Lamp),
+  // Not opaque: rendered as a narrow lamp-post shape (LightManager), not a
+  // cube, so neighboring block faces must still draw right up against it.
+  [BlockType.Lamp]: { name: 'Lampă', solid: true, opaque: false, textures: T(Tile.Lamp, Tile.Lamp, Tile.Lamp) },
   // The hotbar/inventory item; placeBlock() converts it to an oriented
   // DoorClosedX/Z below and never writes BlockType.Door into the world.
   [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
