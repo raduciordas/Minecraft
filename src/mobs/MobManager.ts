@@ -12,13 +12,14 @@ const SPAWN_MIN_DIST = 14;
 const SPAWN_MAX_DIST = 45;
 const DESPAWN_DIST = 80;
 const PASSIVE_KINDS: MobKind[] = ['pig', 'sheep'];
-// Night spawn table: mostly zombies, spiced with the invented monsters
+// Night spawn table: weights must sum to 1 (pickHostile subtracts them in
+// order, so a total above 1 would make the last entries unreachable)
 const HOSTILE_TABLE: [MobKind, number][] = [
-  ['zombie', 0.3],
+  ['zombie', 0.15],
   ['wasp', 0.15],
   ['shadow', 0.15],
   ['golem', 0.1],
-  ['capcaun', 0.15],
+  ['capcaun', 0.3],
   ['zmeu', 0.15],
 ];
 
