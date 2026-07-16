@@ -266,6 +266,132 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Tigla]: {
+    base: [176, 84, 48],
+    variation: 0.08,
+    draw: (px) => {
+      // Curved terracotta roof tile courses
+      for (let y = 0; y < TILE_PX; y += 4) {
+        for (let x = 0; x < TILE_PX; x++) {
+          const d = Math.abs(((x + 2) % 8) - 4);
+          px(x, y + d, 140, 62, 34);
+        }
+      }
+    },
+  },
+  [Tile.Boltar]: {
+    base: [224, 216, 196],
+    variation: 0.06,
+    draw: (px) => {
+      // Cut ashlar stone blocks with mortar seams
+      for (let x = 0; x < TILE_PX; x++) {
+        px(x, 0, 176, 168, 148);
+        px(x, 8, 176, 168, 148);
+      }
+      for (let y = 1; y < 8; y++) px(8, y, 176, 168, 148);
+      for (let y = 9; y < 16; y++) {
+        px(4, y, 176, 168, 148);
+        px(12, y, 176, 168, 148);
+      }
+    },
+  },
+  [Tile.Caramida]: {
+    base: [214, 106, 40],
+    variation: 0.08,
+    draw: (px) => {
+      // Vivid orange fired brick, mortar courses staggered like Brick
+      for (let x = 0; x < TILE_PX; x++) {
+        for (const y of [3, 7, 11, 15]) px(x, y, 236, 160, 96);
+      }
+      for (const [x, y0] of [[7, 0], [3, 4], [11, 4], [7, 8], [3, 12], [11, 12]] as const) {
+        for (let y = y0; y < y0 + 3; y++) px(x, y, 236, 160, 96);
+      }
+    },
+  },
+  [Tile.HorezuCeramic]: {
+    base: [238, 224, 196],
+    variation: 0.04,
+    draw: (px) => {
+      // Horezu pottery: a blue spiral (cocoșul de Hurez motif, simplified) on cream
+      for (let i = 0; i < TILE_PX; i++) {
+        px((i + 8) % TILE_PX, (i * 3) % TILE_PX, 46, 92, 150);
+      }
+      for (let r = 2; r <= 6; r += 2) {
+        for (let a = 0; a < 16; a++) {
+          const x = Math.round(7.5 + r * Math.cos((a / 16) * Math.PI * 2));
+          const y = Math.round(7.5 + r * Math.sin((a / 16) * Math.PI * 2));
+          px(x, y, 168, 62, 46);
+        }
+      }
+    },
+  },
+  [Tile.RockSalt]: {
+    base: [235, 233, 230],
+    variation: 0.05,
+    draw: (px, rand) => {
+      // Crystalline rock salt: faceted sparkle
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.08) px(x, y, 255, 255, 255);
+          else if (rand() < 0.04) px(x, y, 200, 210, 215);
+        }
+      }
+    },
+  },
+  [Tile.IeBlouse]: {
+    base: [244, 240, 230],
+    variation: 0.03,
+    draw: (px) => {
+      // Traditional red/black cross-stitch embroidery band
+      for (const y of [4, 5, 10, 11]) {
+        for (let x = 0; x < TILE_PX; x++) {
+          if ((x + y) % 4 < 2) px(x, y, 176, 32, 40);
+          else px(x, y, 30, 26, 26);
+        }
+      }
+    },
+  },
+  [Tile.RiverStone]: {
+    base: [130, 140, 148],
+    variation: 0.1,
+    draw: (px, rand) => {
+      // Smooth mottled river-worn stone
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.1) px(x, y, 100, 112, 122);
+          else if (rand() < 0.06) px(x, y, 168, 178, 184);
+        }
+      }
+    },
+  },
+  [Tile.DacianGold]: {
+    base: [212, 172, 62],
+    variation: 0.1,
+    draw: (px) => {
+      // Engraved spiral bracelet motif on gold
+      for (let i = 0; i < TILE_PX; i++) {
+        px((i + 4) % TILE_PX, (i * 5) % TILE_PX, 132, 96, 24);
+      }
+      for (let r = 2; r <= 6; r += 2) {
+        for (let a = 0; a < 12; a++) {
+          const x = Math.round(7.5 + r * Math.cos((a / 12) * Math.PI * 2));
+          const y = Math.round(7.5 + r * Math.sin((a / 12) * Math.PI * 2));
+          px(x, y, 255, 224, 130);
+        }
+      }
+    },
+  },
+  [Tile.CraftingTable]: {
+    base: [150, 112, 66],
+    variation: 0.06,
+    draw: (px) => {
+      // Plank tabletop with a tool-cross engraving
+      for (const y of [3, 7, 11, 15]) for (let x = 0; x < TILE_PX; x++) px(x, y, 110, 82, 46);
+      for (let x = 6; x <= 9; x++) px(x, 4, 70, 70, 74);
+      for (let y = 4; y <= 11; y++) px(7, y, 70, 70, 74);
+      for (let y = 4; y <= 11; y++) px(8, y, 70, 70, 74);
+    },
+  },
 };
 
 export class TextureAtlas {

@@ -93,6 +93,35 @@
       .inv-cell .name { font: 9px monospace; color: #bbb; }
       .inv-cell .cnt { font: 10px monospace; color: #fff; }
 
+      #crafting {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 15;
+      }
+      #crafting.hidden { display: none; }
+      .craft-list { display: flex; flex-direction: column; gap: 10px; max-width: 420px; }
+      .craft-recipe {
+        display: flex; align-items: center; gap: 10px;
+        border: 2px solid #666; border-radius: 4px; padding: 8px 10px;
+      }
+      .craft-recipe canvas { width: 32px; height: 32px; image-rendering: pixelated; flex-shrink: 0; }
+      .craft-output-name { color: #fff; font: 12px monospace; width: 110px; flex-shrink: 0; }
+      .craft-ingredients { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; font: 10px monospace; }
+      .craft-ingredient { display: flex; align-items: center; gap: 4px; }
+      .craft-ingredient canvas { width: 18px; height: 18px; }
+      .craft-ingredient.short { color: #ff6b6b; }
+      .craft-ingredient.ok { color: #9ddb9d; }
+      .craft-btn {
+        cursor: pointer; flex-shrink: 0;
+        padding: 6px 12px; border: 1px solid #7dffa0; border-radius: 4px;
+        color: #7dffa0; font: 11px monospace; background: transparent;
+      }
+      .craft-btn:hover { background: rgba(125, 255, 160, 0.15); }
+      .craft-btn:disabled {
+        cursor: not-allowed; border-color: #666; color: #777;
+      }
+
       #underwater {
         position: fixed; inset: 0;
         background: rgba(25, 70, 160, 0.38);
@@ -264,6 +293,7 @@
     <div id="fps"></div>
     <div id="mp-status" class="offline">● Solo (offline)</div>
     <div id="inventory" class="hidden"></div>
+    <div id="crafting" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
     <div id="damage-flash"></div>

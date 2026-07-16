@@ -1,6 +1,7 @@
 import { BLOCKS, PLACEABLE_BLOCKS } from '../world/Block';
 import { WEAPONS, WeaponId, isWeapon, makeWeaponIcon } from '../items/Weapon';
 import { THROWABLES, ThrowableId, isThrowable, makeThrowableIcon } from '../items/Throwable';
+import { TOOLS, ToolId, isTool, makeToolIcon } from '../items/Tool';
 import { HOTBAR_SIZE } from '../config';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
@@ -59,7 +60,7 @@ export class Hotbar {
 
   setLayout(layout: number[]): void {
     layout.forEach((id, i) => {
-      if (i < HOTBAR_SIZE && (BLOCKS[id] || WEAPONS[id] || THROWABLES[id])) this.assign(i, id);
+      if (i < HOTBAR_SIZE && (BLOCKS[id] || WEAPONS[id] || THROWABLES[id] || TOOLS[id])) this.assign(i, id);
     });
   }
 
@@ -90,12 +91,14 @@ export class Hotbar {
   private makeIcon(id: number): HTMLCanvasElement {
     if (isWeapon(id)) return makeWeaponIcon(id as WeaponId);
     if (isThrowable(id)) return makeThrowableIcon(id as ThrowableId);
+    if (isTool(id)) return makeToolIcon(id as ToolId);
     return this.atlas.makeTileIcon(BLOCKS[id].textures.side);
   }
 
   private itemName(id: number): string {
     if (isWeapon(id)) return WEAPONS[id].name;
     if (isThrowable(id)) return THROWABLES[id].name;
+    if (isTool(id)) return TOOLS[id].name;
     return BLOCKS[id].name;
   }
 

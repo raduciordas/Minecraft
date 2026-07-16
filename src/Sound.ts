@@ -139,6 +139,10 @@ export class SoundManager {
     this.tone(260, 0.3, 'sine', 0.12, 140);
   }
 
+  clink(): void {
+    this.tone(520, 0.08, 'square', 0.14, 420);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);

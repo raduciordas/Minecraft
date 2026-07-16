@@ -66,33 +66,47 @@ export class Fireball {
   }
 }
 
-// A thrown bottle of socată fermentată: lobbed like a potion, arcs under
-// gravity, and shatters on the first mob or solid block it touches.
+export type ThrowableShape = 'bottle' | 'gum';
+
+// A thrown bottle (or gum piece): lobbed like a potion, arcs under gravity,
+// and shatters (or pops) on the first mob or solid block it touches.
 class Bottle {
   readonly mesh: THREE.Group;
+  readonly shape: ThrowableShape;
+  readonly blastRadius: number;
   removeMe = false;
   private vx: number;
   private vy: number;
   private vz: number;
   private life = 0;
 
-  constructor(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number) {
+  constructor(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, shape: ThrowableShape, blastRadius: number) {
+    this.shape = shape;
+    this.blastRadius = blastRadius;
     const len = Math.hypot(dirX, dirY, dirZ) || 1;
     this.vx = (dirX / len) * BOTTLE_SPEED;
     this.vy = (dirY / len) * BOTTLE_SPEED;
     this.vz = (dirZ / len) * BOTTLE_SPEED;
 
     this.mesh = new THREE.Group();
-    const body = new THREE.Mesh(
-      new THREE.SphereGeometry(0.13, 8, 6),
-      new THREE.MeshLambertMaterial({ color: 0xe6d9a3 }),
-    );
-    const glass = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.09, 0.14, 8),
-      new THREE.MeshLambertMaterial({ color: 0x9fbf8a }),
-    );
-    glass.position.y = 0.14;
-    this.mesh.add(body, glass);
+    if (shape === 'gum') {
+      const gum = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 8, 6),
+        new THREE.MeshLambertMaterial({ color: 0xff6fa8 }),
+      );
+      this.mesh.add(gum);
+    } else {
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 8, 6),
+        new THREE.MeshLambertMaterial({ color: 0xe6d9a3 }),
+      );
+      const glass = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.09, 0.14, 8),
+        new THREE.MeshLambertMaterial({ color: 0x9fbf8a }),
+      );
+      glass.position.y = 0.14;
+      this.mesh.add(body, glass);
+    }
     this.mesh.position.set(x, y, z);
   }
 
@@ -119,19 +133,22 @@ class Bottle {
   }
 }
 
-// A quick expanding, fading flash where a bottle detonated.
+// A quick expanding, fading flash where a bottle detonated (or a bubble
+// where a gum piece popped).
 class Explosion {
   readonly mesh: THREE.Mesh;
   readonly light: THREE.PointLight;
   private age = 0;
 
-  constructor(x: number, y: number, z: number) {
+  constructor(x: number, y: number, z: number, shape: ThrowableShape) {
+    const color = shape === 'gum' ? 0xff8fc0 : 0xff8a2a;
+    const lightColor = shape === 'gum' ? 0xff9fd0 : 0xff9a3a;
     this.mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.35, 10, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.9 }),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }),
     );
     this.mesh.position.set(x, y, z);
-    this.light = new THREE.PointLight(0xff9a3a, 4, 8, 1);
+    this.light = new THREE.PointLight(lightColor, 4, 8, 1);
     this.light.position.set(x, y, z);
   }
 
@@ -166,8 +183,8 @@ export class ProjectileManager {
     this.scene.add(fb.mesh);
   }
 
-  spawnBottle(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number): void {
-    const bottle = new Bottle(x, y, z, dirX, dirY, dirZ);
+  spawnBottle(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, shape: ThrowableShape, blastRadius: number): void {
+    const bottle = new Bottle(x, y, z, dirX, dirY, dirZ, shape, blastRadius);
     this.bottles.push(bottle);
     this.scene.add(bottle.mesh);
   }
@@ -195,7 +212,7 @@ export class ProjectileManager {
 
   // Flies every thrown bottle forward, shattering (and calling onExplode) on
   // the first mob or solid block it touches.
-  updateBottles(dt: number, world: World, mobs: readonly Mob[], onExplode: (x: number, y: number, z: number) => void): void {
+  updateBottles(dt: number, world: World, mobs: readonly Mob[], onExplode: (x: number, y: number, z: number, blastRadius: number) => void): void {
     for (let i = this.bottles.length - 1; i >= 0; i--) {
       const bottle = this.bottles[i];
       bottle.update(dt, world);
@@ -210,8 +227,8 @@ export class ProjectileManager {
         }
       }
       if (bottle.removeMe) {
-        onExplode(bottle.x, bottle.y, bottle.z);
-        this.spawnExplosion(bottle.x, bottle.y, bottle.z);
+        onExplode(bottle.x, bottle.y, bottle.z, bottle.blastRadius);
+        this.spawnExplosion(bottle.x, bottle.y, bottle.z, bottle.shape);
         this.scene.remove(bottle.mesh);
         bottle.mesh.traverse((obj) => {
           if (obj instanceof THREE.Mesh) {
@@ -235,8 +252,8 @@ export class ProjectileManager {
     }
   }
 
-  private spawnExplosion(x: number, y: number, z: number): void {
-    const explosion = new Explosion(x, y, z);
+  private spawnExplosion(x: number, y: number, z: number, shape: ThrowableShape): void {
+    const explosion = new Explosion(x, y, z, shape);
     this.explosions.push(explosion);
     this.scene.add(explosion.mesh, explosion.light);
   }

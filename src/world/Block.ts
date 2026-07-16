@@ -27,6 +27,15 @@ export const enum BlockType {
   DoorClosedZ = 23,
   DoorOpenX = 24,
   DoorOpenZ = 25,
+  Tigla = 26,
+  Boltar = 27,
+  Caramida = 28,
+  HorezuCeramic = 29,
+  RockSalt = 30,
+  IeBlouse = 31,
+  RiverStone = 32,
+  DacianGold = 33,
+  CraftingTable = 34,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -53,6 +62,15 @@ export const enum Tile {
   Chirpici = 20,
   Obsidian = 21,
   Hay = 22,
+  Tigla = 23,
+  Boltar = 24,
+  Caramida = 25,
+  HorezuCeramic = 26,
+  RockSalt = 27,
+  IeBlouse = 28,
+  RiverStone = 29,
+  DacianGold = 30,
+  CraftingTable = 31,
 }
 
 export interface BlockDef {
@@ -60,15 +78,19 @@ export interface BlockDef {
   solid: boolean; // participates in collision and can be targeted by the crosshair
   opaque: boolean; // hides its neighbors' faces during meshing
   textures: { top: Tile; side: Tile; bottom: Tile };
+  requiresPickaxe?: boolean; // breakBlock() refuses without the Târnăcop tool selected
+  craftedOnly?: boolean; // excluded from the automatic starter-stock grant; must be crafted
 }
 
 const T = (top: Tile, side: Tile, bottom: Tile) => ({ top, side, bottom });
 const S = (name: string, tile: Tile): BlockDef => ({ name, solid: true, opaque: true, textures: T(tile, tile, tile) });
+const H = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), requiresPickaxe: true });
+const C = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), craftedOnly: true });
 
 export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Grass]: { name: 'Grass', solid: true, opaque: true, textures: T(Tile.GrassTop, Tile.GrassSide, Tile.Dirt) },
   [BlockType.Dirt]: S('Dirt', Tile.Dirt),
-  [BlockType.Stone]: S('Stone', Tile.Stone),
+  [BlockType.Stone]: H('Stone', Tile.Stone),
   [BlockType.Sand]: S('Sand', Tile.Sand),
   [BlockType.Log]: { name: 'Log', solid: true, opaque: true, textures: T(Tile.LogTop, Tile.LogSide, Tile.LogTop) },
   [BlockType.Leaves]: S('Leaves', Tile.Leaves),
@@ -78,8 +100,8 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Brick]: S('Brick', Tile.Brick),
   [BlockType.Snow]: S('Snow', Tile.Snow),
   [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass) },
-  [BlockType.StoneBrick]: S('Stone Brick', Tile.StoneBrick),
-  [BlockType.Crystal]: S('Crystal', Tile.Crystal),
+  [BlockType.StoneBrick]: H('Stone Brick', Tile.StoneBrick),
+  [BlockType.Crystal]: H('Crystal', Tile.Crystal),
   [BlockType.Mamaliga]: S('Mămăligă', Tile.Mamaliga),
   // Not opaque: rendered as a narrow lamp-post shape (LightManager), not a
   // cube, so neighboring block faces must still draw right up against it.
@@ -88,7 +110,7 @@ export const BLOCKS: Record<number, BlockDef> = {
   // DoorClosedX/Z below and never writes BlockType.Door into the world.
   [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.Chirpici]: S('Chirpici', Tile.Chirpici),
-  [BlockType.Obsidian]: S('Obsidian', Tile.Obsidian),
+  [BlockType.Obsidian]: H('Obsidian', Tile.Obsidian),
   [BlockType.Hay]: S('Balot de Fân', Tile.Hay),
   // Not opaque: these render as a thin custom panel (DoorRenderer), not a
   // cube, so neighboring block faces must still draw right up against them.
@@ -96,6 +118,15 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.DoorClosedZ]: { name: 'Ușă', solid: true, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.DoorOpenX]: { name: 'Ușă (deschisă)', solid: false, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.DoorOpenZ]: { name: 'Ușă (deschisă)', solid: false, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
+  [BlockType.Tigla]: C('Țiglă', Tile.Tigla),
+  [BlockType.Boltar]: C('Boltar', Tile.Boltar),
+  [BlockType.Caramida]: C('Cărămidă', Tile.Caramida),
+  [BlockType.HorezuCeramic]: S('Ceramică de Horezu', Tile.HorezuCeramic),
+  [BlockType.RockSalt]: S('Sare', Tile.RockSalt),
+  [BlockType.IeBlouse]: S('Ie Tradițională', Tile.IeBlouse),
+  [BlockType.RiverStone]: H('Bolovan de Râu', Tile.RiverStone),
+  [BlockType.DacianGold]: H('Comoara Dacică', Tile.DacianGold),
+  [BlockType.CraftingTable]: S('Masă de Cioplit', Tile.CraftingTable),
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -118,6 +149,15 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Chirpici,
   BlockType.Obsidian,
   BlockType.Hay,
+  BlockType.Tigla,
+  BlockType.Boltar,
+  BlockType.Caramida,
+  BlockType.HorezuCeramic,
+  BlockType.RockSalt,
+  BlockType.IeBlouse,
+  BlockType.RiverStone,
+  BlockType.DacianGold,
+  BlockType.CraftingTable,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through
@@ -128,6 +168,11 @@ export function isSolid(id: number): boolean {
 // Face culling: only opaque blocks hide their neighbors' faces
 export function isOpaque(id: number): boolean {
   return BLOCKS[id]?.opaque ?? false;
+}
+
+// Hard/valuable blocks that breakBlock() refuses to mine without a Târnăcop
+export function requiresPickaxe(id: number): boolean {
+  return BLOCKS[id]?.requiresPickaxe ?? false;
 }
 
 export function isWater(id: number): boolean {

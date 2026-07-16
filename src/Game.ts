@@ -17,7 +17,7 @@ import {
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import type { Chunk } from './world/Chunk';
-import { BlockType, isWater, isSolid, isDoor, toggleDoorId, PLACEABLE_BLOCKS } from './world/Block';
+import { BlockType, isWater, isSolid, isDoor, toggleDoorId, requiresPickaxe, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
@@ -31,6 +31,7 @@ import { blockIntersectsBody } from './player/Physics';
 import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
+import { CraftingPanel } from './ui/CraftingPanel';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
@@ -41,7 +42,8 @@ import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
 import { WEAPONS, isWeapon } from './items/Weapon';
-import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Throwable';
+import { THROWABLES, THROWABLE_IDS, isThrowable } from './items/Throwable';
+import { ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
 import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
@@ -99,6 +101,7 @@ export class Game {
   private hotbar: Hotbar;
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
+  private craftingPanel: CraftingPanel;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
@@ -183,6 +186,14 @@ export class Game {
         if (this.inventoryPanel.isOpen) this.toggleInventoryPanel();
       },
     );
+    this.craftingPanel = new CraftingPanel(
+      document.getElementById('crafting')!,
+      atlas,
+      this.inventory,
+      () => {
+        if (this.craftingPanel.isOpen) this.toggleCraftingPanel();
+      },
+    );
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
     this.remotePlayers = new RemotePlayerManager(this.scene);
@@ -252,8 +263,12 @@ export class Game {
       const spawnHeight = this.world.generator.heightAt(0, 0);
       this.player.spawnAt(0.5, 0.5, spawnHeight);
     }
-    // Every session starts with a healthy stock of each material
-    for (const id of PLACEABLE_BLOCKS) this.inventory.ensureAtLeast(id, STARTER_STOCK);
+    // Every session starts with a healthy stock of each material — except
+    // blocks that must be crafted at a Crafting Table (Țiglă, Boltar, Cărămidă)
+    for (const id of PLACEABLE_BLOCKS) {
+      if (BLOCKS[id].craftedOnly) continue;
+      this.inventory.ensureAtLeast(id, STARTER_STOCK);
+    }
     for (const id of THROWABLE_IDS) this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
 
     window.addEventListener('beforeunload', () => this.saveNow());
@@ -379,7 +394,7 @@ export class Game {
           (damage) => this.health.damage(damage),
           () => this.sound.fireballImpact(),
         );
-        this.projectiles.updateBottles(PHYSICS_STEP, this.world, this.mobManager.all(), (x, y, z) => this.explodeAt(x, y, z));
+        this.projectiles.updateBottles(PHYSICS_STEP, this.world, this.mobManager.all(), (x, y, z, radius) => this.explodeAt(x, y, z, radius));
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
@@ -527,22 +542,22 @@ export class Game {
     return best;
   }
 
-  // Throws a bottle of socată fermentată from the camera; it arcs under
+  // Throws whichever bottle/gum is selected from the camera; it arcs under
   // gravity and detonates on the first mob or block it touches (see explodeAt).
   private throwBottle(id: number): void {
     if (!this.inventory.remove(id as BlockType)) return;
+    const def = THROWABLES[id];
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     const o = this.camera.position;
-    this.projectiles.spawnBottle(o.x, o.y, o.z, dir.x, dir.y, dir.z);
+    this.projectiles.spawnBottle(o.x, o.y, o.z, dir.x, dir.y, dir.z, def.shape, def.blastRadius);
     this.sound.throwBottle();
     this.attackCooldown = 0.5;
     this.handSwing = 0.25;
   }
 
-  // A socată bottle's impact: every mob caught in the blast radius dies outright
-  private explodeAt(x: number, y: number, z: number): void {
-    const radius = THROWABLES[ThrowableId.SocataBottle].blastRadius;
+  // A thrown bottle/gum's impact: every mob caught in the blast radius dies outright
+  private explodeAt(x: number, y: number, z: number, radius: number): void {
     for (const mob of this.mobManager.all()) {
       if (mob.dying) continue;
       const dx = mob.body.x - x;
@@ -632,6 +647,18 @@ export class Game {
       if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
     } else {
       this.inventoryPanel.show();
+      this.input.setInventoryOpen(true);
+      if (!this.input.isTouchDevice) document.exitPointerLock();
+    }
+  }
+
+  private toggleCraftingPanel(): void {
+    if (this.craftingPanel.isOpen) {
+      this.craftingPanel.close();
+      this.input.setInventoryOpen(false);
+      if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
+    } else {
+      this.craftingPanel.show();
       this.input.setInventoryOpen(true);
       if (!this.input.isTouchDevice) document.exitPointerLock();
     }
@@ -789,6 +816,11 @@ export class Game {
       return;
     }
 
+    if (requiresPickaxe(broken) && this.hotbar.selectedItem !== ToolId.Tarnacop) {
+      this.sound.clink(); // too hard to break by hand — needs the Târnăcop
+      return;
+    }
+
     if (this.applyBlockChange(x, y, z, BlockType.Air).length > 0) {
       this.inventory.add(broken);
       this.sound.breakBlock();
@@ -813,9 +845,13 @@ export class Game {
       this.sound.doorToggle();
       return;
     }
+    if (targetedId === BlockType.CraftingTable) {
+      this.toggleCraftingPanel();
+      return;
+    }
 
     const selected = this.hotbar.selectedItem;
-    if (isWeapon(selected) || isThrowable(selected)) return; // can't be placed
+    if (isWeapon(selected) || isThrowable(selected) || isTool(selected)) return; // can't be placed
 
     const { x, y, z } = hit.previous;
     const target = this.world.getBlock(x, y, z);

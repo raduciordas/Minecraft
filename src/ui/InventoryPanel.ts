@@ -1,6 +1,7 @@
 import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
 import { WEAPONS, WEAPON_IDS, makeWeaponIcon } from '../items/Weapon';
 import { THROWABLES, THROWABLE_IDS, makeThrowableIcon } from '../items/Throwable';
+import { TOOLS, TOOL_IDS, makeToolIcon } from '../items/Tool';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
@@ -60,6 +61,10 @@ export class InventoryPanel {
     }
     THROWABLE_IDS.forEach((id) => {
       const count = addCell(id, makeThrowableIcon(id), THROWABLES[id].name, false);
+      this.countedCells.push({ id, el: count });
+    });
+    TOOL_IDS.forEach((id) => {
+      const count = addCell(id, makeToolIcon(id), TOOLS[id].name, false);
       this.countedCells.push({ id, el: count });
     });
     PLACEABLE_BLOCKS.forEach((id) => {
