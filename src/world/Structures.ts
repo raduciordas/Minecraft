@@ -161,3 +161,68 @@ export function buildVladCastle(originX: number, originZ: number): StructureTemp
     blocks,
   };
 }
+
+// Where the Satul Codat learning module lives — shared between terrain
+// generation (structure stamping) and VatraModule (puzzle interactions).
+export const VATRA_ORIGIN = { x: -20, z: 16 };
+
+// Vatra Satului Codat: the phase-0 prototype square of the coding village —
+// a dry well with a trough, a bread oven, and a lane with 5 unlit lanterns.
+// Every mechanism starts broken/dark; the Tabla de Blocuri puzzles bring
+// them to life (see src/vatra/).
+export function buildVatraSatului(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  // Fântâna: cobble ring, corner posts, plank roof — the center hole is dry
+  for (let x = -1; x <= 1; x++) {
+    for (let z = -1; z <= 1; z++) {
+      if (x !== 0 || z !== 0) B(x, 1, z, BlockType.Cobblestone);
+    }
+  }
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    B(x, 2, z, BlockType.Log);
+    B(x, 3, z, BlockType.Log);
+  }
+  for (let x = -1; x <= 1; x++) {
+    for (let z = -1; z <= 1; z++) B(x, 4, z, BlockType.Plank);
+  }
+  // Jgheabul: plank run the water flows into on success
+  for (let z = 2; z <= 4; z++) B(0, 1, z, BlockType.Plank);
+
+  // Cuptorul de pâine: brick box with a cavity and a mouth facing +Z
+  for (let x = -7; x <= -5; x++) {
+    for (let z = -1; z <= 1; z++) B(x, 1, z, BlockType.Brick);
+  }
+  for (let x = -7; x <= -5; x++) {
+    for (let z = -1; z <= 1; z++) {
+      if (x === -6 && (z === 0 || z === 1)) continue; // cavity + mouth
+      B(x, 2, z, BlockType.Brick);
+    }
+  }
+  for (let x = -7; x <= -5; x++) {
+    for (let z = -1; z <= 1; z++) B(x, 3, z, BlockType.Brick);
+  }
+  B(-6, 4, -1, BlockType.Cobblestone); // chimney
+  B(-6, 5, -1, BlockType.Cobblestone);
+
+  // Ulița: river-stone path with 5 lantern posts (glass = unlit; puzzle 3 lights them)
+  for (let x = 3; x <= 13; x++) {
+    for (let z = -1; z <= 0; z++) B(x, 0, z, BlockType.RiverStone);
+  }
+  for (const lx of [4, 6, 8, 10, 12]) {
+    B(lx, 1, 1, BlockType.Log);
+    B(lx, 2, 1, BlockType.Log);
+    B(lx, 3, 1, BlockType.Glass);
+  }
+
+  return {
+    name: 'Vatra Satului Codat',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 2,
+    blocks,
+  };
+}

@@ -32,6 +32,9 @@ import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
+import { TablaPanel } from './ui/TablaPanel';
+import { VatraModule } from './vatra/VatraModule';
+import { VATRA_PUZZLES } from './vatra/VatraPuzzles';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
@@ -102,6 +105,8 @@ export class Game {
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
   private craftingPanel: CraftingPanel;
+  private vatra: VatraModule;
+  private tabla: TablaPanel;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
@@ -202,6 +207,18 @@ export class Game {
 
     this.sound = new SoundManager();
     window.addEventListener('pointerdown', () => this.sound.unlock());
+
+    // Satul Codat: the Vatra learning module + its Tabla de Blocuri editor
+    this.vatra = new VatraModule(this.scene, this.world, this.sound, this.inventory, (x, y, z, id) => {
+      this.applyBlockChange(x, y, z, id);
+      this.sendEdit(x, y, z, id);
+    });
+    this.tabla = new TablaPanel(document.getElementById('tabla')!, {
+      onRunStart: (pz) => this.vatra.beginRun(pz),
+      onStep: (pz, block) => this.vatra.performStep(pz, block),
+      onFinish: (pz, program) => this.vatra.finish(pz, program),
+      onRequestClose: () => this.closeTabla(),
+    });
 
     this.health = new Health();
     this.healthHud = new HealthHud(this.health, () => this.respawn());
@@ -434,6 +451,7 @@ export class Game {
     }
 
     this.remotePlayers.update(dt);
+    this.vatra.update(dt);
 
     this.camera.position.set(this.player.eyeX, this.player.eyeY, this.player.eyeZ);
     this.camera.rotation.y = this.input.yaw;
@@ -664,6 +682,19 @@ export class Game {
     }
   }
 
+  private openTabla(puzzleId: string): void {
+    this.tabla.open(VATRA_PUZZLES[puzzleId]);
+    this.input.setInventoryOpen(true);
+    if (!this.input.isTouchDevice) document.exitPointerLock();
+  }
+
+  private closeTabla(): void {
+    if (!this.tabla.isOpen) return;
+    this.tabla.close();
+    this.input.setInventoryOpen(false);
+    if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
+  }
+
   // --- Chunk streaming ---
 
   private updateChunkQueue(): void {
@@ -803,6 +834,10 @@ export class Game {
     if (!hit) return;
     const { x, y, z } = hit.block;
     if (y <= 0) return; // keep the bottom layer as bedrock
+    if (this.vatra.isProtected(x, y, z)) {
+      this.sound.clink(); // the Vatra square can't be mined — its puzzles stay intact
+      return;
+    }
     const broken = this.world.getBlock(x, y, z);
 
     if (isDoor(broken)) {
@@ -847,6 +882,11 @@ export class Game {
     }
     if (targetedId === BlockType.CraftingTable) {
       this.toggleCraftingPanel();
+      return;
+    }
+    const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
+    if (vatraPuzzle) {
+      this.openTabla(vatraPuzzle);
       return;
     }
 

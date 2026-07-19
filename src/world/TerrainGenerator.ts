@@ -23,7 +23,7 @@ import {
 } from '../config';
 import { BlockType } from './Block';
 import { Chunk } from './Chunk';
-import { buildGrandmaVillage, buildVladCastle, type StructureTemplate } from './Structures';
+import { buildGrandmaVillage, buildVladCastle, buildVatraSatului, VATRA_ORIGIN, type StructureTemplate } from './Structures';
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -70,7 +70,11 @@ export class TerrainGenerator {
 
     // Satul Bunicii sits in the flatland just outside the mountain ring;
     // Castelul lui Vlad Tepes crowns a peak on the ring itself.
-    this.structures = [buildGrandmaVillage(36, 36), buildVladCastle(80, 0)].map((t) => this.placeTemplate(t));
+    this.structures = [
+      buildGrandmaVillage(36, 36),
+      buildVladCastle(80, 0),
+      buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
+    ].map((t) => this.placeTemplate(t));
   }
 
   private placeTemplate(t: StructureTemplate): PlacedStructure {

@@ -143,6 +143,25 @@ export class SoundManager {
     this.tone(520, 0.08, 'square', 0.14, 420);
   }
 
+  // Satul Codat: one short tick per executed program block
+  stepTick(): void {
+    this.tone(300, 0.06, 'square', 0.14, 340);
+  }
+
+  // Satul Codat: puzzle solved — rising arpeggio
+  success(): void {
+    this.tone(392, 0.12, 'square', 0.2);
+    setTimeout(() => this.tone(523, 0.12, 'square', 0.2), 130);
+    setTimeout(() => this.tone(659, 0.24, 'square', 0.22), 260);
+  }
+
+  // Satul Codat: comic fail — sad trombone
+  failTrombone(): void {
+    this.tone(330, 0.25, 'sawtooth', 0.2, 300);
+    setTimeout(() => this.tone(300, 0.25, 'sawtooth', 0.2, 270), 270);
+    setTimeout(() => this.tone(270, 0.55, 'sawtooth', 0.22, 175), 540);
+  }
+
   mob(kind: MobKind): void {
     if (kind === 'pig') {
       this.tone(230 + Math.random() * 40, 0.09, 'square', 0.16);

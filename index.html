@@ -122,6 +122,84 @@
         cursor: not-allowed; border-color: #666; color: #777;
       }
 
+      /* Satul Codat — Tabla de Blocuri (wooden tablet block editor) */
+      #tabla {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 16; font-family: monospace;
+      }
+      #tabla.hidden { display: none; }
+      .tabla-panel {
+        background: linear-gradient(#b08249, #8a5f33);
+        border: 6px solid #4a2f16; border-radius: 10px;
+        max-width: 560px; width: 92vw; max-height: 88vh; overflow: auto;
+        padding: 16px 18px; color: #2b1808;
+        box-shadow: 0 8px 0 #3a2410;
+      }
+      .tabla-title {
+        font-weight: bold; font-size: 15px;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .tabla-close {
+        margin-left: auto; cursor: pointer;
+        border: 2px solid #4a2f16; border-radius: 4px; padding: 2px 8px;
+      }
+      .tabla-close:hover { background: rgba(58, 36, 16, 0.2); }
+      .tabla-intro {
+        font-size: 12px; line-height: 1.5;
+        background: rgba(255, 240, 200, 0.4);
+        border: 2px dashed #4a2f16; border-radius: 4px;
+        padding: 8px 10px; margin: 10px 0;
+      }
+      .tabla-sec {
+        font-size: 11px; font-weight: bold; text-transform: uppercase;
+        letter-spacing: 1px; color: #3a2410; margin: 10px 0 6px;
+      }
+      .tabla-palette { display: flex; flex-wrap: wrap; gap: 8px; }
+      .tabla-chip {
+        background: #caa06a; border: 3px solid #4a2f16; border-radius: 4px;
+        padding: 8px 10px; font: bold 12px monospace; color: #2b1808;
+        cursor: pointer; box-shadow: 2px 2px 0 #3a2410;
+      }
+      .tabla-chip:not(:disabled):hover { transform: translate(-1px, -1px); }
+      .tabla-chip:disabled { opacity: 0.35; cursor: default; }
+      .tabla-program {
+        display: flex; flex-direction: column; gap: 6px;
+        min-height: 52px; padding: 8px;
+        border: 3px solid #4a2f16; border-radius: 4px;
+        background: rgba(58, 36, 16, 0.15);
+      }
+      .tabla-empty { font-size: 11px; color: #4a3420; text-align: center; padding: 8px; }
+      .tabla-row {
+        display: flex; align-items: center; gap: 8px;
+        background: #e8c88f; border: 3px solid #4a2f16; border-radius: 4px;
+        padding: 6px 8px; font: bold 12px monospace;
+      }
+      .tabla-row.running { background: #ffe14d; box-shadow: 0 0 0 3px #ff9d2e; }
+      .tabla-row .idx { opacity: 0.55; }
+      .tabla-row-btns { margin-left: auto; display: flex; gap: 4px; }
+      .tabla-row-btns button {
+        border: 2px solid #4a2f16; border-radius: 3px; background: #caa06a;
+        font: bold 11px monospace; cursor: pointer; padding: 2px 6px; color: #2b1808;
+      }
+      .tabla-row-btns button:disabled { opacity: 0.3; cursor: default; }
+      .tabla-actions { display: flex; gap: 10px; margin-top: 12px; }
+      .tabla-run {
+        background: #3f7d2c; color: #fff; border: 3px solid #21410f; border-radius: 4px;
+        padding: 8px 16px; font: bold 13px monospace; cursor: pointer;
+        box-shadow: 2px 2px 0 #21410f;
+      }
+      .tabla-run:disabled { opacity: 0.5; cursor: default; }
+      .tabla-reset {
+        background: #a04a2a; color: #fff; border: 3px solid #55200e; border-radius: 4px;
+        padding: 8px 12px; font: bold 12px monospace; cursor: pointer;
+      }
+      .tabla-reset:disabled { opacity: 0.5; cursor: default; }
+      .tabla-status { margin-top: 10px; font: bold 12px monospace; min-height: 32px; line-height: 1.5; }
+      .tabla-status.ok { color: #1d5c12; }
+      .tabla-status.bad { color: #7c1408; }
+
       #underwater {
         position: fixed; inset: 0;
         background: rgba(25, 70, 160, 0.38);
@@ -294,6 +372,7 @@
     <div id="mp-status" class="offline">● Solo (offline)</div>
     <div id="inventory" class="hidden"></div>
     <div id="crafting" class="hidden"></div>
+    <div id="tabla" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
     <div id="damage-flash"></div>
@@ -311,6 +390,7 @@
         Weapons in the inventory (E) — the Storm Sword kills a zombie in 2 hits<br />
         Night mobs: Zombie (melee) &nbsp;|&nbsp; Umbra (teleports close) &nbsp;|&nbsp; Wasp (flies, fragile)<br />
         Golem (heavy hitter) &nbsp;|&nbsp; Zmeu (fire breath, ranged) &nbsp;|&nbsp; Capcaun (giant, deadliest)<br />
+        Satul Codat: caută Vatra (lângă spawn, spre nord-vest) — click dreapta pe fântână, cuptor sau felinare și programează-le!<br />
         1-9 / scroll — select slot &nbsp;|&nbsp; E — inventory (pick materials) &nbsp;|&nbsp; F — fly &nbsp;|&nbsp; Esc — pause<br />
         Progress is saved automatically in your browser.
       </p>
