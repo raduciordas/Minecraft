@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
+import { ToolId } from '../items/Tool';
 import { VATRA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES } from './VatraPuzzles';
 import type { World } from '../world/World';
@@ -18,9 +19,29 @@ const LANTERNS: [number, number, number][] = [
 ];
 const TROUGH_Z = [2, 3, 4];
 const OVEN_CAVITY: [number, number, number] = [-6, 2, 0];
+const FORGE_CAVITY: [number, number, number] = [-7, 2, -7];
+const STABLE_TROUGH: [number, number, number] = [0, 1, -6];
+const LAUNDRY_SPOT: [number, number, number] = [6, 2, -7];
 
 const BUCKET_HIGH = 3.4;
 const BUCKET_LOW = 1.3;
+
+// The persistent world change each puzzle makes on success, and what it
+// reverts to when the lesson is reset — data-driven so both applying and
+// undoing (and re-applying on world load) share one table.
+interface PuzzleEffect {
+  pos: [number, number, number];
+  solved: BlockType;
+  unsolved: BlockType;
+}
+const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
+  fantana: TROUGH_Z.map((z) => ({ pos: [0, 2, z], solved: BlockType.Water, unsolved: BlockType.Air })),
+  cuptor: [{ pos: OVEN_CAVITY, solved: BlockType.Lamp, unsolved: BlockType.Air }],
+  ulita: LANTERNS.map((pos) => ({ pos, solved: BlockType.Lamp, unsolved: BlockType.Glass })),
+  fierarie: [{ pos: FORGE_CAVITY, solved: BlockType.Lamp, unsolved: BlockType.Air }],
+  grajd: [{ pos: STABLE_TROUGH, solved: BlockType.Hay, unsolved: BlockType.Plank }],
+  spalatorie: [{ pos: LAUNDRY_SPOT, solved: BlockType.IeBlouse, unsolved: BlockType.Air }],
+};
 
 interface Flying {
   mesh: THREE.Mesh;
@@ -42,11 +63,11 @@ function box(parent: THREE.Object3D, w: number, h: number, d: number, color: num
   return mesh;
 }
 
-// Satul Codat, phase 0: the three Vatra buildings as interactive coding
-// puzzles. Owns the puzzle state (which are solved, persisted locally), the
-// step-by-step 3D animations (bucket, oven fire, coal, colaci, lanterns),
-// and the one-time rewards. The Tabla de Blocuri UI drives it via
-// beginRun/performStep/finish.
+// Satul Codat, phase 0: six Vatra buildings as interactive coding puzzles
+// (pure sequences — Zone 1 of the design doc). Owns the puzzle state (which
+// are solved, persisted locally), the step-by-step 3D animations, the
+// one-time rewards, and the ability to reset a solved lesson so it can be
+// replayed. The Tabla de Blocuri UI drives it via beginRun/performStep/finish.
 export class VatraModule {
   private readonly ox = VATRA_ORIGIN.x;
   private readonly oz = VATRA_ORIGIN.z;
@@ -60,6 +81,7 @@ export class VatraModule {
   private bucketWater: THREE.Mesh;
   private bucketTargetY: number;
   private ovenLight: THREE.PointLight;
+  private forgeLight: THREE.PointLight;
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
   private litCount = 0;
@@ -89,6 +111,11 @@ export class VatraModule {
     this.ovenLight.position.set(this.ox - 6 + 0.5, this.groundY + 2.5, this.oz + 0.5);
     scene.add(this.ovenLight);
 
+    // Forge fire glow (flares up on the "aprinde forja" step)
+    this.forgeLight = new THREE.PointLight(0xff8a30, 0, 6, 1);
+    this.forgeLight.position.set(this.ox - 7 + 0.5, this.groundY + 2.5, this.oz - 7 + 0.5);
+    scene.add(this.forgeLight);
+
     this.buildBunicul();
   }
 
@@ -117,6 +144,9 @@ export class VatraModule {
     if (dx >= -1 && dx <= 1 && dz >= -1 && dz <= 4) return 'fantana';
     if (dx >= -8 && dx <= -4 && dz >= -2 && dz <= 1) return 'cuptor';
     if (dx >= 3 && dx <= 13 && dz >= -1 && dz <= 1) return 'ulita';
+    if (dx >= -9 && dx <= -5 && dz >= -8 && dz <= -6) return 'fierarie';
+    if (dx >= -3 && dx <= 3 && dz >= -8 && dz <= -5) return 'grajd';
+    if (dx >= 5 && dx <= 10 && dz >= -8 && dz <= -5) return 'spalatorie';
     return null;
   }
 
@@ -125,7 +155,7 @@ export class VatraModule {
     const dx = bx - this.ox;
     const dy = by - this.groundY;
     const dz = bz - this.oz;
-    return dx >= -10 && dx <= 16 && dz >= -4 && dz <= 7 && dy >= 0 && dy <= 8;
+    return dx >= -10 && dx <= 16 && dz >= -9 && dz <= 7 && dy >= 0 && dy <= 8;
   }
 
   isDone(puzzleId: string): boolean {
@@ -138,6 +168,7 @@ export class VatraModule {
       this.bucketWater.visible = false;
     }
     if (puzzleId === 'ulita') this.litCount = 0;
+    if (puzzleId === 'fierarie') this.forgeLight.intensity = 0;
   }
 
   // One program block executes: animate the matching mechanism
@@ -160,6 +191,8 @@ export class VatraModule {
       } else if (blockId === 'varsa') {
         this.bucketWater.visible = false;
         this.sound.stepTick();
+      } else {
+        this.sound.stepTick();
       }
     } else if (puzzleId === 'cuptor') {
       if (blockId === 'aprinde') {
@@ -180,6 +213,38 @@ export class VatraModule {
       } else {
         this.sound.stepTick();
       }
+    } else if (puzzleId === 'fierarie') {
+      if (blockId === 'aprinde_forja') {
+        this.forgeLight.intensity = 3;
+        this.sound.fireballCast();
+      } else if (blockId === 'loveste') {
+        this.spawnSmoke(this.ox - 5 + 0.5, this.groundY + 2.3, this.oz - 5 + 0.5, 0xffb04a, 0.14);
+        this.sound.clink();
+      } else if (blockId === 'caleste') {
+        this.sound.splash();
+      } else if (blockId === 'pune_fier') {
+        this.sound.place();
+      } else {
+        this.sound.stepTick();
+      }
+    } else if (puzzleId === 'grajd') {
+      if (blockId === 'toarna_apa' || blockId === 'adu_apa') {
+        this.sound.splash();
+      } else if (blockId === 'deschide_poarta') {
+        this.sound.doorToggle();
+      } else if (blockId === 'pune_in_iesle') {
+        this.sound.place();
+      } else {
+        this.sound.stepTick();
+      }
+    } else if (puzzleId === 'spalatorie') {
+      if (blockId === 'inmoaie' || blockId === 'clateste') {
+        this.sound.splash();
+      } else if (blockId === 'intinde') {
+        this.sound.place();
+      } else {
+        this.sound.stepTick();
+      }
     }
   }
 
@@ -195,7 +260,7 @@ export class VatraModule {
     }
 
     const fail = puzzle.fails.find((f) => f.matches(program)) ?? puzzle.fails[puzzle.fails.length - 1];
-    if (fail.anim === 'coal') this.coalFail();
+    if (fail.anim === 'coal') this.coalFail(puzzleId);
     if (fail.anim === 'bucket') this.bucketWater.visible = false;
     if (fail.anim === 'dark') this.revertTimer = 1.2; // the lit lanterns flicker back out
     this.sound.failTrombone();
@@ -204,47 +269,92 @@ export class VatraModule {
 
   private applySuccess(puzzleId: string): void {
     const firstTime = !this.done.has(puzzleId);
-    if (puzzleId === 'fantana') {
-      for (const z of TROUGH_Z) this.setBlock(this.ox, this.groundY + 2, this.oz + z, BlockType.Water);
-    } else if (puzzleId === 'cuptor') {
-      const [cx, cy, cz] = OVEN_CAVITY;
-      this.setBlock(this.ox + cx, this.groundY + cy, this.oz + cz, BlockType.Lamp); // embers glow through the mouth
-      this.spawnColaci();
-      if (firstTime) this.inventory.add(BlockType.Mamaliga, 10);
-    } else if (puzzleId === 'ulita') {
-      // Lanterns were lit during the steps; just hand over the gift
-      if (firstTime) this.inventory.add(BlockType.Lamp, 2);
-    }
+    this.applyEffects(puzzleId);
+    if (puzzleId === 'cuptor') this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2, 0xc98d3a, 3);
+    if (puzzleId === 'fierarie') this.spawnFlyingBits(this.ox - 7 + 0.5, this.groundY + 2.3, this.oz - 6 + 0.5, 0xb0b0b0, 1);
+    if (puzzleId === 'grajd') this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
+    if (puzzleId === 'spalatorie') this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
     if (firstTime) {
+      this.grantReward(puzzleId);
       this.done.add(puzzleId);
       this.save();
     }
   }
 
-  // Warm colaci arc out of the oven mouth
-  private spawnColaci(): void {
-    for (let i = 0; i < 3; i++) {
+  private grantReward(puzzleId: string): void {
+    switch (puzzleId) {
+      case 'fantana':
+        this.inventory.add(BlockType.Chirpici, 8);
+        break;
+      case 'cuptor':
+        this.inventory.add(BlockType.Mamaliga, 16);
+        this.inventory.add(BlockType.Caramida, 4);
+        break;
+      case 'ulita':
+        this.inventory.add(BlockType.Lamp, 4);
+        this.inventory.add(BlockType.RiverStone, 6);
+        break;
+      case 'fierarie':
+        this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
+        this.inventory.add(BlockType.Stone, 4);
+        break;
+      case 'grajd':
+        this.inventory.add(BlockType.Hay, 8);
+        this.inventory.add(BlockType.RockSalt, 4);
+        break;
+      case 'spalatorie':
+        this.inventory.add(BlockType.IeBlouse, 4);
+        this.inventory.add(BlockType.RiverStone, 6);
+        break;
+    }
+  }
+
+  // Revert a solved lesson back to its unsolved state (world blocks +
+  // completion flag) so it can be replayed from scratch, rewards and all.
+  resetPuzzle(puzzleId: string): void {
+    if (!this.done.has(puzzleId)) return;
+    this.revertEffects(puzzleId);
+    this.done.delete(puzzleId);
+    this.save();
+  }
+
+  private applyEffects(puzzleId: string): void {
+    for (const e of PUZZLE_EFFECTS[puzzleId] ?? []) {
+      this.setBlock(this.ox + e.pos[0], this.groundY + e.pos[1], this.oz + e.pos[2], e.solved);
+    }
+  }
+
+  private revertEffects(puzzleId: string): void {
+    for (const e of PUZZLE_EFFECTS[puzzleId] ?? []) {
+      this.setBlock(this.ox + e.pos[0], this.groundY + e.pos[1], this.oz + e.pos[2], e.unsolved);
+    }
+  }
+
+  // Reusable flying-prop flourish (colaci, a horseshoe, hay, laundry…)
+  private spawnFlyingBits(x: number, y: number, z: number, color: number, count: number): void {
+    for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(
         new THREE.BoxGeometry(0.22, 0.12, 0.22),
-        new THREE.MeshLambertMaterial({ color: 0xc98d3a }),
+        new THREE.MeshLambertMaterial({ color }),
       );
-      mesh.position.set(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2);
+      mesh.position.set(x, y, z);
       this.scene.add(mesh);
       this.flyings.push({ mesh, vx: (Math.random() - 0.5) * 2, vy: 3.5 + i, vz: 2.5 + Math.random(), life: 2.2 });
     }
   }
 
-  // The flagship comic fail: a smoking coal boulder shoots out of the oven
-  private coalFail(): void {
+  // The flagship comic fail: a smoking coal boulder shoots out of the oven/forge
+  private coalFail(puzzleId: string): void {
+    const [ox, oz] = puzzleId === 'fierarie' ? [this.ox - 7 + 0.5, this.oz - 7 + 0.5] : [this.ox - 6 + 0.5, this.oz + 1.2];
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(0.45, 0.45, 0.45),
       new THREE.MeshLambertMaterial({ color: 0x1c1c1c }),
     );
-    mesh.position.set(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2);
+    mesh.position.set(ox, this.groundY + 2.3, oz);
     this.scene.add(mesh);
     this.flyings.push({ mesh, vx: 0, vy: 5, vz: 4, life: 2.5 });
     for (let i = 0; i < 4; i++) {
-      this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 2.4 + i * 0.2, this.oz + 1.2, 0x333333, 0.3);
+      this.spawnSmoke(ox, this.groundY + 2.4 + i * 0.2, oz, 0x333333, 0.3);
     }
   }
 
@@ -263,8 +373,9 @@ export class VatraModule {
     const dy = this.bucketTargetY - this.bucket.position.y;
     if (Math.abs(dy) > 0.01) this.bucket.position.y += Math.sign(dy) * Math.min(Math.abs(dy), 2.5 * dt);
 
-    // Oven fire glow fades
+    // Oven / forge fire glow fades
     if (this.ovenLight.intensity > 0) this.ovenLight.intensity = Math.max(0, this.ovenLight.intensity - 2.2 * dt);
+    if (this.forgeLight.intensity > 0) this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
 
     for (let i = this.flyings.length - 1; i >= 0; i--) {
       const f = this.flyings[i];
@@ -312,22 +423,11 @@ export class VatraModule {
     }
 
     // Once the vatra chunk is loaded, re-apply the persistent state of any
-    // already-solved puzzles (water in the trough, lit lanterns, oven embers)
+    // already-solved puzzles (water in the trough, lit lanterns, embers…)
     if (!this.effectsApplied && this.world.getBlock(this.ox, this.groundY, this.oz) !== BlockType.Air) {
       this.effectsApplied = true;
-      if (this.done.has('fantana')) {
-        for (const z of TROUGH_Z) this.setBlock(this.ox, this.groundY + 2, this.oz + z, BlockType.Water);
-      }
-      if (this.done.has('cuptor')) {
-        const [cx, cy, cz] = OVEN_CAVITY;
-        this.setBlock(this.ox + cx, this.groundY + cy, this.oz + cz, BlockType.Lamp);
-      }
-      if (this.done.has('ulita')) {
-        for (const [lx, ldy, lz] of LANTERNS) {
-          if (this.world.getBlock(this.ox + lx, this.groundY + ldy, this.oz + lz) === BlockType.Glass) {
-            this.setBlock(this.ox + lx, this.groundY + ldy, this.oz + lz, BlockType.Lamp);
-          }
-        }
+      for (const puzzleId of Object.keys(PUZZLE_EFFECTS)) {
+        if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
       }
     }
   }

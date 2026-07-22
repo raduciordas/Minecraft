@@ -218,6 +218,8 @@ export class Game {
       onStep: (pz, block) => this.vatra.performStep(pz, block),
       onFinish: (pz, program) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),
+      isDone: (pz) => this.vatra.isDone(pz),
+      onResetLesson: (pz) => this.vatra.resetPuzzle(pz),
     });
 
     this.health = new Health();

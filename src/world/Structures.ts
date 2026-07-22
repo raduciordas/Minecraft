@@ -216,6 +216,60 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     B(lx, 3, 1, BlockType.Glass);
   }
 
+  // Fierăria lui Bunicul: a stone-brick forge, north-west of the oven —
+  // cavity + mouth left hollow until the smithing puzzle lights it
+  for (let x = -9; x <= -5; x++) {
+    for (let z = -8; z <= -6; z++) B(x, 1, z, BlockType.StoneBrick);
+  }
+  for (let x = -9; x <= -5; x++) {
+    for (let z = -8; z <= -6; z++) {
+      if (x === -7 && (z === -7 || z === -6)) continue; // cavity + mouth
+      B(x, 2, z, BlockType.StoneBrick);
+    }
+  }
+  for (let x = -9; x <= -5; x++) {
+    for (let z = -8; z <= -6; z++) B(x, 3, z, BlockType.StoneBrick);
+  }
+  B(-7, 4, -8, BlockType.Cobblestone); // chimney
+  B(-7, 5, -8, BlockType.Cobblestone);
+  B(-5, 1, -5, BlockType.Cobblestone); // anvil
+  B(-5, 2, -5, BlockType.Cobblestone);
+
+  // Grajdul: a small wooden stable, north of the well — an empty feed
+  // trough (plank) that fills with hay once the feeding puzzle is solved
+  for (let x = -3; x <= 3; x++) {
+    for (let z = -8; z <= -5; z++) B(x, 0, z, BlockType.Plank);
+  }
+  for (const [x, z] of [[-3, -8], [3, -8], [-3, -5], [3, -5]] as const) {
+    for (let y = 1; y <= 3; y++) B(x, y, z, BlockType.Log);
+  }
+  for (let x = -3; x <= 3; x++) {
+    B(x, 1, -8, BlockType.Plank);
+    B(x, 1, -5, BlockType.Plank);
+  }
+  for (let z = -8; z <= -5; z++) {
+    B(-3, 1, z, BlockType.Plank);
+    B(3, 1, z, BlockType.Plank);
+  }
+  for (let x = -3; x <= 3; x++) {
+    for (let z = -8; z <= -5; z++) B(x, 4, z, BlockType.Hay); // thatched roof
+  }
+  for (let x = -1; x <= 1; x++) B(x, 1, -6, BlockType.Plank); // empty trough
+
+  // Spălătoria la pârâu: a river-stone platform beside a still pond, with
+  // an empty clothesline — the laundry puzzle hangs an ie on it when solved
+  for (let x = 5; x <= 10; x++) {
+    for (let z = -8; z <= -5; z++) B(x, 0, z, BlockType.RiverStone);
+  }
+  for (let x = 8; x <= 10; x++) {
+    for (let z = -7; z <= -6; z++) B(x, 0, z, BlockType.Water);
+  }
+  B(6, 1, -8, BlockType.Log);
+  B(6, 2, -8, BlockType.Log);
+  B(6, 1, -5, BlockType.Log);
+  B(6, 2, -5, BlockType.Log);
+  for (let z = -8; z <= -5; z++) B(6, 3, z, BlockType.Plank); // clothesline bar
+
   return {
     name: 'Vatra Satului Codat',
     originX,

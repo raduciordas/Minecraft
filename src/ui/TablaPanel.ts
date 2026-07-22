@@ -7,6 +7,8 @@ export interface TablaCallbacks {
   onStep: (puzzleId: string, blockId: string) => void;
   onFinish: (puzzleId: string, program: string[]) => { success: boolean; text: string };
   onRequestClose: () => void;
+  isDone: (puzzleId: string) => boolean;
+  onResetLesson: (puzzleId: string) => void;
 }
 
 // Tabla de Blocuri: the diegetic wooden-tablet block editor of Satul Codat.
@@ -177,6 +179,22 @@ export class TablaPanel {
       this.render();
     });
     actions.appendChild(reset);
+
+    const done = this.cb.isDone(p.id);
+    const relearn = document.createElement('button');
+    relearn.className = 'tabla-relearn';
+    relearn.textContent = '↺ Resetează lecția';
+    relearn.disabled = this.running || !done;
+    relearn.title = done
+      ? 'Reia lecția de la capăt — o poți rezolva din nou, pentru răsplată din nou'
+      : 'Rezolvă lecția întâi, ca s-o poți reseta';
+    relearn.addEventListener('click', () => {
+      this.cb.onResetLesson(p.id);
+      this.program = [];
+      this.status = { text: 'Lecția a fost resetată — poți s-o iei de la capăt, ca prima dată!', ok: true };
+      this.render();
+    });
+    actions.appendChild(relearn);
     this.panel.appendChild(actions);
 
     const status = document.createElement('div');
