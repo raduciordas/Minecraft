@@ -23,7 +23,15 @@ import {
 } from '../config';
 import { BlockType } from './Block';
 import { Chunk } from './Chunk';
-import { buildGrandmaVillage, buildVladCastle, buildVatraSatului, VATRA_ORIGIN, type StructureTemplate } from './Structures';
+import {
+  buildGrandmaVillage,
+  buildVladCastle,
+  buildVatraSatului,
+  VATRA_ORIGIN,
+  buildLuncaZone,
+  LUNCA_ORIGIN,
+  type StructureTemplate,
+} from './Structures';
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -74,6 +82,7 @@ export class TerrainGenerator {
       buildGrandmaVillage(36, 36),
       buildVladCastle(80, 0),
       buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
+      buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),
     ].map((t) => this.placeTemplate(t));
   }
 

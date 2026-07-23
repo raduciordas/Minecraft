@@ -280,3 +280,58 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     blocks,
   };
 }
+
+// Where Zona 2 (Lunca — Bucle) lives — shared between terrain generation
+// and VatraModule (loop-puzzle interactions).
+export const LUNCA_ORIGIN = { x: -15, z: -40 };
+
+// Lunca: the meadow zone that teaches loops — a 30-post fence with a gap
+// the "repetă" block fills, an empty tilled field waiting to be planted in
+// one motion, and a water mill that never stops grinding on its own.
+export function buildLuncaZone(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  // Gardul Luncii: two anchor posts bookend a 30-post gap the loop fills
+  B(-15, 1, -6, BlockType.Log);
+  B(-15, 2, -6, BlockType.Log);
+  B(16, 1, -6, BlockType.Log);
+  B(16, 2, -6, BlockType.Log);
+
+  // Câmpul de grâu: a 6×4 tilled field, bare dirt until the nested loop plants it
+  for (let x = 20; x <= 25; x++) {
+    for (let z = -2; z <= 1; z++) B(x, 1, z, BlockType.Dirt);
+  }
+
+  // Moara de apă: a small plank mill house beside its water channel, with a
+  // decorative log wheel — the flour pile inside stays empty until solved
+  for (let x = 20; x <= 24; x++) {
+    for (let z = 6; z <= 10; z++) {
+      if (x === 20 || x === 24 || z === 6 || z === 10) {
+        for (let y = 1; y <= 3; y++) {
+          if (x === 22 && z === 10 && y <= 2) continue; // doorway, south wall
+          B(x, y, z, BlockType.Plank);
+        }
+      }
+    }
+  }
+  for (let x = 20; x <= 24; x++) {
+    for (let z = 6; z <= 10; z++) B(x, 4, z, BlockType.Plank); // flat roof
+  }
+  for (let z = 6; z <= 10; z++) B(19, 0, z, BlockType.Water); // the stream
+  B(19, 1, 8, BlockType.Log);
+  B(19, 2, 8, BlockType.Log);
+  B(19, 3, 8, BlockType.Log);
+  B(19, 2, 7, BlockType.Log);
+  B(19, 2, 9, BlockType.Log);
+
+  return {
+    name: 'Lunca',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 6,
+    pad: 2,
+    blocks,
+  };
+}

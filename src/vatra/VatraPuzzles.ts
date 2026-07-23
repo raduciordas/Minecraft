@@ -237,4 +237,96 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
     ],
   },
+  gard: {
+    id: 'gard',
+    title: 'Gardul Luncii — momentul AHA',
+    intro:
+      'BUNICUL FIERAR: „Lunca are nevoie de 30 de stâlpi de gard, copile. Manual ar fi 30 de porunci — o zi întreagă! Dar dacă spui tăbliței «repetă de 30 de ori», ea pune singură toți stâlpii. Alege bine numărul!"',
+    success: 'GARDUL S-A RIDICAT SINGUR, stâlp după stâlp! Oile pot intra în Lunca. (+10 lână)',
+    palette: [
+      { id: 'repeta_30', label: 'Repetă de 30 de ori', copies: 1 },
+      { id: 'pune_stalp', label: 'Pune un stâlp', copies: 1 },
+      { id: 'prinde_capatul', label: 'Prinde capătul gardului', copies: 1 },
+      { id: 'repeta_3', label: 'Repetă de 3 ori', copies: 1 },
+      { id: 'repeta_300', label: 'Repetă de 300 de ori', copies: 1 },
+      { id: 'fluiera_oi', label: 'Fluieră la oi', copies: 1 },
+    ],
+    solution: ['repeta_30', 'pune_stalp', 'prinde_capatul'],
+    fails: [
+      {
+        text: 'Ai zis «de 300 de ori»?! Gardul a ieșit din sat, peste deal, prin curtea vecinului — o boacănă legendară.',
+        anim: 'dark',
+        matches: (p) => p.includes('repeta_300'),
+      },
+      {
+        text: 'Doar 3 stâlpi înfipți — restul gardului e o gaură cât toată Lunca! Oile ies la plimbare.',
+        anim: 'dark',
+        matches: (p) => p.includes('repeta_3'),
+      },
+      {
+        text: 'Gardul stă pe jumătate, dar capătul flutură-n vânt — nu-i priponit! Ordinea corectă, cu tot ce trebuie.',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  camp_grau: {
+    id: 'camp_grau',
+    title: 'Câmpul de grâu — bucle în bucle',
+    intro:
+      'BUNICUL FIERAR: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
+    success: 'CÂMPUL S-A ÎNVERZIT dintr-o dată, rând cu rând! (+12 grâu)',
+    palette: [
+      { id: 'repeta_randuri', label: 'Repetă pentru 4 rânduri', copies: 1 },
+      { id: 'repeta_spice', label: 'Repetă de 6 ori (un rând)', copies: 1 },
+      { id: 'planteaza_spic', label: 'Plantează spicul', copies: 1 },
+      { id: 'urmatorul_rand', label: 'Treci la rândul următor', copies: 1 },
+      { id: 'canta_ciocarlia', label: 'Cântă ciocârliei', copies: 1 },
+    ],
+    solution: ['repeta_randuri', 'repeta_spice', 'planteaza_spic', 'urmatorul_rand'],
+    fails: [
+      {
+        text: 'Buclele-s încurcate — a ieșit UN SINGUR RÂND absurd de lung, care trece dincolo de hartă!',
+        anim: 'dark',
+        matches: (p) => p.indexOf('repeta_spice') >= 0 && p.indexOf('repeta_randuri') > p.indexOf('repeta_spice'),
+      },
+      {
+        text: 'Câmpul a rămas pe jumătate gol — buclele nu s-au potrivit. Încearcă din nou ordinea!',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  moara: {
+    id: 'moara',
+    title: 'Moara de apă — bucla infinită',
+    intro:
+      'BUNICUL FIERAR: „Pornește șuvoiul, apoi spune: «Cât timp curge apa, macină». Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
+    success: 'MOARA MACINĂ ÎNTRUNA, roata nu se mai oprește! (+14 făină)',
+    palette: [
+      { id: 'porneste_apa', label: 'Pornește șuvoiul de apă', copies: 1 },
+      { id: 'cat_timp_curge_apa', label: 'Cât timp curge apa → macină', copies: 1 },
+      { id: 'macina', label: 'Macină', copies: 1 },
+      { id: 'opreste_apa', label: 'Oprește apa', copies: 1 },
+      { id: 'canta_la_roata', label: 'Cântă la roată', copies: 1 },
+    ],
+    solution: ['porneste_apa', 'cat_timp_curge_apa', 'macina'],
+    fails: [
+      {
+        text: 'Ai oprit apa, dar bucla ta zicea «cât timp curge apa» — morarul nu înțelege de ce te-ai oprit TU, nu bucla!',
+        anim: 'none',
+        matches: (p) => p.includes('opreste_apa'),
+      },
+      {
+        text: 'Moara macină în gol — scârțâie, scoate fum, iar morarul iese afară furios! Fără apă, nu-i bucla ta.',
+        anim: 'coal',
+        matches: (p) => p.includes('macina') && !p.includes('porneste_apa'),
+      },
+      {
+        text: 'Moara stă neclintită... ordinea corectă, măcar o dată!',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
 };

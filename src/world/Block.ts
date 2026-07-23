@@ -36,6 +36,9 @@ export const enum BlockType {
   RiverStone = 32,
   DacianGold = 33,
   CraftingTable = 34,
+  Wool = 35,
+  Wheat = 36,
+  Flour = 37,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -71,6 +74,9 @@ export const enum Tile {
   RiverStone = 29,
   DacianGold = 30,
   CraftingTable = 31,
+  Wool = 32,
+  Wheat = 33,
+  Flour = 34,
 }
 
 export interface BlockDef {
@@ -127,6 +133,9 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.RiverStone]: H('Bolovan de Râu', Tile.RiverStone),
   [BlockType.DacianGold]: H('Comoara Dacică', Tile.DacianGold),
   [BlockType.CraftingTable]: S('Masă de Cioplit', Tile.CraftingTable),
+  [BlockType.Wool]: S('Lână', Tile.Wool),
+  [BlockType.Wheat]: S('Grâu', Tile.Wheat),
+  [BlockType.Flour]: S('Făină', Tile.Flour),
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -158,6 +167,9 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.RiverStone,
   BlockType.DacianGold,
   BlockType.CraftingTable,
+  BlockType.Wool,
+  BlockType.Wheat,
+  BlockType.Flour,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through

@@ -392,6 +392,43 @@ const TILE_SPECS: Record<number, TileSpec> = {
       for (let y = 4; y <= 11; y++) px(8, y, 70, 70, 74);
     },
   },
+  [Tile.Wool]: {
+    base: [232, 226, 212],
+    variation: 0.08,
+    draw: (px, rand) => {
+      // Fluffy clumped wool: soft dappled tufts
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.18) px(x, y, 244, 240, 230);
+          else if (rand() < 0.08) px(x, y, 206, 198, 182);
+        }
+      }
+    },
+  },
+  [Tile.Wheat]: {
+    base: [214, 178, 74],
+    variation: 0.1,
+    draw: (px) => {
+      // Golden stalks with drooping ears
+      for (let x = 1; x < TILE_PX; x += 3) {
+        for (let y = 2; y < TILE_PX; y++) px(x, y, 168, 128, 40);
+        px(x - 1, 2, 236, 202, 96);
+        px(x + 1, 3, 236, 202, 96);
+      }
+    },
+  },
+  [Tile.Flour]: {
+    base: [240, 234, 220],
+    variation: 0.05,
+    draw: (px, rand) => {
+      // Fine powdery speckle
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.05) px(x, y, 220, 212, 194);
+        }
+      }
+    },
+  },
 };
 
 export class TextureAtlas {
