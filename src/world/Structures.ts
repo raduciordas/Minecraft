@@ -335,3 +335,62 @@ export function buildLuncaZone(originX: number, originZ: number): StructureTempl
     blocks,
   };
 }
+
+// Where Zona 3 (Pădurea — Condiții) lives — shared between terrain
+// generation and VatraModule (conditional-puzzle interactions).
+export const PADUREA_ORIGIN = { x: -50, z: -10 };
+
+// Pădurea: the forest zone that teaches conditions — an unlit lantern on
+// Muma Pădurii's threshold path, a plank bridge over a carved river with a
+// sensor-driven railing, and a covered wolf trap that must tell a wolf from
+// a stray sheep.
+export function buildPadureaZone(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  // Poteca Mumei Pădurii: a lantern post and Muma Pădurii's little log hut
+  B(0, 1, -6, BlockType.Log);
+  B(0, 2, -6, BlockType.Log);
+  B(0, 3, -6, BlockType.Glass); // unlit until the IF/ELSE is solved
+  for (let x = -7; x <= -5; x++) {
+    for (let z = -7; z <= -5; z++) {
+      if (x === -7 || x === -5 || z === -7 || z === -5) {
+        B(x, 1, z, BlockType.Log);
+        B(x, 2, z, BlockType.Log);
+      }
+    }
+  }
+  for (let x = -7; x <= -5; x++) {
+    for (let z = -7; z <= -5; z++) B(x, 3, z, BlockType.Plank); // hut roof
+  }
+
+  // Podul mișcător: a plank bridge over a carved channel, with an empty
+  // railing socket the sensor logic raises when solved
+  for (let x = -3; x <= 3; x++) {
+    for (let z = 2; z <= 4; z++) B(x, 0, z, BlockType.Water);
+  }
+  for (let x = -3; x <= 3; x++) B(x, 1, 3, BlockType.Plank); // bridge deck
+  B(-3, 1, 2, BlockType.Log);
+  B(-3, 1, 4, BlockType.Log);
+  B(3, 1, 2, BlockType.Log);
+  B(3, 1, 4, BlockType.Log);
+
+  // Capcana de lup: a small covered trap, sprung marker starts as a plain lid
+  for (let x = 11; x <= 15; x++) {
+    for (let z = -6; z <= -3; z++) B(x, 1, z, BlockType.Plank);
+  }
+  for (const [x, z] of [[11, -6], [15, -6], [11, -3], [15, -3]] as const) {
+    B(x, 2, z, BlockType.Log);
+    B(x, 3, z, BlockType.Log);
+  }
+
+  return {
+    name: 'Pădurea',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 6,
+    pad: 2,
+    blocks,
+  };
+}

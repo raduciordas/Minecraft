@@ -429,6 +429,15 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Mushroom]: {
+    base: [166, 74, 54],
+    variation: 0.08,
+    draw: (px, rand) => {
+      // Toadstool cap: dark red with pale speckles, cream underside band
+      for (let y = 0; y < 10; y++) for (let x = 0; x < TILE_PX; x++) if (rand() < 0.12) px(x, y, 214, 200, 180);
+      for (let y = 10; y < TILE_PX; y++) for (let x = 0; x < TILE_PX; x++) px(x, y, 224, 214, 192);
+    },
+  },
 };
 
 export class TextureAtlas {

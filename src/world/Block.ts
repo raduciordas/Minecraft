@@ -39,6 +39,7 @@ export const enum BlockType {
   Wool = 35,
   Wheat = 36,
   Flour = 37,
+  Mushroom = 38,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -77,6 +78,7 @@ export const enum Tile {
   Wool = 32,
   Wheat = 33,
   Flour = 34,
+  Mushroom = 35,
 }
 
 export interface BlockDef {
@@ -136,6 +138,7 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Wool]: S('Lână', Tile.Wool),
   [BlockType.Wheat]: S('Grâu', Tile.Wheat),
   [BlockType.Flour]: S('Făină', Tile.Flour),
+  [BlockType.Mushroom]: S('Ciupercă', Tile.Mushroom),
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -170,6 +173,7 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Wool,
   BlockType.Wheat,
   BlockType.Flour,
+  BlockType.Mushroom,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through

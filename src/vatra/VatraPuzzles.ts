@@ -10,7 +10,7 @@ export interface VatraBlock {
 
 export interface VatraFail {
   text: string; // Bunicul Fierar's comic verdict
-  anim: 'bucket' | 'coal' | 'dark' | 'none';
+  anim: 'bucket' | 'coal' | 'dark' | 'splash' | 'none';
   matches: (program: string[]) => boolean;
 }
 
@@ -324,6 +324,104 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
       {
         text: 'Moara stă neclintită... ordinea corectă, măcar o dată!',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  poteca: {
+    id: 'poteca',
+    title: 'Poteca Mumei Pădurii — prima decizie',
+    intro:
+      'MUMA PĂDURII: „Hâhâhî! Vrei să treci prin pădurea mea, copile? Arată-mi întâi că știi să gândești: DACĂ e noapte, felinarul se aprinde. ALTFEL, rămâne stins. Alege bine, ori te-ncurc în potecă!"',
+    success:
+      'Felinarul ascultă de noapte și de zi, cum se cuvine! Muma Pădurii chicotește mulțumită — poteca-i deschisă. (+8 ciuperci)',
+    palette: [
+      { id: 'daca_noapte_aprinde', label: 'DACĂ e noapte → aprinde felinarul', copies: 1 },
+      { id: 'altfel_stinge', label: 'ALTFEL → stinge felinarul', copies: 1 },
+      { id: 'daca_zi_aprinde', label: 'DACĂ e zi → aprinde felinarul', copies: 1 },
+      { id: 'mereu_aprinde', label: 'Aprinde mereu felinarul', copies: 1 },
+      { id: 'canta_mumei', label: 'Cântă Mumei Pădurii', copies: 1 },
+    ],
+    solution: ['daca_noapte_aprinde', 'altfel_stinge'],
+    fails: [
+      {
+        text: 'Felinar aprins ZIUA?! Muma Pădurii râde de tine și-ți încurcă poteca — te trezești înapoi la intrare!',
+        anim: 'dark',
+        matches: (p) => p.includes('daca_zi_aprinde'),
+      },
+      {
+        text: 'Felinarul arde și ziua, și noaptea — risipă mare! Nu așa se pune o condiție.',
+        anim: 'none',
+        matches: (p) => p.includes('mereu_aprinde'),
+      },
+      {
+        text: 'Condiția-i pe jumătate — lipsește ori DACĂ, ori ALTFEL. Muma Pădurii așteaptă, răbdătoare.',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  pod: {
+    id: 'pod',
+    title: 'Podul mișcător — senzori',
+    intro:
+      'BUNICUL FIERAR: „Râul crește și scade fără veste, copile. Verifică semnul de nivel, apoi programează: DACĂ apa-i peste semn, ridică podul. Greșești comparația, și-i vai de cel care trece!"',
+    success:
+      'PODUL RĂSPUNDE LA RÂU, ca un senzor adevărat! Drum sigur peste apă, ploaie sau secetă. (+10 bolovani de râu)',
+    palette: [
+      { id: 'verifica_semnul', label: 'Verifică semnul de nivel', copies: 1 },
+      { id: 'daca_apa_mare_ridica', label: 'DACĂ apa > semn → ridică podul', copies: 1 },
+      { id: 'daca_apa_mica_ridica', label: 'DACĂ apa < semn → ridică podul', copies: 1 },
+      { id: 'coboara_mereu', label: 'Lasă podul jos mereu', copies: 1 },
+      { id: 'canta_la_pod', label: 'Cântă la marginea podului', copies: 1 },
+    ],
+    solution: ['verifica_semnul', 'daca_apa_mare_ridica'],
+    fails: [
+      {
+        text: 'Comparația-i pe dos — podul s-a ridicat FIX când trecea boierul cu căruța. Pleosc! Fail-ul suprem.',
+        anim: 'splash',
+        matches: (p) => p.includes('daca_apa_mica_ridica'),
+      },
+      {
+        text: 'Podul stă jos orice-ar fi — la prima viitură, satul rămâne fără drum.',
+        anim: 'none',
+        matches: (p) => p.includes('coboara_mereu'),
+      },
+      {
+        text: 'Fără semnul verificat întâi, podul reacționează aiurea. Ordinea, copile!',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  capcana: {
+    id: 'capcana',
+    title: 'Capcana de lup — ȘI logic',
+    intro:
+      'BUNICUL FIERAR: „Verifică urmele, apoi capcana se-nchide DOAR dacă-i lup ȘI e noapte deodată. Oile care trec ziua nu-s treaba capcanei!"',
+    success: 'CAPCANA-I ISCUSITĂ — prinde lupul, cruță oile! Turma-i pe deplin ocrotită. (+10 lână și 3 comoară dacică)',
+    palette: [
+      { id: 'verifica_urme', label: 'Verifică urmele', copies: 1 },
+      { id: 'daca_lup_si_noapte_prinde', label: 'DACĂ e lup ȘI e noapte → declanșează', copies: 1 },
+      { id: 'daca_lup_prinde', label: 'DACĂ e lup → declanșează', copies: 1 },
+      { id: 'daca_noapte_prinde', label: 'DACĂ e noapte → declanșează', copies: 1 },
+      { id: 'canta_la_capcana', label: 'Fluieră la capcană', copies: 1 },
+    ],
+    solution: ['verifica_urme', 'daca_lup_si_noapte_prinde'],
+    fails: [
+      {
+        text: 'Fără «ȘI noapte» — capcana a prins OAIA SATULUI la amiază! Behăit dramatic, sătenii nemulțumiți.',
+        anim: 'dark',
+        matches: (p) => p.includes('daca_lup_prinde'),
+      },
+      {
+        text: 'Capcana s-a declanșat noaptea... dar fără lup — doar un iepuraș speriat! Lipsește condiția lupului.',
+        anim: 'none',
+        matches: (p) => p.includes('daca_noapte_prinde'),
+      },
+      {
+        text: 'Capcana-i moartă — nici urmă de lup prins. Verifică urmele și pune ambele condiții!',
         anim: 'none',
         matches: () => true,
       },

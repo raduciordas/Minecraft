@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId } from '../items/Tool';
-import { VATRA_ORIGIN, LUNCA_ORIGIN } from '../world/Structures';
+import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES } from './VatraPuzzles';
 import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
@@ -30,12 +30,18 @@ const FIELD_POS: [number, number, number][] = [];
 for (let x = 20; x <= 25; x++) for (let z = -2; z <= 1; z++) FIELD_POS.push([x, 1, z]);
 const MILL_FLOUR: [number, number, number] = [22, 1, 8];
 
+// Pădurea's conditional-puzzle markers, relative to the Pădurea origin
+const LANTERN_POTECA: [number, number, number] = [0, 3, -6];
+const BRIDGE_RAIL: [number, number, number] = [0, 2, 3];
+const TRAP_CENTER: [number, number, number] = [13, 1, -4];
+
 const BUCKET_HIGH = 3.4;
 const BUCKET_LOW = 1.3;
 
-// Which puzzles live in Zona 2 (Lunca) rather than the Vatra square — their
-// world positions are relative to a different origin.
+// Which puzzles live in Zona 2 (Lunca) or Zona 3 (Pădurea) rather than the
+// Vatra square — their world positions are relative to a different origin.
 const LUNCA_PUZZLES = new Set(['gard', 'camp_grau', 'moara']);
+const PADUREA_PUZZLES = new Set(['poteca', 'pod', 'capcana']);
 
 // The persistent world change each puzzle makes on success, and what it
 // reverts to when the lesson is reset — data-driven so both applying and
@@ -55,6 +61,9 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   gard: FENCE_DX.map((x) => ({ pos: [x, 1, -6] as [number, number, number], solved: BlockType.Log, unsolved: BlockType.Air })),
   camp_grau: FIELD_POS.map((pos) => ({ pos, solved: BlockType.Wheat, unsolved: BlockType.Dirt })),
   moara: [{ pos: MILL_FLOUR, solved: BlockType.Flour, unsolved: BlockType.Air }],
+  poteca: [{ pos: LANTERN_POTECA, solved: BlockType.Lamp, unsolved: BlockType.Glass }],
+  pod: [{ pos: BRIDGE_RAIL, solved: BlockType.Log, unsolved: BlockType.Air }],
+  capcana: [{ pos: TRAP_CENTER, solved: BlockType.Hay, unsolved: BlockType.Plank }],
 };
 
 // A block queued to appear a beat after the previous one — the cascading
@@ -101,10 +110,14 @@ export class VatraModule {
   private readonly lox = LUNCA_ORIGIN.x;
   private readonly loz = LUNCA_ORIGIN.z;
   private readonly lunGroundY: number;
+  private readonly pox = PADUREA_ORIGIN.x;
+  private readonly poz = PADUREA_ORIGIN.z;
+  private readonly paduGroundY: number;
 
   private done = new Set<string>();
   private effectsApplied = false;
   private lunEffectsApplied = false;
+  private padEffectsApplied = false;
 
   // Animation state
   private bucket: THREE.Group;
@@ -133,6 +146,7 @@ export class VatraModule {
   ) {
     this.groundY = world.generator.heightAt(this.ox, this.oz);
     this.lunGroundY = world.generator.heightAt(this.lox, this.loz);
+    this.paduGroundY = world.generator.heightAt(this.pox, this.poz);
     this.load();
 
     // The well bucket, hanging under the roof
@@ -155,6 +169,21 @@ export class VatraModule {
     scene.add(this.forgeLight);
 
     this.buildBunicul();
+    this.buildMumaPadurii();
+  }
+
+  // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
+  private buildMumaPadurii(): void {
+    const npc = new THREE.Group();
+    box(npc, 0.46, 0.85, 0.34, 0x2e3a24, 0, 1.1, 0); // dark mossy robe
+    const head = box(npc, 0.34, 0.34, 0.34, 0xb8a888, 0, 1.86, 0);
+    box(head, 0.4, 0.12, 0.4, 0x3a2e1a, 0, 0.2, 0); // twiggy hood band
+    for (const side of [-1, 1]) {
+      box(npc, 0.1, 0.5, 0.1, 0x4a3a24, side * 0.3, 0.6, -0.1); // gnarled arms
+    }
+    npc.position.set(this.pox - 6 + 0.5, this.paduGroundY + 1, this.poz - 6 + 0.5);
+    npc.rotation.y = Math.PI / 3; // facing the lantern
+    this.scene.add(npc);
   }
 
   // Bunicul Fierar: a static villager figure watching over the square
@@ -195,6 +224,15 @@ export class VatraModule {
       if (lx >= 20 && lx <= 25 && lz >= -2 && lz <= 1) return 'camp_grau';
       if (lx >= 19 && lx <= 24 && lz >= 6 && lz <= 10) return 'moara';
     }
+
+    const px = bx - this.pox;
+    const py = by - this.paduGroundY;
+    const pz = bz - this.poz;
+    if (py >= 0 && py <= 5) {
+      if (px >= -8 && px <= 8 && pz >= -8 && pz <= -5) return 'poteca';
+      if (px >= -3 && px <= 3 && pz >= 0 && pz <= 6) return 'pod';
+      if (px >= 10 && px <= 16 && pz >= -8 && pz <= -2) return 'capcana';
+    }
     return null;
   }
 
@@ -208,7 +246,12 @@ export class VatraModule {
     const lx = bx - this.lox;
     const ly = by - this.lunGroundY;
     const lz = bz - this.loz;
-    return lx >= -16 && lx <= 26 && lz >= -7 && lz <= 11 && ly >= 0 && ly <= 6;
+    if (lx >= -16 && lx <= 26 && lz >= -7 && lz <= 11 && ly >= 0 && ly <= 6) return true;
+
+    const px = bx - this.pox;
+    const py = by - this.paduGroundY;
+    const pz = bz - this.poz;
+    return px >= -9 && px <= 17 && pz >= -9 && pz <= 7 && py >= 0 && py <= 6;
   }
 
   isDone(puzzleId: string): boolean {
@@ -339,6 +382,30 @@ export class VatraModule {
       } else {
         this.sound.stepTick();
       }
+    } else if (puzzleId === 'poteca') {
+      if (blockId.includes('aprinde')) {
+        this.queueBuild(this.pox, this.poz, [LANTERN_POTECA], BlockType.Lamp, BlockType.Glass, 0);
+        this.sound.place();
+      } else if (blockId === 'altfel_stinge') {
+        this.queueBuild(this.pox, this.poz, [LANTERN_POTECA], BlockType.Glass, BlockType.Glass, 0);
+        this.sound.stepTick();
+      } else {
+        this.sound.stepTick();
+      }
+    } else if (puzzleId === 'pod') {
+      if (blockId.includes('ridica')) {
+        this.queueBuild(this.pox, this.poz, [BRIDGE_RAIL], BlockType.Log, BlockType.Air);
+        this.sound.place();
+      } else {
+        this.sound.stepTick();
+      }
+    } else if (puzzleId === 'capcana') {
+      if (blockId.includes('prinde')) {
+        this.queueBuild(this.pox, this.poz, [TRAP_CENTER], BlockType.Hay, BlockType.Plank);
+        this.sound.clink();
+      } else {
+        this.sound.stepTick();
+      }
     }
   }
 
@@ -352,7 +419,9 @@ export class VatraModule {
     revertTo: BlockType,
     stagger = 0.05,
   ): void {
-    const groundY = originX === this.lox && originZ === this.loz ? this.lunGroundY : this.groundY;
+    let groundY = this.groundY;
+    if (originX === this.lox && originZ === this.loz) groundY = this.lunGroundY;
+    else if (originX === this.pox && originZ === this.poz) groundY = this.paduGroundY;
     positions.forEach(([dx, dy, dz], i) => {
       this.buildQueue.push({
         x: originX + dx,
@@ -397,6 +466,7 @@ export class VatraModule {
     const fail = puzzle.fails.find((f) => f.matches(program)) ?? puzzle.fails[puzzle.fails.length - 1];
     if (fail.anim === 'coal') this.coalFail(puzzleId);
     if (fail.anim === 'bucket') this.bucketWater.visible = false;
+    if (fail.anim === 'splash') this.splashFail();
     if (fail.anim === 'dark') {
       this.revertTimer = 1.2; // the lit lanterns (or a loop puzzle's build) flicker back out
       this.revertPuzzleId = puzzleId;
@@ -416,6 +486,9 @@ export class VatraModule {
     if (puzzleId === 'gard') this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
     if (puzzleId === 'camp_grau') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 1.3, this.loz - 0.5, 0xd8b840, 3, this.lunGroundY);
     if (puzzleId === 'moara') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 2, this.lunGroundY);
+    if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
+    if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
+    if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -457,6 +530,16 @@ export class VatraModule {
       case 'moara':
         this.inventory.add(BlockType.Flour, 14);
         break;
+      case 'poteca':
+        this.inventory.add(BlockType.Mushroom, 8);
+        break;
+      case 'pod':
+        this.inventory.add(BlockType.RiverStone, 10);
+        break;
+      case 'capcana':
+        this.inventory.add(BlockType.Wool, 10);
+        this.inventory.add(BlockType.DacianGold, 3);
+        break;
     }
   }
 
@@ -469,9 +552,12 @@ export class VatraModule {
     this.save();
   }
 
-  // Zona 1 (Vatra) and Zona 2 (Lunca) puzzles use different world origins
+  // Zona 1 (Vatra), Zona 2 (Lunca) and Zona 3 (Pădurea) puzzles each use a
+  // different world origin
   private originFor(puzzleId: string): [number, number, number] {
-    return LUNCA_PUZZLES.has(puzzleId) ? [this.lox, this.lunGroundY, this.loz] : [this.ox, this.groundY, this.oz];
+    if (LUNCA_PUZZLES.has(puzzleId)) return [this.lox, this.lunGroundY, this.loz];
+    if (PADUREA_PUZZLES.has(puzzleId)) return [this.pox, this.paduGroundY, this.poz];
+    return [this.ox, this.groundY, this.oz];
   }
 
   private applyEffects(puzzleId: string): void {
@@ -518,6 +604,24 @@ export class VatraModule {
     for (let i = 0; i < 4; i++) {
       this.spawnSmoke(x, y + 0.1 + i * 0.2, z, 0x333333, 0.3);
     }
+  }
+
+  // The bridge's comic fail: a cart tumbles into the river with a splash
+  private splashFail(): void {
+    const x = this.pox + 0.5;
+    const y = this.paduGroundY + 1.6;
+    const z = this.poz + 3 + 0.5;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.3, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x6b4a26 }),
+    );
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    this.flyings.push({ mesh, vx: 0.5, vy: 3, vz: 0, life: 1.8, floorY: this.paduGroundY });
+    for (let i = 0; i < 3; i++) {
+      this.spawnSmoke(x, this.paduGroundY + 0.5, z, 0x3a78d8, 0.22);
+    }
+    this.sound.splash();
   }
 
   private spawnSmoke(x: number, y: number, z: number, color: number, size: number): void {
@@ -605,13 +709,22 @@ export class VatraModule {
     if (!this.effectsApplied && this.world.getBlock(this.ox, this.groundY, this.oz) !== BlockType.Air) {
       this.effectsApplied = true;
       for (const puzzleId of Object.keys(PUZZLE_EFFECTS)) {
-        if (!LUNCA_PUZZLES.has(puzzleId) && this.done.has(puzzleId)) this.applyEffects(puzzleId);
+        if (!LUNCA_PUZZLES.has(puzzleId) && !PADUREA_PUZZLES.has(puzzleId) && this.done.has(puzzleId)) {
+          this.applyEffects(puzzleId);
+        }
       }
     }
     // Same, once the Lunca chunk is loaded, for its own puzzles
     if (!this.lunEffectsApplied && this.world.getBlock(this.lox, this.lunGroundY, this.loz) !== BlockType.Air) {
       this.lunEffectsApplied = true;
       for (const puzzleId of LUNCA_PUZZLES) {
+        if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
+      }
+    }
+    // Same, once the Pădurea chunk is loaded, for its own puzzles
+    if (!this.padEffectsApplied && this.world.getBlock(this.pox, this.paduGroundY, this.poz) !== BlockType.Air) {
+      this.padEffectsApplied = true;
+      for (const puzzleId of PADUREA_PUZZLES) {
         if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
       }
     }
