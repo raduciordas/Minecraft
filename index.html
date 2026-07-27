@@ -164,26 +164,54 @@
       }
       .tabla-chip:not(:disabled):hover { transform: translate(-1px, -1px); }
       .tabla-chip:disabled { opacity: 0.35; cursor: default; }
+      .tabla-chip-container { background: #7a9fca; }
       .tabla-program {
         display: flex; flex-direction: column; gap: 6px;
         min-height: 52px; padding: 8px;
         border: 3px solid #4a2f16; border-radius: 4px;
         background: rgba(58, 36, 16, 0.15);
       }
-      .tabla-empty { font-size: 11px; color: #4a3420; text-align: center; padding: 8px; }
+      .tabla-dropzone {
+        display: flex; flex-direction: column; gap: 6px;
+        border-radius: 4px; padding: 3px; border: 2px dashed transparent;
+      }
+      .tabla-dropzone.active { border-color: #ffe14d; background: rgba(255, 225, 77, 0.15); }
+      .tabla-marker {
+        display: block; width: 100%; text-align: center; font: bold 10px monospace;
+        color: #5a4020; background: rgba(58, 36, 16, 0.08); border: 2px dashed #8a6a3a;
+        border-radius: 4px; padding: 4px; cursor: pointer; margin-bottom: 2px;
+      }
+      .tabla-marker.active { color: #21410f; background: #ffe14d; border-style: solid; border-color: #ff9d2e; }
+      .tabla-marker:disabled { cursor: default; opacity: 0.6; }
       .tabla-row {
-        display: flex; align-items: center; gap: 8px;
         background: #e8c88f; border: 3px solid #4a2f16; border-radius: 4px;
         padding: 6px 8px; font: bold 12px monospace;
       }
-      .tabla-row.running { background: #ffe14d; box-shadow: 0 0 0 3px #ff9d2e; }
-      .tabla-row .idx { opacity: 0.55; }
+      .tabla-row.running > .tabla-row-head { background: #ffe14d; box-shadow: 0 0 0 3px #ff9d2e; border-radius: 3px; }
+      .tabla-row-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .tabla-container-row { background: #cdd9e8; }
       .tabla-row-btns { margin-left: auto; display: flex; gap: 4px; }
       .tabla-row-btns button {
         border: 2px solid #4a2f16; border-radius: 3px; background: #caa06a;
         font: bold 11px monospace; cursor: pointer; padding: 2px 6px; color: #2b1808;
       }
       .tabla-row-btns button:disabled { opacity: 0.3; cursor: default; }
+      .tabla-nested {
+        margin: 6px 0 2px 14px; padding-left: 8px;
+        border-left: 3px dashed #7a9fca;
+      }
+      .tabla-branch-label {
+        font-size: 10px; font-weight: bold; text-transform: uppercase;
+        letter-spacing: 0.5px; color: #2f5f8a; margin: 4px 0 0 4px;
+      }
+      .tabla-count {
+        width: 44px; font: bold 12px monospace; text-align: center;
+        border: 2px solid #4a2f16; border-radius: 3px; padding: 2px;
+      }
+      .tabla-cond {
+        font: bold 11px monospace; border: 2px solid #4a2f16; border-radius: 3px;
+        padding: 2px 4px; background: #fff; color: #2b1808;
+      }
       .tabla-actions { display: flex; gap: 10px; margin-top: 12px; }
       .tabla-run {
         background: #3f7d2c; color: #fff; border: 3px solid #21410f; border-radius: 4px;

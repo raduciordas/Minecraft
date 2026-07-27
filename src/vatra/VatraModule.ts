@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId } from '../items/Tool';
 import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
-import { VATRA_PUZZLES } from './VatraPuzzles';
+import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
 import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
 import type { SoundManager } from '../Sound';
@@ -25,6 +25,11 @@ const LAUNDRY_SPOT: [number, number, number] = [6, 2, -7];
 
 // Gardul Luncii's 30-post gap, relative to the Lunca origin
 const FENCE_DX = Array.from({ length: 30 }, (_, i) => i - 14);
+// The Nth fence post's dx — beyond 30 it keeps going east past the anchor,
+// "over the hill, through the neighbor's yard" for an overshot repeat count.
+function fencePostPos(index: number): number {
+  return index < FENCE_DX.length ? FENCE_DX[index] : 17 + (index - FENCE_DX.length);
+}
 // Câmpul de grâu's 6×4 tilled field
 const FIELD_POS: [number, number, number][] = [];
 for (let x = 20; x <= 25; x++) for (let z = -2; z <= 1; z++) FIELD_POS.push([x, 1, z]);
@@ -65,17 +70,6 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   pod: [{ pos: BRIDGE_RAIL, solved: BlockType.Log, unsolved: BlockType.Air }],
   capcana: [{ pos: TRAP_CENTER, solved: BlockType.Hay, unsolved: BlockType.Plank }],
 };
-
-// A block queued to appear a beat after the previous one — the cascading
-// "it builds itself" reveal for loop puzzles (fence posts, planted rows).
-interface QueuedBlock {
-  x: number;
-  y: number;
-  z: number;
-  id: BlockType;
-  revertTo: BlockType;
-  delay: number;
-}
 
 interface Flying {
   mesh: THREE.Mesh;
@@ -131,11 +125,13 @@ export class VatraModule {
   private revertTimer = 0;
   private revertPuzzleId: string | null = null;
 
-  // Loop-puzzle build animation: blocks reveal one at a time (buildQueue),
-  // and every block placed mid-run is tracked (tempBlocks) so a failed
-  // attempt can be wiped clean before the next one.
-  private buildQueue: QueuedBlock[] = [];
+  // Every block placed mid-run by a loop puzzle is tracked here, so a
+  // failed attempt (wrong repeat count, wrong nesting…) can be wiped clean
+  // before the next one — the tree interpreter itself provides the pacing
+  // now, so each action just places its next block immediately.
   private tempBlocks: { x: number; y: number; z: number; revertTo: BlockType }[] = [];
+  private gardIndex = 0; // which fence post 'pune_stalp' places next
+  private campIndex = 0; // which field tile 'planteaza_spic' places next
 
   constructor(
     private scene: THREE.Scene,
@@ -260,7 +256,6 @@ export class VatraModule {
 
   beginRun(puzzleId: string): void {
     // Wipe any half-built leftovers from a previous failed loop-puzzle run
-    this.buildQueue = [];
     this.clearTempBlocks();
 
     if (puzzleId === 'fantana') {
@@ -269,6 +264,8 @@ export class VatraModule {
     }
     if (puzzleId === 'ulita') this.litCount = 0;
     if (puzzleId === 'fierarie') this.forgeLight.intensity = 0;
+    if (puzzleId === 'gard') this.gardIndex = 0;
+    if (puzzleId === 'camp_grau') this.campIndex = 0;
   }
 
   // One program block executes: animate the matching mechanism
@@ -346,17 +343,11 @@ export class VatraModule {
         this.sound.stepTick();
       }
     } else if (puzzleId === 'gard') {
-      if (blockId === 'repeta_30') {
-        this.queueBuild(this.lox, this.loz, FENCE_DX.map((x) => [x, 1, -6]), BlockType.Log, BlockType.Air);
-        this.sound.place();
-      } else if (blockId === 'repeta_3') {
-        this.queueBuild(this.lox, this.loz, FENCE_DX.slice(0, 3).map((x) => [x, 1, -6]), BlockType.Log, BlockType.Air);
-        this.sound.place();
-      } else if (blockId === 'repeta_300') {
-        const overshoot: [number, number, number][] = FENCE_DX.map((x) => [x, 1, -6]);
-        for (let x = 17; x <= 31; x++) overshoot.push([x, 1, -6]); // "peste deal, prin curtea vecinului"
-        this.queueBuild(this.lox, this.loz, overshoot, BlockType.Log, BlockType.Air);
-        this.sound.place();
+      if (blockId === 'pune_stalp') {
+        const dx = fencePostPos(this.gardIndex);
+        this.placeTemp(this.lox + dx, this.lunGroundY + 1, this.loz - 6, BlockType.Log, BlockType.Air);
+        this.gardIndex++;
+        if (this.gardIndex % 5 === 0) this.sound.place();
       } else if (blockId === 'prinde_capatul') {
         this.spawnFlyingBits(this.lox + 16 + 0.5, this.lunGroundY + 2, this.loz - 6 + 0.5, 0x8a6a3a, 2, this.lunGroundY);
         this.sound.clink();
@@ -365,8 +356,12 @@ export class VatraModule {
       }
     } else if (puzzleId === 'camp_grau') {
       if (blockId === 'planteaza_spic') {
-        this.queueBuild(this.lox, this.loz, FIELD_POS, BlockType.Wheat, BlockType.Dirt, 0.03);
-        this.sound.place();
+        if (this.campIndex < FIELD_POS.length) {
+          const [dx, dy, dz] = FIELD_POS[this.campIndex];
+          this.placeTemp(this.lox + dx, this.lunGroundY + dy, this.loz + dz, BlockType.Wheat, BlockType.Dirt);
+        }
+        this.campIndex++;
+        if (this.campIndex % 4 === 0) this.sound.place();
       } else {
         this.sound.stepTick();
       }
@@ -374,7 +369,13 @@ export class VatraModule {
       if (blockId === 'porneste_apa') {
         this.sound.splash();
       } else if (blockId === 'macina') {
-        this.queueBuild(this.lox, this.loz, [MILL_FLOUR], BlockType.Flour, BlockType.Air);
+        this.placeTemp(
+          this.lox + MILL_FLOUR[0],
+          this.lunGroundY + MILL_FLOUR[1],
+          this.loz + MILL_FLOUR[2],
+          BlockType.Flour,
+          BlockType.Air,
+        );
         this.spawnSmoke(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 0.2);
         this.sound.place();
       } else if (blockId === 'opreste_apa') {
@@ -383,25 +384,49 @@ export class VatraModule {
         this.sound.stepTick();
       }
     } else if (puzzleId === 'poteca') {
-      if (blockId.includes('aprinde')) {
-        this.queueBuild(this.pox, this.poz, [LANTERN_POTECA], BlockType.Lamp, BlockType.Glass, 0);
+      if (blockId === 'aprinde') {
+        this.placeTemp(
+          this.pox + LANTERN_POTECA[0],
+          this.paduGroundY + LANTERN_POTECA[1],
+          this.poz + LANTERN_POTECA[2],
+          BlockType.Lamp,
+          BlockType.Glass,
+        );
         this.sound.place();
-      } else if (blockId === 'altfel_stinge') {
-        this.queueBuild(this.pox, this.poz, [LANTERN_POTECA], BlockType.Glass, BlockType.Glass, 0);
+      } else if (blockId === 'stinge') {
+        this.placeTemp(
+          this.pox + LANTERN_POTECA[0],
+          this.paduGroundY + LANTERN_POTECA[1],
+          this.poz + LANTERN_POTECA[2],
+          BlockType.Glass,
+          BlockType.Glass,
+        );
         this.sound.stepTick();
       } else {
         this.sound.stepTick();
       }
     } else if (puzzleId === 'pod') {
-      if (blockId.includes('ridica')) {
-        this.queueBuild(this.pox, this.poz, [BRIDGE_RAIL], BlockType.Log, BlockType.Air);
+      if (blockId === 'ridica') {
+        this.placeTemp(
+          this.pox + BRIDGE_RAIL[0],
+          this.paduGroundY + BRIDGE_RAIL[1],
+          this.poz + BRIDGE_RAIL[2],
+          BlockType.Log,
+          BlockType.Air,
+        );
         this.sound.place();
       } else {
         this.sound.stepTick();
       }
     } else if (puzzleId === 'capcana') {
-      if (blockId.includes('prinde')) {
-        this.queueBuild(this.pox, this.poz, [TRAP_CENTER], BlockType.Hay, BlockType.Plank);
+      if (blockId === 'declanseaza') {
+        this.placeTemp(
+          this.pox + TRAP_CENTER[0],
+          this.paduGroundY + TRAP_CENTER[1],
+          this.poz + TRAP_CENTER[2],
+          BlockType.Hay,
+          BlockType.Plank,
+        );
         this.sound.clink();
       } else {
         this.sound.stepTick();
@@ -409,39 +434,11 @@ export class VatraModule {
     }
   }
 
-  // Schedule a cascading block reveal (fence posts, planted rows…) — a beat
-  // apart so the loop's repetition is visible, not instantaneous.
-  private queueBuild(
-    originX: number,
-    originZ: number,
-    positions: [number, number, number][],
-    id: BlockType,
-    revertTo: BlockType,
-    stagger = 0.05,
-  ): void {
-    let groundY = this.groundY;
-    if (originX === this.lox && originZ === this.loz) groundY = this.lunGroundY;
-    else if (originX === this.pox && originZ === this.poz) groundY = this.paduGroundY;
-    positions.forEach(([dx, dy, dz], i) => {
-      this.buildQueue.push({
-        x: originX + dx,
-        y: groundY + dy,
-        z: originZ + dz,
-        id,
-        revertTo,
-        delay: i * stagger,
-      });
-    });
-  }
-
-  // Places every still-pending queued block immediately — called before
-  // evaluating the program so nothing is left mid-cascade.
-  private flushBuildQueue(): void {
-    for (const q of this.buildQueue) {
-      this.setBlock(q.x, q.y, q.z, q.id);
-      this.tempBlocks.push({ x: q.x, y: q.y, z: q.z, revertTo: q.revertTo });
-    }
-    this.buildQueue = [];
+  // Places a block and remembers what it was before, so a failed attempt
+  // (wrong repeat count, wrong nesting…) can be wiped clean before the next
+  private placeTemp(x: number, y: number, z: number, id: BlockType, revertTo: BlockType): void {
+    this.setBlock(x, y, z, id);
+    this.tempBlocks.push({ x, y, z, revertTo });
   }
 
   // Wipes every block placed during the current/last loop-puzzle attempt
@@ -452,10 +449,9 @@ export class VatraModule {
   }
 
   // Program ended: evaluate, play the success/fail act, grant one-time rewards
-  finish(puzzleId: string, program: string[]): { success: boolean; text: string } {
-    this.flushBuildQueue(); // land any still-cascading blocks before judging
+  finish(puzzleId: string, program: ProgramNode[]): { success: boolean; text: string } {
     const puzzle = VATRA_PUZZLES[puzzleId];
-    const solved = program.length === puzzle.solution.length && program.every((b, i) => b === puzzle.solution[i]);
+    const solved = programEquals(program, puzzle.solution);
 
     if (solved) {
       this.applySuccess(puzzleId);
@@ -671,17 +667,6 @@ export class VatraModule {
         s.mesh.geometry.dispose();
         (s.mesh.material as THREE.Material).dispose();
         this.smokes.splice(i, 1);
-      }
-    }
-
-    // Cascading loop-puzzle build: reveal each queued block a beat apart
-    for (let i = this.buildQueue.length - 1; i >= 0; i--) {
-      const q = this.buildQueue[i];
-      q.delay -= dt;
-      if (q.delay <= 0) {
-        this.setBlock(q.x, q.y, q.z, q.id);
-        this.tempBlocks.push({ x: q.x, y: q.y, z: q.z, revertTo: q.revertTo });
-        this.buildQueue.splice(i, 1);
       }
     }
 

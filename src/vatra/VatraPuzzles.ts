@@ -1,17 +1,33 @@
-// Satul Codat — phase 0 puzzle data. Per the design doc, content is data,
-// not code: each puzzle defines its palette, solution, and scripted comic
-// fails; the Tabla de Blocuri and VatraModule interpret this.
+// Satul Codat puzzle data. Content is data, not code: each puzzle defines
+// its available action/condition blocks, its canonical solution tree, and
+// scripted comic fails; the Tabla de Blocuri and VatraModule interpret this.
+//
+// Programs are trees, not flat lists — 'repeat'/'while'/'if' are generic,
+// reusable containers (like Scratch) that hold other nodes, including other
+// loops. This is what actually teaches the concept: a loop that repeats a
+// single action is the same block as a loop that repeats five actions or
+// another loop.
 
-export interface VatraBlock {
+export type ProgramNode =
+  | { kind: 'action'; id: string }
+  | { kind: 'repeat'; count: number; body: ProgramNode[] }
+  | { kind: 'while'; cond: string; body: ProgramNode[] }
+  | { kind: 'if'; cond: string; body: ProgramNode[]; elseBody: ProgramNode[] };
+
+export interface VatraAction {
   id: string;
   label: string;
-  copies: number; // how many times this block may appear in one program
+}
+
+export interface VatraCondition {
+  id: string;
+  label: string;
 }
 
 export interface VatraFail {
   text: string; // Bunicul Fierar's comic verdict
   anim: 'bucket' | 'coal' | 'dark' | 'splash' | 'none';
-  matches: (program: string[]) => boolean;
+  matches: (program: ProgramNode[]) => boolean;
 }
 
 export interface VatraPuzzle {
@@ -19,14 +35,86 @@ export interface VatraPuzzle {
   title: string;
   intro: string; // Bunicul Fierar's guidance shown when the tabla opens
   success: string;
-  palette: VatraBlock[];
-  solution: string[];
+  actions: VatraAction[]; // atomic action blocks available in the palette
+  conditions?: VatraCondition[]; // available for while/if, when allowed
+  allowRepeat?: boolean; // shows the generic "repetă de N ori" container
+  allowWhile?: boolean; // shows the generic "cât timp <condiție>" container
+  allowIf?: boolean; // shows the generic "dacă <condiție> / altfel" container
+  solution: ProgramNode[];
   fails: VatraFail[]; // checked in order; first match wins
 }
 
-const before = (program: string[], a: string, b: string): boolean => {
-  const ia = program.indexOf(a);
-  const ib = program.indexOf(b);
+const A = (id: string): ProgramNode => ({ kind: 'action', id });
+const REPEAT = (count: number, body: ProgramNode[]): ProgramNode => ({ kind: 'repeat', count, body });
+const WHILE = (cond: string, body: ProgramNode[]): ProgramNode => ({ kind: 'while', cond, body });
+const IF = (cond: string, body: ProgramNode[], elseBody: ProgramNode[] = []): ProgramNode => ({
+  kind: 'if',
+  cond,
+  body,
+  elseBody,
+});
+
+export function programEquals(a: ProgramNode[], b: ProgramNode[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((n, i) => nodeEquals(n, b[i]));
+}
+
+function nodeEquals(a: ProgramNode, b: ProgramNode): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'action' && b.kind === 'action') return a.id === b.id;
+  if (a.kind === 'repeat' && b.kind === 'repeat') return a.count === b.count && programEquals(a.body, b.body);
+  if (a.kind === 'while' && b.kind === 'while') return a.cond === b.cond && programEquals(a.body, b.body);
+  if (a.kind === 'if' && b.kind === 'if') {
+    return a.cond === b.cond && programEquals(a.body, b.body) && programEquals(a.elseBody, b.elseBody);
+  }
+  return false;
+}
+
+// The linear order actions would visually execute in — repeats fully
+// unrolled (capped, so a mistyped huge count can't hang this), while capped
+// to a small demo count, if running both branches in sequence. Used by fail
+// predicates that only care about relative order, not tree shape.
+export function flattenActions(nodes: ProgramNode[]): string[] {
+  const out: string[] = [];
+  const walk = (ns: ProgramNode[]) => {
+    for (const n of ns) {
+      if (n.kind === 'action') out.push(n.id);
+      else if (n.kind === 'repeat') for (let i = 0; i < Math.min(Math.max(n.count, 0), 400); i++) walk(n.body);
+      else if (n.kind === 'while') for (let i = 0; i < 5; i++) walk(n.body);
+      else if (n.kind === 'if') {
+        walk(n.body);
+        walk(n.elseBody);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+// Recursively searches the whole tree (including inside loops/branches)
+export function hasNode(nodes: ProgramNode[], pred: (n: ProgramNode) => boolean): boolean {
+  for (const n of nodes) {
+    if (pred(n)) return true;
+    if (n.kind === 'repeat' || n.kind === 'while') {
+      if (hasNode(n.body, pred)) return true;
+    } else if (n.kind === 'if') {
+      if (hasNode(n.body, pred) || hasNode(n.elseBody, pred)) return true;
+    }
+  }
+  return false;
+}
+
+// True if an action with this id sits directly in `nodes` — not nested
+// inside any container. Used to catch "did it unconditionally", bypassing
+// the loop/condition the puzzle expects it to live inside.
+export function hasTopLevelAction(nodes: ProgramNode[], id: string): boolean {
+  return nodes.some((n) => n.kind === 'action' && n.id === id);
+}
+
+const before = (program: ProgramNode[], a: string, b: string): boolean => {
+  const flat = flattenActions(program);
+  const ia = flat.indexOf(a);
+  const ib = flat.indexOf(b);
   return ia >= 0 && ib >= 0 && ia < ib;
 };
 
@@ -36,22 +124,24 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Fântâna — prima secvență',
     intro:
       'BUNICUL FIERAR: „Fântâna-i secată de-un veac, copile. Leagă frânghia de găleată, apoi coboar-o, umple-o, urc-o și varsă apa în jgheab. Hai, arată-mi!"',
-    success:
-      'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Prima resursă a satului e a ta. (+8 chirpici)',
-    palette: [
-      { id: 'leaga', label: 'Leagă frânghia', copies: 1 },
-      { id: 'umple', label: 'Umple găleata', copies: 1 },
-      { id: 'varsa', label: 'Varsă în jgheab', copies: 1 },
-      { id: 'coboara', label: 'Coboară găleata', copies: 1 },
-      { id: 'urca', label: 'Urcă găleata', copies: 1 },
-      { id: 'canta', label: 'Cântă un cântec', copies: 1 },
+    success: 'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Prima resursă a satului e a ta. (+8 chirpici)',
+    actions: [
+      { id: 'leaga', label: 'Leagă frânghia' },
+      { id: 'umple', label: 'Umple găleata' },
+      { id: 'varsa', label: 'Varsă în jgheab' },
+      { id: 'coboara', label: 'Coboară găleata' },
+      { id: 'urca', label: 'Urcă găleata' },
+      { id: 'canta', label: 'Cântă un cântec' },
     ],
-    solution: ['leaga', 'coboara', 'umple', 'urca', 'varsa'],
+    solution: [A('leaga'), A('coboara'), A('umple'), A('urca'), A('varsa')],
     fails: [
       {
         text: 'Ai coborât găleata fără s-o legi de frânghie — a căzut în fântână cu bufnitură! Cartea Boacănelor se-ngroașă.',
         anim: 'bucket',
-        matches: (p) => p.includes('coboara') && p[0] !== 'leaga',
+        matches: (p) => {
+          const flat = flattenActions(p);
+          return flat.includes('coboara') && flat[0] !== 'leaga';
+        },
       },
       {
         text: 'Găleata a urcat GOALĂ și Bunicul a băut… aer! A doua boacănă din Cartea Boacănelor.',
@@ -71,17 +161,17 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Șase porunci pentru un colac ca lumea. Da\' bagă de seamă: aluatul necopt nu-i pâine, iar pâinea nefrământată-i… cărbune!"',
     success: 'COLACI CALZI! Miroase-n tot satul. (+16 mămăligă și 4 cărămidă în traistă)',
-    palette: [
-      { id: 'framanta', label: 'Frământă aluatul', copies: 1 },
-      { id: 'scoate', label: 'Scoate din cuptor', copies: 1 },
-      { id: 'aprinde', label: 'Aprinde focul', copies: 1 },
-      { id: 'asteapta', label: 'Așteaptă', copies: 1 },
-      { id: 'baga', label: 'Bagă în cuptor', copies: 1 },
-      { id: 'dospeste', label: 'Lasă la dospit', copies: 1 },
-      { id: 'presara_faina', label: 'Presară făină pe masă', copies: 1 },
-      { id: 'unge_tava', label: 'Unge tava cu unt', copies: 1 },
+    actions: [
+      { id: 'aprinde', label: 'Aprinde focul' },
+      { id: 'framanta', label: 'Frământă aluatul' },
+      { id: 'dospeste', label: 'Lasă la dospit' },
+      { id: 'baga', label: 'Bagă în cuptor' },
+      { id: 'asteapta', label: 'Așteaptă' },
+      { id: 'scoate', label: 'Scoate din cuptor' },
+      { id: 'presara_faina', label: 'Presară făină pe masă' },
+      { id: 'unge_tava', label: 'Unge tava cu unt' },
     ],
-    solution: ['aprinde', 'framanta', 'dospeste', 'baga', 'asteapta', 'scoate'],
+    solution: [A('aprinde'), A('framanta'), A('dospeste'), A('baga'), A('asteapta'), A('scoate')],
     fails: [
       {
         text: '«Bagă în cuptor» înainte de «frământă»?! Din cuptor a ieșit un BOLOVAN DE CĂRBUNE fumegând. Boacănă de aur!',
@@ -91,7 +181,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       {
         text: 'Bunicul clatină din cap: pași buni, dar în plus — nu-s în rețetă! Pâinea a ieșit ciudată.',
         anim: 'none',
-        matches: (p) => p.includes('presara_faina') || p.includes('unge_tava'),
+        matches: (p) => flattenActions(p).some((a) => a === 'presara_faina' || a === 'unge_tava'),
       },
       {
         text: 'Din cuptor n-a ieșit nimic bun — nici colac, nici cărbune. Ordinea, dragul moșului, ordinea!',
@@ -102,31 +192,36 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   },
   ulita: {
     id: 'ulita',
-    title: 'Ulița cu felinare — durerea repetiției',
+    title: 'Ulița cu felinare — bucla te scapă de repetiție',
     intro:
-      'BUNICUL FIERAR: „Verifică-ntâi untdelemnul din felinare, apoi aprinde-le pe toate cinci, unul câte unul. Da, e obositor. Poate-o fi vreo cale mai deșteaptă… cândva."',
+      'BUNICUL FIERAR: „Verifică-ntâi untdelemnul, apoi spune tăbliței «repetă de atâtea ori» și pune înăuntru «aprinde felinarul». N-ai nevoie să-l apeși de cinci ori — bucla face treaba, tu doar alegi numărul."',
     success:
-      'Ulița-i luminată, paznicul îți mulțumește! „Trebuie să fie o cale mai deșteaptă…" — zice Bunicul, cu tâlc. (+4 lămpi și 6 bolovani de râu)',
-    palette: [
-      { id: 'verifica', label: 'Verifică untdelemnul', copies: 1 },
-      { id: 'aprinde_felinar', label: 'Aprinde felinarul', copies: 5 },
-      { id: 'doina', label: 'Fluieră o doină', copies: 1 },
-      { id: 'canta_cocos', label: 'Strigă cucurigu', copies: 1 },
+      'Ulița-i luminată dintr-o mișcare — bucla a aprins toate felinarele! Bunicul zâmbește: „Vezi? Nu mai trebuia s-o faci de cinci ori tu însuți." (+4 lămpi și 6 bolovani de râu)',
+    actions: [
+      { id: 'verifica', label: 'Verifică untdelemnul' },
+      { id: 'aprinde_felinar', label: 'Aprinde felinarul' },
+      { id: 'doina', label: 'Fluieră o doină' },
     ],
-    solution: ['verifica', 'aprinde_felinar', 'aprinde_felinar', 'aprinde_felinar', 'aprinde_felinar', 'aprinde_felinar'],
+    allowRepeat: true,
+    solution: [A('verifica'), REPEAT(5, [A('aprinde_felinar')])],
     fails: [
       {
         text: 'Frumoasă doina… dar felinarele nu se aprind cu fluierul, dragul moșului!',
         anim: 'dark',
-        matches: (p) => p.includes('doina'),
+        matches: (p) => flattenActions(p).includes('doina'),
+      },
+      {
+        text: 'Bucla nu-i pusă cum trebuie — nu toate cele 5 felinare s-au aprins. Numără din nou!',
+        anim: 'dark',
+        matches: (p) => flattenActions(p).filter((a) => a === 'aprinde_felinar').length !== 5,
       },
       {
         text: 'Felinarele n-aveau untdelemn — s-au aprins și s-au stins imediat! Verifică untdelemnul întâi.',
         anim: 'dark',
-        matches: (p) => !p.includes('verifica') && p.filter((x) => x === 'aprinde_felinar').length === 5,
+        matches: (p) => !flattenActions(p).includes('verifica'),
       },
       {
-        text: 'Mijlocul uliței a rămas BEZNĂ — paznicul s-a împiedicat de o găină! Aprinde toate cele 5 felinare.',
+        text: 'Mijlocul uliței a rămas BEZNĂ — paznicul s-a împiedicat de o găină! Ordinea corectă, cu bucla la locul ei.',
         anim: 'dark',
         matches: () => true,
       },
@@ -136,19 +231,26 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'fierarie',
     title: 'Fierăria lui Bunicul — potcoava norocoasă',
     intro:
-      'BUNICUL FIERAR: „Opt porunci, ucenice! Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Trei lovituri de ciocan, călire-n apă rece, și gata potcoava. Nu sări nicio treaptă!"',
+      'BUNICUL FIERAR: „Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Pune o buclă cu trei lovituri de ciocan, apoi călire-n apă rece, și gata potcoava. Nu sări nicio treaptă!"',
     success: 'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. (+târnăcop și 4 piatră)',
-    palette: [
-      { id: 'aprinde_forja', label: 'Aprinde forja', copies: 1 },
-      { id: 'pune_fier', label: 'Pune fierul în foc', copies: 1 },
-      { id: 'incalzeste', label: 'Așteaptă să se-nroșească', copies: 1 },
-      { id: 'loveste', label: 'Lovește cu ciocanul', copies: 3 },
-      { id: 'caleste', label: 'Călește în apă', copies: 1 },
-      { id: 'scoate_potcoava', label: 'Scoate potcoava', copies: 1 },
-      { id: 'canta', label: 'Cântă la nicovală', copies: 1 },
-      { id: 'unge', label: 'Unge roata cu ulei', copies: 1 },
+    actions: [
+      { id: 'aprinde_forja', label: 'Aprinde forja' },
+      { id: 'pune_fier', label: 'Pune fierul în foc' },
+      { id: 'incalzeste', label: 'Așteaptă să se-nroșească' },
+      { id: 'loveste', label: 'Lovește cu ciocanul' },
+      { id: 'caleste', label: 'Călește în apă' },
+      { id: 'scoate_potcoava', label: 'Scoate potcoava' },
+      { id: 'canta', label: 'Cântă la nicovală' },
     ],
-    solution: ['aprinde_forja', 'pune_fier', 'incalzeste', 'loveste', 'loveste', 'loveste', 'caleste', 'scoate_potcoava'],
+    allowRepeat: true,
+    solution: [
+      A('aprinde_forja'),
+      A('pune_fier'),
+      A('incalzeste'),
+      REPEAT(3, [A('loveste')]),
+      A('caleste'),
+      A('scoate_potcoava'),
+    ],
     fails: [
       {
         text: 'Ciocanul a lovit nicovala GOALĂ — doar zgomot și un ecou trist. Pune fierul întâi!',
@@ -159,6 +261,11 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
         text: 'Ai călit fierul RECE — a crăpat un ciob negru din el, ca vai de mama lui. Boacănă de fierar!',
         anim: 'coal',
         matches: (p) => before(p, 'caleste', 'incalzeste'),
+      },
+      {
+        text: 'Bucla de ciocănit nu-i pusă bine — nici trei lovituri exacte. Potcoava-i strâmbă!',
+        anim: 'none',
+        matches: (p) => flattenActions(p).filter((a) => a === 'loveste').length !== 3,
       },
       {
         text: 'Din forjă n-a ieșit nicio potcoavă — doar fum și ciocănituri fără rost. Ordinea, ucenice!',
@@ -173,17 +280,23 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Calul așteaptă la poartă, flămând și însetat. Deschide poarta, adu-i fân și apă — pe rând, cum se cuvine — și abia apoi lasă-l să intre."',
     success: 'Calul nechează mulțumit și mănâncă în tihnă! (+8 fân și 4 sare)',
-    palette: [
-      { id: 'deschide_poarta', label: 'Deschide poarta', copies: 1 },
-      { id: 'adu_fan', label: 'Adu balot de fân', copies: 1 },
-      { id: 'pune_in_iesle', label: 'Pune fânul în iesle', copies: 1 },
-      { id: 'adu_apa', label: 'Adu apă proaspătă', copies: 1 },
-      { id: 'toarna_apa', label: 'Toarnă apa în adăpătoare', copies: 1 },
-      { id: 'lasa_calul', label: 'Lasă calul să intre', copies: 1 },
-      { id: 'mangaie', label: 'Mângâie calul', copies: 1 },
-      { id: 'fluiera', label: 'Fluieră a chemare', copies: 1 },
+    actions: [
+      { id: 'deschide_poarta', label: 'Deschide poarta' },
+      { id: 'adu_fan', label: 'Adu balot de fân' },
+      { id: 'pune_in_iesle', label: 'Pune fânul în iesle' },
+      { id: 'adu_apa', label: 'Adu apă proaspătă' },
+      { id: 'toarna_apa', label: 'Toarnă apa în adăpătoare' },
+      { id: 'lasa_calul', label: 'Lasă calul să intre' },
+      { id: 'mangaie', label: 'Mângâie calul' },
     ],
-    solution: ['deschide_poarta', 'adu_fan', 'pune_in_iesle', 'adu_apa', 'toarna_apa', 'lasa_calul'],
+    solution: [
+      A('deschide_poarta'),
+      A('adu_fan'),
+      A('pune_in_iesle'),
+      A('adu_apa'),
+      A('toarna_apa'),
+      A('lasa_calul'),
+    ],
     fails: [
       {
         text: 'Calul s-a lovit de poarta ÎNCHISĂ și a nechezat supărat! Deschide poarta întâi.',
@@ -208,17 +321,16 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Rufele nu se spală oricum, copile. Adu-le, înmoaie-le-n pârâu, freacă-le cu săpun, clătește-le-n apă curată, stoarce-le bine și abia apoi întinde-le pe frânghie."',
     success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+4 ie tradițională și 6 bolovani de râu)',
-    palette: [
-      { id: 'adu_haine', label: 'Adu hainele murdare', copies: 1 },
-      { id: 'inmoaie', label: 'Înmoaie în pârâu', copies: 1 },
-      { id: 'freaca', label: 'Freacă cu săpun', copies: 1 },
-      { id: 'clateste', label: 'Clătește în apă curată', copies: 1 },
-      { id: 'stoarce', label: 'Stoarce hainele', copies: 1 },
-      { id: 'intinde', label: 'Întinde pe frânghie', copies: 1 },
-      { id: 'canta_la_rau', label: 'Cântă la marginea râului', copies: 1 },
-      { id: 'fuga_rate', label: 'Fugi după rațe', copies: 1 },
+    actions: [
+      { id: 'adu_haine', label: 'Adu hainele murdare' },
+      { id: 'inmoaie', label: 'Înmoaie în pârâu' },
+      { id: 'freaca', label: 'Freacă cu săpun' },
+      { id: 'clateste', label: 'Clătește în apă curată' },
+      { id: 'stoarce', label: 'Stoarce hainele' },
+      { id: 'intinde', label: 'Întinde pe frânghie' },
+      { id: 'canta_la_rau', label: 'Cântă la marginea râului' },
     ],
-    solution: ['adu_haine', 'inmoaie', 'freaca', 'clateste', 'stoarce', 'intinde'],
+    solution: [A('adu_haine'), A('inmoaie'), A('freaca'), A('clateste'), A('stoarce'), A('intinde')],
     fails: [
       {
         text: 'Ai întins hainele UDE LEOARCĂ — apa curge pe toată ulița! Stoarce-le întâi.',
@@ -241,27 +353,25 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'gard',
     title: 'Gardul Luncii — momentul AHA',
     intro:
-      'BUNICUL FIERAR: „Lunca are nevoie de 30 de stâlpi de gard, copile. Manual ar fi 30 de porunci — o zi întreagă! Dar dacă spui tăbliței «repetă de 30 de ori», ea pune singură toți stâlpii. Alege bine numărul!"',
+      'BUNICUL FIERAR: „Lunca are nevoie de exact 30 de stâlpi de gard, copile. Pune o buclă «repetă de N ori» cu «pune un stâlp» înăuntru și scrie tu numărul potrivit — nu-l aleg eu pentru tine!"',
     success: 'GARDUL S-A RIDICAT SINGUR, stâlp după stâlp! Oile pot intra în Lunca. (+10 lână)',
-    palette: [
-      { id: 'repeta_30', label: 'Repetă de 30 de ori', copies: 1 },
-      { id: 'pune_stalp', label: 'Pune un stâlp', copies: 1 },
-      { id: 'prinde_capatul', label: 'Prinde capătul gardului', copies: 1 },
-      { id: 'repeta_3', label: 'Repetă de 3 ori', copies: 1 },
-      { id: 'repeta_300', label: 'Repetă de 300 de ori', copies: 1 },
-      { id: 'fluiera_oi', label: 'Fluieră la oi', copies: 1 },
+    actions: [
+      { id: 'pune_stalp', label: 'Pune un stâlp' },
+      { id: 'prinde_capatul', label: 'Prinde capătul gardului' },
+      { id: 'fluiera_oi', label: 'Fluieră la oi' },
     ],
-    solution: ['repeta_30', 'pune_stalp', 'prinde_capatul'],
+    allowRepeat: true,
+    solution: [REPEAT(30, [A('pune_stalp')]), A('prinde_capatul')],
     fails: [
       {
-        text: 'Ai zis «de 300 de ori»?! Gardul a ieșit din sat, peste deal, prin curtea vecinului — o boacănă legendară.',
+        text: 'Ai pus prea mulți! Gardul a ieșit din sat, peste deal, prin curtea vecinului — o boacănă legendară.',
         anim: 'dark',
-        matches: (p) => p.includes('repeta_300'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count > 30),
       },
       {
-        text: 'Doar 3 stâlpi înfipți — restul gardului e o gaură cât toată Lunca! Oile ies la plimbare.',
+        text: 'Prea puțini stâlpi înfipți — restul gardului e o gaură cât toată Lunca! Oile ies la plimbare.',
         anim: 'dark',
-        matches: (p) => p.includes('repeta_3'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count > 0 && n.count < 30),
       },
       {
         text: 'Gardul stă pe jumătate, dar capătul flutură-n vânt — nu-i priponit! Ordinea corectă, cu tot ce trebuie.',
@@ -274,24 +384,26 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'camp_grau',
     title: 'Câmpul de grâu — bucle în bucle',
     intro:
-      'BUNICUL FIERAR: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
+      'BUNICUL FIERAR: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă, ca niște cutii una-n alta. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
     success: 'CÂMPUL S-A ÎNVERZIT dintr-o dată, rând cu rând! (+12 grâu)',
-    palette: [
-      { id: 'repeta_randuri', label: 'Repetă pentru 4 rânduri', copies: 1 },
-      { id: 'repeta_spice', label: 'Repetă de 6 ori (un rând)', copies: 1 },
-      { id: 'planteaza_spic', label: 'Plantează spicul', copies: 1 },
-      { id: 'urmatorul_rand', label: 'Treci la rândul următor', copies: 1 },
-      { id: 'canta_ciocarlia', label: 'Cântă ciocârliei', copies: 1 },
+    actions: [
+      { id: 'planteaza_spic', label: 'Plantează spicul' },
+      { id: 'canta_ciocarlia', label: 'Cântă ciocârliei' },
     ],
-    solution: ['repeta_randuri', 'repeta_spice', 'planteaza_spic', 'urmatorul_rand'],
+    allowRepeat: true,
+    solution: [REPEAT(4, [REPEAT(6, [A('planteaza_spic')])])],
     fails: [
       {
-        text: 'Buclele-s încurcate — a ieșit UN SINGUR RÂND absurd de lung, care trece dincolo de hartă!',
+        text: 'Buclele-s inversate — a ieșit UN SINGUR RÂND absurd de lung, care trece dincolo de hartă!',
         anim: 'dark',
-        matches: (p) => p.indexOf('repeta_spice') >= 0 && p.indexOf('repeta_randuri') > p.indexOf('repeta_spice'),
+        matches: (p) =>
+          hasNode(
+            p,
+            (n) => n.kind === 'repeat' && n.count === 6 && hasNode(n.body, (m) => m.kind === 'repeat' && m.count === 4),
+          ),
       },
       {
-        text: 'Câmpul a rămas pe jumătate gol — buclele nu s-au potrivit. Încearcă din nou ordinea!',
+        text: 'Câmpul a rămas pe jumătate gol — numerele buclelor nu se potrivesc cu 4 rânduri și 6 spice. Încearcă din nou!',
         anim: 'dark',
         matches: () => true,
       },
@@ -301,29 +413,29 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'moara',
     title: 'Moara de apă — bucla infinită',
     intro:
-      'BUNICUL FIERAR: „Pornește șuvoiul, apoi spune: «Cât timp curge apa, macină». Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
+      'BUNICUL FIERAR: „Pornește șuvoiul, apoi pune o buclă «cât timp curge apa» cu «macină» înăuntru. Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
     success: 'MOARA MACINĂ ÎNTRUNA, roata nu se mai oprește! (+14 făină)',
-    palette: [
-      { id: 'porneste_apa', label: 'Pornește șuvoiul de apă', copies: 1 },
-      { id: 'cat_timp_curge_apa', label: 'Cât timp curge apa → macină', copies: 1 },
-      { id: 'macina', label: 'Macină', copies: 1 },
-      { id: 'opreste_apa', label: 'Oprește apa', copies: 1 },
-      { id: 'canta_la_roata', label: 'Cântă la roată', copies: 1 },
+    actions: [
+      { id: 'porneste_apa', label: 'Pornește șuvoiul de apă' },
+      { id: 'macina', label: 'Macină' },
+      { id: 'opreste_apa', label: 'Oprește apa' },
     ],
-    solution: ['porneste_apa', 'cat_timp_curge_apa', 'macina'],
+    conditions: [{ id: 'apa_curge', label: 'curge apa' }],
+    allowWhile: true,
+    solution: [A('porneste_apa'), WHILE('apa_curge', [A('macina')])],
     fails: [
       {
         text: 'Ai oprit apa, dar bucla ta zicea «cât timp curge apa» — morarul nu înțelege de ce te-ai oprit TU, nu bucla!',
         anim: 'none',
-        matches: (p) => p.includes('opreste_apa'),
+        matches: (p) => flattenActions(p).includes('opreste_apa'),
       },
       {
         text: 'Moara macină în gol — scârțâie, scoate fum, iar morarul iese afară furios! Fără apă, nu-i bucla ta.',
         anim: 'coal',
-        matches: (p) => p.includes('macina') && !p.includes('porneste_apa'),
+        matches: (p) => !flattenActions(p).includes('porneste_apa') && flattenActions(p).includes('macina'),
       },
       {
-        text: 'Moara stă neclintită... ordinea corectă, măcar o dată!',
+        text: 'Moara stă neclintită... pune macinatul ÎN bucla care curge, măcar o dată!',
         anim: 'none',
         matches: () => true,
       },
@@ -333,27 +445,29 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'poteca',
     title: 'Poteca Mumei Pădurii — prima decizie',
     intro:
-      'MUMA PĂDURII: „Hâhâhî! Vrei să treci prin pădurea mea, copile? Arată-mi întâi că știi să gândești: DACĂ e noapte, felinarul se aprinde. ALTFEL, rămâne stins. Alege bine, ori te-ncurc în potecă!"',
+      'MUMA PĂDURII: „Hâhâhî! Vrei să treci prin pădurea mea, copile? Pune un bloc «dacă / altfel»: DACĂ e noapte, aprinde felinarul; ALTFEL, stinge-l. Alege bine condiția, ori te-ncurc în potecă!"',
     success:
       'Felinarul ascultă de noapte și de zi, cum se cuvine! Muma Pădurii chicotește mulțumită — poteca-i deschisă. (+8 ciuperci)',
-    palette: [
-      { id: 'daca_noapte_aprinde', label: 'DACĂ e noapte → aprinde felinarul', copies: 1 },
-      { id: 'altfel_stinge', label: 'ALTFEL → stinge felinarul', copies: 1 },
-      { id: 'daca_zi_aprinde', label: 'DACĂ e zi → aprinde felinarul', copies: 1 },
-      { id: 'mereu_aprinde', label: 'Aprinde mereu felinarul', copies: 1 },
-      { id: 'canta_mumei', label: 'Cântă Mumei Pădurii', copies: 1 },
+    actions: [
+      { id: 'aprinde', label: 'Aprinde felinarul' },
+      { id: 'stinge', label: 'Stinge felinarul' },
     ],
-    solution: ['daca_noapte_aprinde', 'altfel_stinge'],
+    conditions: [
+      { id: 'e_noapte', label: 'e noapte' },
+      { id: 'e_zi', label: 'e zi' },
+    ],
+    allowIf: true,
+    solution: [IF('e_noapte', [A('aprinde')], [A('stinge')])],
     fails: [
       {
         text: 'Felinar aprins ZIUA?! Muma Pădurii râde de tine și-ți încurcă poteca — te trezești înapoi la intrare!',
         anim: 'dark',
-        matches: (p) => p.includes('daca_zi_aprinde'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'if' && n.cond === 'e_zi'),
       },
       {
-        text: 'Felinarul arde și ziua, și noaptea — risipă mare! Nu așa se pune o condiție.',
+        text: 'Felinarul arde și ziua, și noaptea — l-ai aprins în afara oricărei condiții! Risipă mare.',
         anim: 'none',
-        matches: (p) => p.includes('mereu_aprinde'),
+        matches: (p) => hasTopLevelAction(p, 'aprinde'),
       },
       {
         text: 'Condiția-i pe jumătate — lipsește ori DACĂ, ori ALTFEL. Muma Pădurii așteaptă, răbdătoare.',
@@ -366,27 +480,30 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'pod',
     title: 'Podul mișcător — senzori',
     intro:
-      'BUNICUL FIERAR: „Râul crește și scade fără veste, copile. Verifică semnul de nivel, apoi programează: DACĂ apa-i peste semn, ridică podul. Greșești comparația, și-i vai de cel care trece!"',
+      'BUNICUL FIERAR: „Râul crește și scade fără veste, copile. Verifică semnul de nivel, apoi pune: DACĂ apa-i peste semn, ridică podul. Greșești comparația, și-i vai de cel care trece!"',
     success:
       'PODUL RĂSPUNDE LA RÂU, ca un senzor adevărat! Drum sigur peste apă, ploaie sau secetă. (+10 bolovani de râu)',
-    palette: [
-      { id: 'verifica_semnul', label: 'Verifică semnul de nivel', copies: 1 },
-      { id: 'daca_apa_mare_ridica', label: 'DACĂ apa > semn → ridică podul', copies: 1 },
-      { id: 'daca_apa_mica_ridica', label: 'DACĂ apa < semn → ridică podul', copies: 1 },
-      { id: 'coboara_mereu', label: 'Lasă podul jos mereu', copies: 1 },
-      { id: 'canta_la_pod', label: 'Cântă la marginea podului', copies: 1 },
+    actions: [
+      { id: 'verifica_semnul', label: 'Verifică semnul de nivel' },
+      { id: 'ridica', label: 'Ridică podul' },
+      { id: 'coboara_mereu', label: 'Lasă podul jos mereu' },
     ],
-    solution: ['verifica_semnul', 'daca_apa_mare_ridica'],
+    conditions: [
+      { id: 'apa_peste_semn', label: 'apa > semn' },
+      { id: 'apa_sub_semn', label: 'apa < semn' },
+    ],
+    allowIf: true,
+    solution: [A('verifica_semnul'), IF('apa_peste_semn', [A('ridica')])],
     fails: [
       {
         text: 'Comparația-i pe dos — podul s-a ridicat FIX când trecea boierul cu căruța. Pleosc! Fail-ul suprem.',
         anim: 'splash',
-        matches: (p) => p.includes('daca_apa_mica_ridica'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'if' && n.cond === 'apa_sub_semn'),
       },
       {
         text: 'Podul stă jos orice-ar fi — la prima viitură, satul rămâne fără drum.',
         anim: 'none',
-        matches: (p) => p.includes('coboara_mereu'),
+        matches: (p) => hasTopLevelAction(p, 'coboara_mereu'),
       },
       {
         text: 'Fără semnul verificat întâi, podul reacționează aiurea. Ordinea, copile!',
@@ -399,29 +516,32 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'capcana',
     title: 'Capcana de lup — ȘI logic',
     intro:
-      'BUNICUL FIERAR: „Verifică urmele, apoi capcana se-nchide DOAR dacă-i lup ȘI e noapte deodată. Oile care trec ziua nu-s treaba capcanei!"',
+      'BUNICUL FIERAR: „Verifică urmele, apoi pune: DACĂ e lup ȘI e noapte, declanșează capcana. Alege bine condiția din listă — oile care trec ziua nu-s treaba capcanei!"',
     success: 'CAPCANA-I ISCUSITĂ — prinde lupul, cruță oile! Turma-i pe deplin ocrotită. (+10 lână și 3 comoară dacică)',
-    palette: [
-      { id: 'verifica_urme', label: 'Verifică urmele', copies: 1 },
-      { id: 'daca_lup_si_noapte_prinde', label: 'DACĂ e lup ȘI e noapte → declanșează', copies: 1 },
-      { id: 'daca_lup_prinde', label: 'DACĂ e lup → declanșează', copies: 1 },
-      { id: 'daca_noapte_prinde', label: 'DACĂ e noapte → declanșează', copies: 1 },
-      { id: 'canta_la_capcana', label: 'Fluieră la capcană', copies: 1 },
+    actions: [
+      { id: 'verifica_urme', label: 'Verifică urmele' },
+      { id: 'declanseaza', label: 'Declanșează capcana' },
     ],
-    solution: ['verifica_urme', 'daca_lup_si_noapte_prinde'],
+    conditions: [
+      { id: 'lup_si_noapte', label: 'e lup ȘI e noapte' },
+      { id: 'lup', label: 'e lup' },
+      { id: 'noapte', label: 'e noapte' },
+    ],
+    allowIf: true,
+    solution: [A('verifica_urme'), IF('lup_si_noapte', [A('declanseaza')])],
     fails: [
       {
         text: 'Fără «ȘI noapte» — capcana a prins OAIA SATULUI la amiază! Behăit dramatic, sătenii nemulțumiți.',
         anim: 'dark',
-        matches: (p) => p.includes('daca_lup_prinde'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'if' && n.cond === 'lup'),
       },
       {
         text: 'Capcana s-a declanșat noaptea... dar fără lup — doar un iepuraș speriat! Lipsește condiția lupului.',
         anim: 'none',
-        matches: (p) => p.includes('daca_noapte_prinde'),
+        matches: (p) => hasNode(p, (n) => n.kind === 'if' && n.cond === 'noapte'),
       },
       {
-        text: 'Capcana-i moartă — nici urmă de lup prins. Verifică urmele și pune ambele condiții!',
+        text: 'Capcana-i moartă — nici urmă de lup prins. Verifică urmele și pune condiția întreagă!',
         anim: 'none',
         matches: () => true,
       },
