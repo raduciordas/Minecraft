@@ -194,6 +194,55 @@
       .tabla-status.ok { color: #1d5c12; }
       .tabla-status.bad { color: #7c1408; }
 
+      /* Bunicul's lore popup — what sequences are, plus Zona 1's lesson list */
+      #lore {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 16; font-family: monospace;
+      }
+      #lore.hidden { display: none; }
+      .lore-panel {
+        background: linear-gradient(#b08249, #8a5f33);
+        border: 6px solid #4a2f16; border-radius: 10px;
+        max-width: 560px; width: 92vw; max-height: 88vh; overflow: auto;
+        padding: 16px 18px; color: #2b1808;
+        box-shadow: 0 8px 0 #3a2410;
+      }
+      .lore-title {
+        font-weight: bold; font-size: 16px;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .lore-close {
+        margin-left: auto; cursor: pointer;
+        border: 2px solid #4a2f16; border-radius: 4px; padding: 2px 8px;
+      }
+      .lore-close:hover { background: rgba(58, 36, 16, 0.2); }
+      .lore-concept {
+        font-size: 12px; line-height: 1.5;
+        background: rgba(255, 240, 200, 0.4);
+        border: 2px dashed #4a2f16; border-radius: 4px;
+        padding: 8px 10px; margin: 10px 0;
+      }
+      .lore-list { display: flex; flex-direction: column; gap: 8px; }
+      .lore-row {
+        display: flex; align-items: flex-start; gap: 10px;
+        background: rgba(255, 250, 235, 0.35);
+        border: 2px solid #4a2f16; border-radius: 6px;
+        padding: 8px 10px;
+      }
+      .lore-row.done { background: rgba(210, 255, 210, 0.35); }
+      .lore-status { font-size: 16px; flex-shrink: 0; }
+      .lore-body { flex: 1; min-width: 0; }
+      .lore-name { font-weight: bold; font-size: 12px; margin-bottom: 3px; }
+      .lore-hint { font-size: 11px; line-height: 1.4; }
+      .lore-open-btn {
+        flex-shrink: 0; align-self: center; cursor: pointer;
+        background: #2f5f8a; color: #fff; border: 2px solid #163049; border-radius: 4px;
+        padding: 6px 10px; font: bold 11px monospace;
+      }
+      .lore-open-btn:hover { background: #3a739e; }
+
       #underwater {
         position: fixed; inset: 0;
         background: rgba(25, 70, 160, 0.38);
@@ -367,6 +416,7 @@
     <div id="inventory" class="hidden"></div>
     <div id="crafting" class="hidden"></div>
     <div id="tabla" class="hidden"></div>
+    <div id="lore" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
     <div id="damage-flash"></div>

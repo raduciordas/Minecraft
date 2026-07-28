@@ -32,6 +32,7 @@ import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
+import { LessonInfoPanel } from './ui/LessonInfoPanel';
 import { VatraModule } from './vatra/VatraModule';
 import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
@@ -105,6 +106,7 @@ export class Game {
   private hud: Hud;
   private inventoryPanel: InventoryPanel;
   private craftingPanel: CraftingPanel;
+  private lessonInfoPanel: LessonInfoPanel;
   private vatra: VatraModule;
   private tabla: BlocklyPanel | null = null;
   private tablaCallbacks!: BlocklyCallbacks;
@@ -201,6 +203,14 @@ export class Game {
         if (this.craftingPanel.isOpen) this.toggleCraftingPanel();
       },
     );
+    this.lessonInfoPanel = new LessonInfoPanel(document.getElementById('lore')!, {
+      isDone: (pz) => this.vatra.isDone(pz),
+      onOpenLesson: (pz) => {
+        this.closeLessonInfo();
+        void this.openTabla(pz);
+      },
+      onClose: () => this.closeLessonInfo(),
+    });
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
     this.remotePlayers = new RemotePlayerManager(this.scene);
@@ -689,6 +699,20 @@ export class Game {
     }
   }
 
+  private openLessonInfo(): void {
+    if (this.lessonInfoPanel.isOpen) return;
+    this.lessonInfoPanel.show();
+    this.input.setInventoryOpen(true);
+    if (!this.input.isTouchDevice) document.exitPointerLock();
+  }
+
+  private closeLessonInfo(): void {
+    if (!this.lessonInfoPanel.isOpen) return;
+    this.lessonInfoPanel.close();
+    this.input.setInventoryOpen(false);
+    if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
+  }
+
   private async openTabla(puzzleId: string): Promise<void> {
     if (this.tablaLoading) return;
     const host = document.getElementById('tabla')!;
@@ -883,8 +907,24 @@ export class Game {
     }
   }
 
+  // Bunicul is a decorative NPC, not a voxel block, so he can't be found via
+  // the usual block-grid raycast — this is a simple ray-sphere hit test instead.
+  private buniculHit(): boolean {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    return this.vatra.raycastBunicul(
+      { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+      { x: dir.x, y: dir.y, z: dir.z },
+      REACH_DISTANCE,
+    );
+  }
+
   private placeBlock(): void {
     if (this.health.dead) return;
+    if (this.buniculHit()) {
+      this.openLessonInfo();
+      return;
+    }
     const hit = this.raycastFromCamera();
     if (!hit) return;
 

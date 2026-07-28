@@ -119,6 +119,11 @@ export class VatraModule {
   private bucketTargetY: number;
   private ovenLight: THREE.PointLight;
   private forgeLight: THREE.PointLight;
+  private ovenSmokeTimer = 0;
+  private forgeSmokeTimer = 0;
+  private ovenLitThisRun = false;
+  private doughMesh: THREE.Mesh | null = null;
+  private readonly buniculPos = new THREE.Vector3();
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
   private litCount = 0;
@@ -187,6 +192,10 @@ export class VatraModule {
     const npc = new THREE.Group();
     box(npc, 0.5, 0.75, 0.3, 0x6b4a2a, 0, 1.05, 0); // coat
     const head = box(npc, 0.42, 0.42, 0.42, 0xe0b088, 0, 1.66, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.09, 0.09, 0.05, 0xfaf6ea, side * 0.11, 0.05, -0.21); // eye whites
+      box(head, 0.045, 0.045, 0.05, 0x241a0e, side * 0.11, 0.05, -0.23); // pupils
+    }
     box(head, 0.3, 0.2, 0.06, 0xd8d8d0, 0, -0.16, -0.22); // beard
     box(head, 0.46, 0.1, 0.46, 0x3a2a1a, 0, 0.26, 0); // hat brim
     box(head, 0.3, 0.16, 0.3, 0x3a2a1a, 0, 0.36, 0); // hat top
@@ -196,6 +205,24 @@ export class VatraModule {
     npc.position.set(this.ox - 2 + 0.5, this.groundY + 1, this.oz + 3 + 0.5);
     npc.rotation.y = -Math.PI / 4; // facing the well
     this.scene.add(npc);
+    // World position used to hit-test clicks on Bunicul (he's decorative, not
+    // a voxel block, so puzzleAt()'s block-grid lookup can't see him)
+    this.buniculPos.set(npc.position.x, this.groundY + 1.9, npc.position.z);
+  }
+
+  // True if a camera ray (within reach) hits Bunicul — opens the lesson info popup
+  raycastBunicul(
+    origin: { x: number; y: number; z: number },
+    dir: { x: number; y: number; z: number },
+    maxDist: number,
+  ): boolean {
+    const ray = new THREE.Ray(
+      new THREE.Vector3(origin.x, origin.y, origin.z),
+      new THREE.Vector3(dir.x, dir.y, dir.z).normalize(),
+    );
+    const hitPoint = new THREE.Vector3();
+    if (!ray.intersectSphere(new THREE.Sphere(this.buniculPos, 0.9), hitPoint)) return false;
+    return ray.origin.distanceTo(hitPoint) <= maxDist;
   }
 
   // Which puzzle (if any) the targeted block belongs to — drives right-click
@@ -263,6 +290,11 @@ export class VatraModule {
       this.bucketWater.visible = false;
     }
     if (puzzleId === 'ulita') this.litCount = 0;
+    if (puzzleId === 'cuptor') {
+      this.ovenLight.intensity = 0;
+      this.ovenLitThisRun = false;
+      this.setDough(false);
+    }
     if (puzzleId === 'fierarie') this.forgeLight.intensity = 0;
     if (puzzleId === 'gard') this.gardIndex = 0;
     if (puzzleId === 'camp_grau') this.campIndex = 0;
@@ -278,6 +310,7 @@ export class VatraModule {
         // Only actually fills if the bucket is down the (dry-ish) well
         if (this.bucket.position.y < this.groundY + BUCKET_LOW + 0.4) {
           this.bucketWater.visible = true;
+          this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 3);
           this.sound.splash();
         } else {
           this.sound.stepTick();
@@ -286,6 +319,9 @@ export class VatraModule {
         this.bucketTargetY = this.groundY + BUCKET_HIGH;
         this.sound.stepTick();
       } else if (blockId === 'varsa') {
+        if (this.bucketWater.visible) {
+          this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 4);
+        }
         this.bucketWater.visible = false;
         this.sound.stepTick();
       } else {
@@ -294,7 +330,18 @@ export class VatraModule {
     } else if (puzzleId === 'cuptor') {
       if (blockId === 'aprinde') {
         this.ovenLight.intensity = 3;
+        this.ovenLitThisRun = true;
         this.sound.fireballCast();
+      } else if (blockId === 'baga') {
+        // The dough goes pale into the oven — golden only if the fire was
+        // lit earlier this run, so a wrong-order run visibly never actually bakes
+        this.setDough(true, this.ovenLitThisRun ? 0xd9a24a : 0xe8d8a8);
+        this.sound.place();
+      } else if (blockId === 'scoate') {
+        const baked = this.doughMesh !== null && (this.doughMesh.material as THREE.MeshLambertMaterial).color.getHex() === 0xd9a24a;
+        this.setDough(false);
+        if (baked) this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.6, this.oz + 0.5, 0xd9a24a, 2);
+        this.sound.stepTick();
       } else {
         this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 4.6, this.oz - 1 + 0.5, 0x9a9a9a, 0.18);
         this.sound.stepTick();
@@ -304,6 +351,7 @@ export class VatraModule {
         const [lx, dy, lz] = LANTERNS[this.litCount];
         if (this.world.getBlock(this.ox + lx, this.groundY + dy, this.oz + lz) === BlockType.Glass) {
           this.setBlock(this.ox + lx, this.groundY + dy, this.oz + lz, BlockType.Lamp);
+          this.spawnFlyingBits(this.ox + lx + 0.5, this.groundY + dy + 0.5, this.oz + lz + 0.5, 0xffe14d, 1);
         }
         this.litCount++;
         this.sound.place();
@@ -326,18 +374,22 @@ export class VatraModule {
       }
     } else if (puzzleId === 'grajd') {
       if (blockId === 'toarna_apa' || blockId === 'adu_apa') {
+        this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0x3a78d8, 2);
         this.sound.splash();
       } else if (blockId === 'deschide_poarta') {
         this.sound.doorToggle();
       } else if (blockId === 'pune_in_iesle') {
+        this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0xd9c27a, 2);
         this.sound.place();
       } else {
         this.sound.stepTick();
       }
     } else if (puzzleId === 'spalatorie') {
       if (blockId === 'inmoaie' || blockId === 'clateste') {
+        this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0x3a78d8, 2);
         this.sound.splash();
       } else if (blockId === 'intinde') {
+        this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
         this.sound.place();
       } else {
         this.sound.stepTick();
@@ -620,6 +672,34 @@ export class VatraModule {
     this.sound.splash();
   }
 
+  // The dough/bread prop sitting inside the oven cavity — visible from
+  // 'baga' (goes in pale) to 'scoate' (comes back out, or vanishes if never put in)
+  private setDough(inOven: boolean, color = 0xe8d8a8): void {
+    if (!inOven) {
+      if (this.doughMesh) {
+        this.scene.remove(this.doughMesh);
+        this.doughMesh.geometry.dispose();
+        (this.doughMesh.material as THREE.Material).dispose();
+        this.doughMesh = null;
+      }
+      return;
+    }
+    if (this.doughMesh) {
+      (this.doughMesh.material as THREE.MeshLambertMaterial).color.setHex(color);
+      return;
+    }
+    this.doughMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.2, 0.46),
+      new THREE.MeshLambertMaterial({ color }),
+    );
+    this.doughMesh.position.set(
+      this.ox + OVEN_CAVITY[0] + 0.5,
+      this.groundY + OVEN_CAVITY[1] + 0.2,
+      this.oz + OVEN_CAVITY[2] + 0.5,
+    );
+    this.scene.add(this.doughMesh);
+  }
+
   private spawnSmoke(x: number, y: number, z: number, color: number, size: number): void {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(size, 6, 5),
@@ -638,6 +718,22 @@ export class VatraModule {
     // Oven / forge fire glow fades
     if (this.ovenLight.intensity > 0) this.ovenLight.intensity = Math.max(0, this.ovenLight.intensity - 2.2 * dt);
     if (this.forgeLight.intensity > 0) this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
+
+    // A lit oven/forge keeps puffing smoke out of its chimney, not just once per step
+    if (this.ovenLight.intensity > 0.3) {
+      this.ovenSmokeTimer -= dt;
+      if (this.ovenSmokeTimer <= 0) {
+        this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 4.6, this.oz - 1 + 0.5, 0x9a9a9a, 0.16);
+        this.ovenSmokeTimer = 0.5;
+      }
+    }
+    if (this.forgeLight.intensity > 0.3) {
+      this.forgeSmokeTimer -= dt;
+      if (this.forgeSmokeTimer <= 0) {
+        this.spawnSmoke(this.ox - 7 + 0.5, this.groundY + 3.6, this.oz - 7 + 0.5, 0x9a9a9a, 0.14);
+        this.forgeSmokeTimer = 0.5;
+      }
+    }
 
     for (let i = this.flyings.length - 1; i >= 0; i--) {
       const f = this.flyings[i];
