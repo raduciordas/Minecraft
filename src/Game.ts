@@ -32,9 +32,9 @@ import { Hotbar } from './ui/Hotbar';
 import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
-import { TablaPanel } from './ui/TablaPanel';
 import { VatraModule } from './vatra/VatraModule';
-import { VATRA_PUZZLES } from './vatra/VatraPuzzles';
+import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
+import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
@@ -106,7 +106,9 @@ export class Game {
   private inventoryPanel: InventoryPanel;
   private craftingPanel: CraftingPanel;
   private vatra: VatraModule;
-  private tabla: TablaPanel;
+  private tabla: BlocklyPanel | null = null;
+  private tablaCallbacks!: BlocklyCallbacks;
+  private tablaLoading = false;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
@@ -213,14 +215,16 @@ export class Game {
       this.applyBlockChange(x, y, z, id);
       this.sendEdit(x, y, z, id);
     });
-    this.tabla = new TablaPanel(document.getElementById('tabla')!, {
-      onRunStart: (pz) => this.vatra.beginRun(pz),
-      onStep: (pz, block) => this.vatra.performStep(pz, block),
-      onFinish: (pz, program) => this.vatra.finish(pz, program),
+    // The Tabla de Blocuri (Blockly) is loaded on first use — it is a large
+    // chunk and nobody needs it until they open their first lesson.
+    this.tablaCallbacks = {
+      onRunStart: (pz: string) => this.vatra.beginRun(pz),
+      onStep: (pz: string, block: string) => this.vatra.performStep(pz, block),
+      onFinish: (pz: string, program: ProgramNode[]) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),
-      isDone: (pz) => this.vatra.isDone(pz),
-      onResetLesson: (pz) => this.vatra.resetPuzzle(pz),
-    });
+      isDone: (pz: string) => this.vatra.isDone(pz),
+      onResetLesson: (pz: string) => this.vatra.resetPuzzle(pz),
+    };
 
     this.health = new Health();
     this.healthHud = new HealthHud(this.health, () => this.respawn());
@@ -295,8 +299,9 @@ export class Game {
       if (document.visibilityState === 'hidden') this.saveNow();
     });
 
-    // Debug handle for the browser console
+    // Debug handles for the browser console
     (window as unknown as { __game: Game }).__game = this;
+    (window as unknown as { __puzzles: typeof VATRA_PUZZLES }).__puzzles = VATRA_PUZZLES;
 
     void this.connectMultiplayer();
   }
@@ -684,14 +689,27 @@ export class Game {
     }
   }
 
-  private openTabla(puzzleId: string): void {
-    this.tabla.open(VATRA_PUZZLES[puzzleId]);
+  private async openTabla(puzzleId: string): Promise<void> {
+    if (this.tablaLoading) return;
+    const host = document.getElementById('tabla')!;
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();
+    if (!this.tabla) {
+      this.tablaLoading = true;
+      host.classList.remove('hidden');
+      host.innerHTML = '<div class="tabla-panel tabla-loading">Se cioplește tăblița…</div>';
+      try {
+        const { BlocklyPanel } = await import('./ui/BlocklyPanel');
+        this.tabla = new BlocklyPanel(host, this.tablaCallbacks);
+      } finally {
+        this.tablaLoading = false;
+      }
+    }
+    this.tabla.open(VATRA_PUZZLES[puzzleId]);
   }
 
   private closeTabla(): void {
-    if (!this.tabla.isOpen) return;
+    if (!this.tabla?.isOpen) return;
     this.tabla.close();
     this.input.setInventoryOpen(false);
     if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
@@ -888,7 +906,7 @@ export class Game {
     }
     const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
     if (vatraPuzzle) {
-      this.openTabla(vatraPuzzle);
+      void this.openTabla(vatraPuzzle);
       return;
     }
 

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "blockly": "^13.2.0",
     "simplex-noise": "^4.0.3",
     "three": "^0.170.0"
   },
