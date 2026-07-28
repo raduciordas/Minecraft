@@ -33,8 +33,12 @@ import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
 import { TablaPanel } from './ui/TablaPanel';
+import { BlocklyPanel } from './ui/BlocklyPanel';
 import { VatraModule } from './vatra/VatraModule';
-import { VATRA_PUZZLES } from './vatra/VatraPuzzles';
+import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
+
+// SPIKE: lessons routed to the Blockly editor instead of the hand-rolled one
+const BLOCKLY_PUZZLES = new Set(['camp_grau']);
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
 import { loadSave, writeSave } from './SaveManager';
@@ -107,6 +111,7 @@ export class Game {
   private craftingPanel: CraftingPanel;
   private vatra: VatraModule;
   private tabla: TablaPanel;
+  private blockly: BlocklyPanel;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
@@ -213,14 +218,18 @@ export class Game {
       this.applyBlockChange(x, y, z, id);
       this.sendEdit(x, y, z, id);
     });
-    this.tabla = new TablaPanel(document.getElementById('tabla')!, {
-      onRunStart: (pz) => this.vatra.beginRun(pz),
-      onStep: (pz, block) => this.vatra.performStep(pz, block),
-      onFinish: (pz, program) => this.vatra.finish(pz, program),
+    const tablaCallbacks = {
+      onRunStart: (pz: string) => this.vatra.beginRun(pz),
+      onStep: (pz: string, block: string) => this.vatra.performStep(pz, block),
+      onFinish: (pz: string, program: ProgramNode[]) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),
-      isDone: (pz) => this.vatra.isDone(pz),
-      onResetLesson: (pz) => this.vatra.resetPuzzle(pz),
-    });
+      isDone: (pz: string) => this.vatra.isDone(pz),
+      onResetLesson: (pz: string) => this.vatra.resetPuzzle(pz),
+    };
+    this.tabla = new TablaPanel(document.getElementById('tabla')!, tablaCallbacks);
+    // SPIKE: the Blockly editor, wired to BLOCKLY_PUZZLES only, so the two
+    // can be compared on the same lesson without disturbing the others
+    this.blockly = new BlocklyPanel(document.getElementById('blockly')!, tablaCallbacks);
 
     this.health = new Health();
     this.healthHud = new HealthHud(this.health, () => this.respawn());
@@ -685,14 +694,16 @@ export class Game {
   }
 
   private openTabla(puzzleId: string): void {
-    this.tabla.open(VATRA_PUZZLES[puzzleId]);
+    if (BLOCKLY_PUZZLES.has(puzzleId)) this.blockly.open(VATRA_PUZZLES[puzzleId]);
+    else this.tabla.open(VATRA_PUZZLES[puzzleId]);
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();
   }
 
   private closeTabla(): void {
-    if (!this.tabla.isOpen) return;
+    if (!this.tabla.isOpen && !this.blockly.isOpen) return;
     this.tabla.close();
+    this.blockly.close();
     this.input.setInventoryOpen(false);
     if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
   }

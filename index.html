@@ -264,6 +264,35 @@
         padding: 8px 12px; font: bold 12px monospace; cursor: pointer;
       }
       .tabla-relearn:disabled { opacity: 0.5; cursor: default; }
+      /* --- SPIKE: Blockly-backed editor, same chrome as the tabla --- */
+      #blockly {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 16; font-family: monospace;
+      }
+      #blockly.hidden { display: none; }
+      .bl-panel { max-width: 900px; width: 95vw; }
+      .bl-title-text { font-weight: bold; }
+      .bl-badge {
+        background: #2f5f8a; color: #fff; border: 2px solid #163049; border-radius: 3px;
+        font: bold 9px monospace; padding: 2px 6px; letter-spacing: 1px;
+      }
+      .bl-intro { margin-bottom: 8px; }
+      .bl-workspace {
+        height: 46vh; min-height: 280px;
+        border: 3px solid #4a2f16; border-radius: 4px; overflow: hidden;
+      }
+      .bl-code { margin-top: 8px; }
+      .bl-code summary {
+        cursor: pointer; font: bold 11px monospace; color: #3a2410;
+        padding: 4px 0; user-select: none;
+      }
+      .bl-code pre {
+        background: #2b1808; color: #a8e08a; border-radius: 4px;
+        padding: 8px 10px; font: 11px monospace; margin: 4px 0 0;
+        max-height: 110px; overflow: auto; white-space: pre-wrap;
+      }
       .tabla-status { margin-top: 10px; font: bold 12px monospace; min-height: 32px; line-height: 1.5; }
       .tabla-status.ok { color: #1d5c12; }
       .tabla-status.bad { color: #7c1408; }
@@ -441,6 +470,7 @@
     <div id="inventory" class="hidden"></div>
     <div id="crafting" class="hidden"></div>
     <div id="tabla" class="hidden"></div>
+    <div id="blockly" class="hidden"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
     <div id="damage-flash"></div>
