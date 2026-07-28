@@ -33,7 +33,6 @@ import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
 import { TablaPanel } from './ui/TablaPanel';
-import { BlocklyPanel } from './ui/BlocklyPanel';
 import { VatraModule } from './vatra/VatraModule';
 import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
 
@@ -111,7 +110,8 @@ export class Game {
   private craftingPanel: CraftingPanel;
   private vatra: VatraModule;
   private tabla: TablaPanel;
-  private blockly: BlocklyPanel;
+  private tablaCallbacks!: ConstructorParameters<typeof TablaPanel>[1];
+  private blockly: import('./ui/BlocklyPanel').BlocklyPanel | null = null;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
   private dayNight: DayNightCycle;
@@ -227,9 +227,7 @@ export class Game {
       onResetLesson: (pz: string) => this.vatra.resetPuzzle(pz),
     };
     this.tabla = new TablaPanel(document.getElementById('tabla')!, tablaCallbacks);
-    // SPIKE: the Blockly editor, wired to BLOCKLY_PUZZLES only, so the two
-    // can be compared on the same lesson without disturbing the others
-    this.blockly = new BlocklyPanel(document.getElementById('blockly')!, tablaCallbacks);
+    this.tablaCallbacks = tablaCallbacks;
 
     this.health = new Health();
     this.healthHud = new HealthHud(this.health, () => this.respawn());
@@ -693,17 +691,22 @@ export class Game {
     }
   }
 
-  private openTabla(puzzleId: string): void {
-    if (BLOCKLY_PUZZLES.has(puzzleId)) this.blockly.open(VATRA_PUZZLES[puzzleId]);
-    else this.tabla.open(VATRA_PUZZLES[puzzleId]);
+  private async openTabla(puzzleId: string): Promise<void> {
+    if (BLOCKLY_PUZZLES.has(puzzleId)) {
+      if (!this.blockly) {
+        const { BlocklyPanel } = await import('./ui/BlocklyPanel');
+        this.blockly = new BlocklyPanel(document.getElementById('blockly')!, this.tablaCallbacks);
+      }
+      this.blockly.open(VATRA_PUZZLES[puzzleId]);
+    } else this.tabla.open(VATRA_PUZZLES[puzzleId]);
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();
   }
 
   private closeTabla(): void {
-    if (!this.tabla.isOpen && !this.blockly.isOpen) return;
+    if (!this.tabla.isOpen && !this.blockly?.isOpen) return;
     this.tabla.close();
-    this.blockly.close();
+    this.blockly?.close();
     this.input.setInventoryOpen(false);
     if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
   }
@@ -899,7 +902,7 @@ export class Game {
     }
     const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
     if (vatraPuzzle) {
-      this.openTabla(vatraPuzzle);
+      void this.openTabla(vatraPuzzle);
       return;
     }
 
