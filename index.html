@@ -133,9 +133,29 @@
       .tabla-panel {
         background: linear-gradient(#b08249, #8a5f33);
         border: 6px solid #4a2f16; border-radius: 10px;
-        max-width: 560px; width: 92vw; max-height: 88vh; overflow: auto;
+        max-width: 880px; width: 94vw; max-height: 90vh; overflow: auto;
         padding: 16px 18px; color: #2b1808;
         box-shadow: 0 8px 0 #3a2410;
+      }
+      .tabla-panel.dragging { cursor: grabbing; }
+      /* Palette on the left, program canvas on the right */
+      .tabla-workspace {
+        display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: start;
+      }
+      .tabla-pane { min-width: 0; }
+      .tabla-palette-pane {
+        background: rgba(58, 36, 16, 0.14);
+        border: 3px solid #4a2f16; border-radius: 6px; padding: 8px;
+        max-height: 46vh; overflow-y: auto;
+      }
+      .tabla-canvas-pane { min-height: 0; }
+      .tabla-palette-group { display: flex; flex-direction: column; gap: 6px; }
+      .tabla-hint { font-size: 10px; color: #4a3420; margin-bottom: 8px; line-height: 1.4; }
+      .tabla-sec-ctrl { margin-top: 12px; }
+      @media (max-width: 720px) {
+        .tabla-workspace { grid-template-columns: 1fr; }
+        .tabla-palette-pane { max-height: 28vh; }
+        .tabla-palette-group { flex-direction: row; flex-wrap: wrap; }
       }
       .tabla-title {
         font-weight: bold; font-size: 15px;
@@ -156,46 +176,61 @@
         font-size: 11px; font-weight: bold; text-transform: uppercase;
         letter-spacing: 1px; color: #3a2410; margin: 10px 0 6px;
       }
-      .tabla-palette { display: flex; flex-wrap: wrap; gap: 8px; }
       .tabla-chip {
+        display: block; width: 100%; text-align: left;
         background: #caa06a; border: 3px solid #4a2f16; border-radius: 4px;
         padding: 8px 10px; font: bold 12px monospace; color: #2b1808;
-        cursor: pointer; box-shadow: 2px 2px 0 #3a2410;
+        cursor: grab; box-shadow: 2px 2px 0 #3a2410;
+        touch-action: none; /* the pointer handlers own this gesture, not the browser */
       }
       .tabla-chip:not(:disabled):hover { transform: translate(-1px, -1px); }
       .tabla-chip:disabled { opacity: 0.35; cursor: default; }
       .tabla-chip-container { background: #7a9fca; }
+      /* The block that follows the finger/cursor while dragging */
+      .tabla-ghost {
+        position: fixed; z-index: 40; pointer-events: none;
+        transform: translate(-50%, -50%) rotate(-2deg);
+        background: #caa06a; border: 3px solid #4a2f16; border-radius: 4px;
+        padding: 8px 10px; font: bold 12px monospace; color: #2b1808;
+        box-shadow: 3px 3px 0 rgba(58, 36, 16, 0.5); opacity: 0.92;
+      }
       .tabla-program {
-        display: flex; flex-direction: column; gap: 6px;
-        min-height: 52px; padding: 8px;
+        min-height: 60px; padding: 8px;
         border: 3px solid #4a2f16; border-radius: 4px;
         background: rgba(58, 36, 16, 0.15);
+        max-height: 46vh; overflow-y: auto;
       }
-      .tabla-dropzone {
-        display: flex; flex-direction: column; gap: 6px;
-        border-radius: 4px; padding: 3px; border: 2px dashed transparent;
+      /* Insertion point: a thin bar between blocks that fattens when hovered */
+      .tabla-slot {
+        height: 8px; border-radius: 3px; margin: 2px 0;
+        border: 2px dashed transparent; cursor: pointer;
       }
-      .tabla-dropzone.active { border-color: #ffe14d; background: rgba(255, 225, 77, 0.15); }
-      .tabla-marker {
-        display: block; width: 100%; text-align: center; font: bold 10px monospace;
-        color: #5a4020; background: rgba(58, 36, 16, 0.08); border: 2px dashed #8a6a3a;
-        border-radius: 4px; padding: 4px; cursor: pointer; margin-bottom: 2px;
+      .tabla-slot.empty {
+        height: auto; padding: 8px; text-align: center;
+        font: bold 10px monospace; color: #5a4020;
+        border-color: #8a6a3a; background: rgba(58, 36, 16, 0.08);
       }
-      .tabla-marker.active { color: #21410f; background: #ffe14d; border-style: solid; border-color: #ff9d2e; }
-      .tabla-marker:disabled { cursor: default; opacity: 0.6; }
+      .tabla-slot.selected { border-color: #ff9d2e; background: #ffe14d; }
+      .tabla-slot.hover {
+        height: 26px; border-style: solid; border-color: #3f7d2c;
+        background: #a8e08a; box-shadow: 0 0 0 2px rgba(63, 125, 44, 0.4);
+      }
       .tabla-row {
         background: #e8c88f; border: 3px solid #4a2f16; border-radius: 4px;
         padding: 6px 8px; font: bold 12px monospace;
       }
       .tabla-row.running > .tabla-row-head { background: #ffe14d; box-shadow: 0 0 0 3px #ff9d2e; border-radius: 3px; }
-      .tabla-row-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .tabla-row-head {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        cursor: grab; touch-action: none;
+      }
+      .tabla-grip { opacity: 0.5; letter-spacing: -2px; }
       .tabla-container-row { background: #cdd9e8; }
-      .tabla-row-btns { margin-left: auto; display: flex; gap: 4px; }
-      .tabla-row-btns button {
-        border: 2px solid #4a2f16; border-radius: 3px; background: #caa06a;
+      .tabla-del {
+        margin-left: auto; border: 2px solid #4a2f16; border-radius: 3px; background: #caa06a;
         font: bold 11px monospace; cursor: pointer; padding: 2px 6px; color: #2b1808;
       }
-      .tabla-row-btns button:disabled { opacity: 0.3; cursor: default; }
+      .tabla-del:disabled { opacity: 0.3; cursor: default; }
       .tabla-nested {
         margin: 6px 0 2px 14px; padding-left: 8px;
         border-left: 3px dashed #7a9fca;
