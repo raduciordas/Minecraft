@@ -731,11 +731,13 @@ export class VatraModule {
     }
     if (this.forgeLight.intensity > 0) this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
 
-    // A lit oven/forge keeps puffing smoke out of its chimney, not just once per step
+    // A lit oven/forge keeps puffing smoke, not just once per step — right at
+    // the cavity mouth (same spot as the fire glow), so it's visible from
+    // wherever the player is looking at the oven, not just from the roof
     if (this.ovenLight.intensity > 0.3) {
       this.ovenSmokeTimer -= dt;
       if (this.ovenSmokeTimer <= 0) {
-        this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 4.6, this.oz - 1 + 0.5, 0x9a9a9a, 0.16);
+        this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 2.9, this.oz + 0.5, 0x9a9a9a, 0.2);
         this.ovenSmokeTimer = 0.5;
       }
     }
