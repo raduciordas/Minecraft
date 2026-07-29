@@ -50,7 +50,7 @@ export const WEAPONS: Record<number, WeaponDef> = {
     cooldown: 0.5,
     knockback: 6,
     slowSeconds: 2,
-    colors: { blade: 0xbfe9ff, accent: 0x5aa7e8, handle: 0x8a6a48 },
+    colors: { blade: 0xd9d9d9, accent: 0x5aa7e8, handle: 0x8a6a48 },
   },
 };
 

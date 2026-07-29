@@ -1,5 +1,5 @@
 import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
-import { WEAPONS, WEAPON_IDS, makeWeaponIcon } from '../items/Weapon';
+import { WEAPONS, WEAPON_IDS, WeaponId, makeWeaponIcon } from '../items/Weapon';
 import { THROWABLES, THROWABLE_IDS, makeThrowableIcon } from '../items/Throwable';
 import { TOOLS, TOOL_IDS, makeToolIcon } from '../items/Tool';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
@@ -57,7 +57,14 @@ export class InventoryPanel {
     };
 
     for (const id of WEAPON_IDS) {
-      addCell(id, makeWeaponIcon(id), WEAPONS[id].name, true);
+      // Ice Spear is earned (Fântâna reward), not handed out for free like
+      // the other weapons — show its real stock instead of the "∞" they get.
+      if (id === WeaponId.IceSpear) {
+        const count = addCell(id, makeWeaponIcon(id), WEAPONS[id].name, false);
+        this.countedCells.push({ id, el: count });
+      } else {
+        addCell(id, makeWeaponIcon(id), WEAPONS[id].name, true);
+      }
     }
     THROWABLE_IDS.forEach((id) => {
       const count = addCell(id, makeThrowableIcon(id), THROWABLES[id].name, false);

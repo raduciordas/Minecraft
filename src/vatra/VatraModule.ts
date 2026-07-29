@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId } from '../items/Tool';
+import { WeaponId } from '../items/Weapon';
 import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
 import type { World } from '../world/World';
@@ -545,6 +546,10 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
+    // Fântâna and Ulița reward every completion (not just the first), so
+    // replaying them is worthwhile — this replaces their old one-time reward.
+    if (puzzleId === 'fantana') this.inventory.add(WeaponId.IceSpear as unknown as BlockType, 1);
+    if (puzzleId === 'ulita') this.inventory.add(BlockType.Lamp, 10);
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -554,16 +559,9 @@ export class VatraModule {
 
   private grantReward(puzzleId: string): void {
     switch (puzzleId) {
-      case 'fantana':
-        this.inventory.add(BlockType.Chirpici, 8);
-        break;
       case 'cuptor':
         this.inventory.add(BlockType.Mamaliga, 16);
         this.inventory.add(BlockType.Caramida, 4);
-        break;
-      case 'ulita':
-        this.inventory.add(BlockType.Lamp, 4);
-        this.inventory.add(BlockType.RiverStone, 6);
         break;
       case 'fierarie':
         this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
