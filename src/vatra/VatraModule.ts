@@ -806,6 +806,18 @@ export class VatraModule {
           this.applyEffects(puzzleId);
         }
       }
+      // One-time migration: cuptor used to place a Lamp block in the oven
+      // cavity on success — replaced by a permanent fire (see applySuccess).
+      // A world saved under the old code still has that leftover Lamp block,
+      // which the current code never touches (cuptor isn't in PUZZLE_EFFECTS
+      // anymore), so clean it out explicitly and light the fire in its place.
+      if (this.done.has('cuptor')) {
+        const [cx, cy, cz] = OVEN_CAVITY;
+        if (this.world.getBlock(this.ox + cx, this.groundY + cy, this.oz + cz) === BlockType.Lamp) {
+          this.setBlock(this.ox + cx, this.groundY + cy, this.oz + cz, BlockType.Air);
+        }
+        this.ovenLight.intensity = 1.8;
+      }
     }
     // Same, once the Lunca chunk is loaded, for its own puzzles
     if (!this.lunEffectsApplied && this.world.getBlock(this.lox, this.lunGroundY, this.loz) !== BlockType.Air) {
