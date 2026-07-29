@@ -58,7 +58,8 @@ interface PuzzleEffect {
 }
 const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   fantana: TROUGH_Z.map((z) => ({ pos: [0, 2, z], solved: BlockType.Water, unsolved: BlockType.Air })),
-  cuptor: [{ pos: OVEN_CAVITY, solved: BlockType.Lamp, unsolved: BlockType.Air }],
+  // Cuptor's "solved" state isn't a block — it's a permanent low fire + smoke
+  // (see applySuccess/resetPuzzle/update for the ovenLight-driven visual).
   ulita: LANTERNS.map((pos) => ({ pos, solved: BlockType.Lamp, unsolved: BlockType.Glass })),
   fierarie: [{ pos: FORGE_CAVITY, solved: BlockType.Lamp, unsolved: BlockType.Air }],
   grajd: [{ pos: STABLE_TROUGH, solved: BlockType.Hay, unsolved: BlockType.Plank }],
@@ -159,8 +160,9 @@ export class VatraModule {
     this.bucket.position.set(this.ox + 0.5, this.bucketTargetY, this.oz + 0.5);
     scene.add(this.bucket);
 
-    // Oven fire glow (flares up on the "aprinde focul" step)
-    this.ovenLight = new THREE.PointLight(0xff8a30, 0, 7, 1);
+    // Oven fire glow (flares up on the "aprinde focul" step; stays lit for
+    // good once the lesson is solved — see applySuccess/update)
+    this.ovenLight = new THREE.PointLight(0xff8a30, this.done.has('cuptor') ? 1.8 : 0, 7, 1);
     this.ovenLight.position.set(this.ox - 6 + 0.5, this.groundY + 2.5, this.oz + 0.5);
     scene.add(this.ovenLight);
 
@@ -200,6 +202,8 @@ export class VatraModule {
     box(head, 0.46, 0.1, 0.46, 0x3a2a1a, 0, 0.26, 0); // hat brim
     box(head, 0.3, 0.16, 0.3, 0x3a2a1a, 0, 0.36, 0); // hat top
     for (const side of [-1, 1]) {
+      box(npc, 0.14, 0.5, 0.14, 0x6b4a2a, side * 0.32, 0.85, 0); // arms (sleeves)
+      box(npc, 0.16, 0.16, 0.16, 0xe0b088, side * 0.32, 0.55, 0); // hands
       box(npc, 0.16, 0.7, 0.16, 0x4a3420, side * 0.14, 0.35, 0); // legs
     }
     npc.position.set(this.ox - 2 + 0.5, this.groundY + 1, this.oz + 3 + 0.5);
@@ -291,7 +295,8 @@ export class VatraModule {
     }
     if (puzzleId === 'ulita') this.litCount = 0;
     if (puzzleId === 'cuptor') {
-      this.ovenLight.intensity = 0;
+      // Only zero the flame out if it's not the solved lesson's permanent fire
+      if (!this.done.has('cuptor')) this.ovenLight.intensity = 0;
       this.ovenLitThisRun = false;
       this.setDough(false);
     }
@@ -527,7 +532,10 @@ export class VatraModule {
     const firstTime = !this.done.has(puzzleId);
     this.applyEffects(puzzleId);
     this.tempBlocks = []; // whatever the loop just built is now permanent — stop tracking it for revert
-    if (puzzleId === 'cuptor') this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2, 0xc98d3a, 3);
+    if (puzzleId === 'cuptor') {
+      this.ovenLight.intensity = 1.8; // a fire keeps burning in the oven from now on, not just a lamp block
+      this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2, 0xc98d3a, 3);
+    }
     if (puzzleId === 'fierarie') this.spawnFlyingBits(this.ox - 7 + 0.5, this.groundY + 2.3, this.oz - 6 + 0.5, 0xb0b0b0, 1);
     if (puzzleId === 'grajd') this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
     if (puzzleId === 'spalatorie') this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
@@ -596,6 +604,7 @@ export class VatraModule {
   resetPuzzle(puzzleId: string): void {
     if (!this.done.has(puzzleId)) return;
     this.revertEffects(puzzleId);
+    if (puzzleId === 'cuptor') this.ovenLight.intensity = 0; // the permanent fire goes out too
     this.done.delete(puzzleId);
     this.save();
   }
@@ -715,8 +724,11 @@ export class VatraModule {
     const dy = this.bucketTargetY - this.bucket.position.y;
     if (Math.abs(dy) > 0.01) this.bucket.position.y += Math.sign(dy) * Math.min(Math.abs(dy), 2.5 * dt);
 
-    // Oven / forge fire glow fades
-    if (this.ovenLight.intensity > 0) this.ovenLight.intensity = Math.max(0, this.ovenLight.intensity - 2.2 * dt);
+    // Oven / forge fire glow fades — except the oven's, once the lesson is
+    // solved: it then burns for good, with its chimney puffing smoke forever
+    if (this.ovenLight.intensity > 0 && !this.done.has('cuptor')) {
+      this.ovenLight.intensity = Math.max(0, this.ovenLight.intensity - 2.2 * dt);
+    }
     if (this.forgeLight.intensity > 0) this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
 
     // A lit oven/forge keeps puffing smoke out of its chimney, not just once per step

@@ -162,14 +162,14 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       'BUNICUL FIERAR: „Șase porunci pentru un colac ca lumea. Da\' bagă de seamă: aluatul necopt nu-i pâine, iar pâinea nefrământată-i… cărbune!"',
     success: 'COLACI CALZI! Miroase-n tot satul. (+16 mămăligă și 4 cărămidă în traistă)',
     actions: [
-      { id: 'aprinde', label: 'Aprinde focul' },
-      { id: 'framanta', label: 'Frământă aluatul' },
       { id: 'dospeste', label: 'Lasă la dospit' },
       { id: 'baga', label: 'Bagă în cuptor' },
-      { id: 'asteapta', label: 'Așteaptă' },
-      { id: 'scoate', label: 'Scoate din cuptor' },
       { id: 'presara_faina', label: 'Presară făină pe masă' },
+      { id: 'aprinde', label: 'Aprinde focul' },
+      { id: 'scoate', label: 'Scoate din cuptor' },
       { id: 'unge_tava', label: 'Unge tava cu unt' },
+      { id: 'framanta', label: 'Frământă aluatul' },
+      { id: 'asteapta', label: 'Așteaptă' },
     ],
     solution: [A('aprinde'), A('framanta'), A('dospeste'), A('baga'), A('asteapta'), A('scoate')],
     fails: [
