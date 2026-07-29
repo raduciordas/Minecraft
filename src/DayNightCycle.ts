@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FULL_DAY_SECONDS, DAY_START_TIME, RENDER_DISTANCE, CHUNK_SIZE } from './config';
+import { FULL_DAY_SECONDS, DAY_START_TIME, FREEZE_DAY_NIGHT, RENDER_DISTANCE, CHUNK_SIZE } from './config';
 
 const DAY_SKY = new THREE.Color(0x87ceeb);
 const SUNSET_SKY = new THREE.Color(0xe8875a);
@@ -81,7 +81,9 @@ export class DayNightCycle {
   }
 
   update(dt: number, camera: THREE.Camera): void {
-    if (this.networkEpoch !== null) {
+    if (FREEZE_DAY_NIGHT) {
+      this.time = DAY_START_TIME;
+    } else if (this.networkEpoch !== null) {
       const elapsedSeconds = (Date.now() - this.networkEpoch) / 1000;
       this.time = (((elapsedSeconds / FULL_DAY_SECONDS + DAY_START_TIME) % 1) + 1) % 1;
     } else {

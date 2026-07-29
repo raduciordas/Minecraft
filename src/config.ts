@@ -63,6 +63,10 @@ export const SKY_COLOR = 0x87ceeb;
 // Day/night cycle
 export const FULL_DAY_SECONDS = 240; // one full day+night
 export const DAY_START_TIME = 0.35; // fresh worlds start mid-morning
+// Dev-branch testing convenience: keeps the sky frozen at DAY_START_TIME so
+// lesson testing isn't interrupted by nightfall/mob spawns. Flip to false
+// (or drop this before merging) once this branch goes live.
+export const FREEZE_DAY_NIGHT = true;
 
 // Survival
 export const MAX_HP = 20; // half-hearts
