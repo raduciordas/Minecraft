@@ -78,6 +78,11 @@ export class SoundManager {
     this.tone(170 + Math.random() * 50, 0.09, 'triangle', 0.22);
   }
 
+  eat(): void {
+    this.noise(0.06, 1900, 0.16, 900);
+    this.noise(0.05, 1500, 0.12, 700);
+  }
+
   splash(): void {
     this.noise(0.4, 1400, 0.3, 250);
   }

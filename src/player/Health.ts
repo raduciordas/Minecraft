@@ -72,6 +72,14 @@ export class Health {
     }
   }
 
+  // Eating food restores hp, capped at the max — unlike damage(), this
+  // works even during the post-hit invulnerability window
+  heal(amount: number): void {
+    if (this.dead || amount <= 0 || this.hp >= MAX_HP) return;
+    this.hp = Math.min(MAX_HP, this.hp + amount);
+    this.emitChange();
+  }
+
   respawn(): void {
     this.hp = MAX_HP;
     this.oxygen = MAX_OXYGEN_SECONDS;

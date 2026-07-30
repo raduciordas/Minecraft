@@ -44,6 +44,54 @@ const TRAP_CENTER: [number, number, number] = [13, 1, -4];
 const BUCKET_HIGH = 3.4;
 const BUCKET_LOW = 1.3;
 
+// A wooden nametag/placard floating above each lesson location, so it's
+// readable from a distance before the player even walks up to it
+const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = {
+  fantana: { dx: 0, dz: 1.5, label: 'Fântâna' },
+  cuptor: { dx: -6, dz: -0.5, label: 'Cuptorul' },
+  ulita: { dx: 8, dz: 0, label: 'Ulița cu felinare' },
+  fierarie: { dx: -7, dz: -7, label: 'Fierăria' },
+  grajd: { dx: 0, dz: -6.5, label: 'Grajdul' },
+  spalatorie: { dx: 7.5, dz: -6.5, label: 'Spălătoria' },
+  gard: { dx: 0.5, dz: -6, label: 'Gardul Luncii' },
+  camp_grau: { dx: 22.5, dz: -0.5, label: 'Câmpul de grâu' },
+  moara: { dx: 21.5, dz: 8, label: 'Moara de apă' },
+  poteca: { dx: 0, dz: -6.5, label: 'Poteca Mumei Pădurii' },
+  pod: { dx: 0, dz: 3, label: 'Podul mișcător' },
+  capcana: { dx: 13, dz: -5, label: 'Capcana de lup' },
+};
+
+// A wood-plank placard with a name burned into it — used both for the big
+// lesson-location signs and Bunicul's small personal nametag
+function makeSign(text: string, width = 2.6): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 96;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#6b4a26';
+  ctx.fillRect(0, 0, 320, 96);
+  ctx.strokeStyle = '#3a2410';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 312, 88);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let fontSize = 32;
+  do {
+    ctx.font = `bold ${fontSize}px monospace`;
+    fontSize -= 2;
+  } while (ctx.measureText(text).width > 292 && fontSize > 14);
+  ctx.fillStyle = '#f4e6c8';
+  ctx.fillText(text, 160, 50);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(width, width * 0.3, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
 // Which puzzles live in Zona 2 (Lunca) or Zona 3 (Pădurea) rather than the
 // Vatra square — their world positions are relative to a different origin.
 const LUNCA_PUZZLES = new Set(['gard', 'camp_grau', 'moara']);
@@ -174,6 +222,7 @@ export class VatraModule {
 
     this.buildBunicul();
     this.buildMumaPadurii();
+    this.buildSigns();
   }
 
   // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
@@ -213,6 +262,20 @@ export class VatraModule {
     // World position used to hit-test clicks on Bunicul (he's decorative, not
     // a voxel block, so puzzleAt()'s block-grid lookup can't see him)
     this.buniculPos.set(npc.position.x, this.groundY + 1.9, npc.position.z);
+
+    const nameSign = makeSign('Bunicul Fierar', 1.6);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
+    this.scene.add(nameSign);
+  }
+
+  // One placard per lesson location, floating above its roofline
+  private buildSigns(): void {
+    for (const [puzzleId, info] of Object.entries(LESSON_SIGNS)) {
+      const [ox, gy, oz] = this.originFor(puzzleId);
+      const sign = makeSign(info.label);
+      sign.position.set(ox + info.dx + 0.5, gy + 7, oz + info.dz + 0.5);
+      this.scene.add(sign);
+    }
   }
 
   // True if a camera ray (within reach) hits Bunicul — opens the lesson info popup
@@ -546,10 +609,12 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
-    // Fântâna and Ulița reward every completion (not just the first), so
-    // replaying them is worthwhile — this replaces their old one-time reward.
+    // Fântâna, Ulița and Cuptor reward every completion (not just the
+    // first), so replaying them is worthwhile — this replaces their old
+    // one-time reward.
     if (puzzleId === 'fantana') this.inventory.add(WeaponId.IceSpear as unknown as BlockType, 1);
     if (puzzleId === 'ulita') this.inventory.add(BlockType.Lamp, 10);
+    if (puzzleId === 'cuptor') this.inventory.add(BlockType.Paine, 10);
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -559,10 +624,6 @@ export class VatraModule {
 
   private grantReward(puzzleId: string): void {
     switch (puzzleId) {
-      case 'cuptor':
-        this.inventory.add(BlockType.Mamaliga, 16);
-        this.inventory.add(BlockType.Caramida, 4);
-        break;
       case 'fierarie':
         this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
         this.inventory.add(BlockType.Stone, 4);

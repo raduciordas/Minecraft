@@ -124,7 +124,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Fântâna — prima secvență',
     intro:
       'BUNICUL FIERAR: „Fântâna-i secată de-un veac, copile. Leagă frânghia de găleată, apoi coboar-o, umple-o, urc-o și varsă apa în jgheab. Hai, arată-mi!"',
-    success: 'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Prima resursă a satului e a ta. (+8 chirpici)',
+    success: 'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Bunicul îți dă o Suliță de Gheață, uneltită din chiar gheața fântânii. (+1 Ice Spear)',
     actions: [
       { id: 'leaga', label: 'Leagă frânghia' },
       { id: 'umple', label: 'Umple găleata' },
@@ -160,7 +160,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Cuptorul de pâine — ordinea contează',
     intro:
       'BUNICUL FIERAR: „Șase porunci pentru un colac ca lumea. Da\' bagă de seamă: aluatul necopt nu-i pâine, iar pâinea nefrământată-i… cărbune!"',
-    success: 'COLACI CALZI! Miroase-n tot satul. (+16 mămăligă și 4 cărămidă în traistă)',
+    success: 'COLACI CALZI! Miroase-n tot satul. (+10 pâini în traistă)',
     actions: [
       { id: 'dospeste', label: 'Lasă la dospit' },
       { id: 'baga', label: 'Bagă în cuptor' },

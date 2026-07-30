@@ -438,6 +438,25 @@ const TILE_SPECS: Record<number, TileSpec> = {
       for (let y = 10; y < TILE_PX; y++) for (let x = 0; x < TILE_PX; x++) px(x, y, 224, 214, 192);
     },
   },
+  [Tile.Paine]: {
+    base: [206, 155, 84],
+    variation: 0.1,
+    draw: (px, rand) => {
+      // Golden crust with a scored diagonal seam and toasty speckles
+      for (let i = -2; i <= 2; i++) {
+        for (let x = 2; x < TILE_PX - 2; x++) {
+          const y = x + i + 3;
+          if (y >= 0 && y < TILE_PX) px(x, y, 140, 96, 44);
+        }
+      }
+      for (let x = 0; x < TILE_PX; x++) {
+        for (let y = 0; y < TILE_PX; y++) {
+          if (rand() < 0.07) px(x, y, 235, 200, 130);
+          else if (rand() < 0.03) px(x, y, 120, 82, 40);
+        }
+      }
+    },
+  },
 };
 
 export class TextureAtlas {

@@ -40,6 +40,7 @@ export const enum BlockType {
   Wheat = 36,
   Flour = 37,
   Mushroom = 38,
+  Paine = 39,
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -79,6 +80,7 @@ export const enum Tile {
   Wheat = 33,
   Flour = 34,
   Mushroom = 35,
+  Paine = 36,
 }
 
 export interface BlockDef {
@@ -140,6 +142,9 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Wheat]: S('Grâu', Tile.Wheat),
   [BlockType.Flour]: S('Făină', Tile.Flour),
   [BlockType.Mushroom]: S('Ciupercă', Tile.Mushroom),
+  // Not opaque: rendered as a small bread-loaf shape (BreadRenderer), not a
+  // cube. craftedOnly: not part of the starter stock — earned only via Cuptor.
+  [BlockType.Paine]: { name: 'Pâine', solid: true, opaque: false, textures: T(Tile.Paine, Tile.Paine, Tile.Paine), craftedOnly: true },
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
@@ -175,6 +180,7 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Wheat,
   BlockType.Flour,
   BlockType.Mushroom,
+  BlockType.Paine,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through
