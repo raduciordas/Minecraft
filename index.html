@@ -243,6 +243,19 @@
       }
       .lore-open-btn:hover { background: #3a739e; }
 
+      /* Transient "coming soon" style notices */
+      #toast {
+        position: fixed; top: 16%; left: 50%; transform: translateX(-50%);
+        background: linear-gradient(#b08249, #8a5f33);
+        border: 3px solid #4a2f16; border-radius: 8px;
+        padding: 10px 18px; color: #2b1808; font: bold 14px monospace;
+        box-shadow: 0 4px 0 #3a2410;
+        max-width: 80vw; text-align: center;
+        z-index: 17; pointer-events: none;
+        opacity: 0; transition: opacity 0.3s;
+      }
+      #toast.show { opacity: 1; }
+
       #underwater {
         position: fixed; inset: 0;
         background: rgba(25, 70, 160, 0.38);
@@ -417,6 +430,7 @@
     <div id="crafting" class="hidden"></div>
     <div id="tabla" class="hidden"></div>
     <div id="lore" class="hidden"></div>
+    <div id="toast"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
     <div id="damage-flash"></div>

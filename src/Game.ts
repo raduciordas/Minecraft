@@ -120,6 +120,8 @@ export class Game {
   private sound: SoundManager;
   private selectionBox: THREE.LineSegments;
   private underwaterOverlay: HTMLElement;
+  private toastEl: HTMLElement;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private lastSaveTime = 0;
   private stepDistance = 0;
   private wasFeetInWater = false;
@@ -256,6 +258,7 @@ export class Game {
     };
 
     this.underwaterOverlay = document.getElementById('underwater')!;
+    this.toastEl = document.getElementById('toast')!;
 
     this.input.onHotbarSelect((slot) => this.hotbar.select(slot));
     this.input.onScroll((delta) => this.hotbar.scroll(delta));
@@ -714,6 +717,15 @@ export class Game {
     if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
   }
 
+  // A brief non-blocking banner (e.g. "coming soon") — unlike the tabla/lore
+  // panels, it doesn't pause the game or grab pointer lock.
+  private showToast(text: string): void {
+    this.toastEl.textContent = text;
+    this.toastEl.classList.add('show');
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.toastEl.classList.remove('show'), 2400);
+  }
+
   private async openTabla(puzzleId: string): Promise<void> {
     if (this.tablaLoading) return;
     const host = document.getElementById('tabla')!;
@@ -961,7 +973,11 @@ export class Game {
     }
     const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
     if (vatraPuzzle) {
-      void this.openTabla(vatraPuzzle);
+      if (this.vatra.isComingSoon(vatraPuzzle)) {
+        this.showToast('În construcție, disponibil în curând.');
+      } else {
+        void this.openTabla(vatraPuzzle);
+      }
       return;
     }
 

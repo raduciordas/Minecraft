@@ -398,6 +398,14 @@ export class VatraModule {
     return this.done.has(puzzleId);
   }
 
+  // Zona 2 (Lunca) and Zona 3 (Pădurea) are built and playable in code, but
+  // not yet exposed to players — Game.ts shows a "coming soon" toast for
+  // these instead of opening the tabla. All the puzzle logic stays intact
+  // for whenever they're switched back on.
+  isComingSoon(puzzleId: string): boolean {
+    return LUNCA_PUZZLES.has(puzzleId) || PADUREA_PUZZLES.has(puzzleId);
+  }
+
   beginRun(puzzleId: string): void {
     // Wipe any half-built leftovers from a previous failed loop-puzzle run
     this.clearTempBlocks();
