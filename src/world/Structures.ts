@@ -330,7 +330,10 @@ export function buildLuncaZone(originX: number, originZ: number): StructureTempl
     originX,
     originZ,
     surface: BlockType.Grass,
-    clearAbove: 6,
+    // Trees can grow up to 7 blocks above natural ground (5-tall trunk +
+    // leaf cap) before this pad flattens over them — clearAbove must clear
+    // past that or a stray leaf/log is left stranded in mid-air.
+    clearAbove: 9,
     pad: 2,
     blocks,
   };
@@ -389,7 +392,9 @@ export function buildPadureaZone(originX: number, originZ: number): StructureTem
     originX,
     originZ,
     surface: BlockType.Grass,
-    clearAbove: 6,
+    // Same reasoning as Lunca: clear past a full-height tree's leaf cap
+    // (up to 7 above natural ground) so nothing is left floating.
+    clearAbove: 9,
     pad: 2,
     blocks,
   };
