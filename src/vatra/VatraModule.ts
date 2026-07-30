@@ -111,8 +111,8 @@ function makeSignBoard(text: string): THREE.Group {
   base.position.set(0, 0.25, 0);
   group.add(base);
 
-  // Tall enough to overlap well past the board's bottom edge (1.4), so
-  // there's no visible gap between the post and the sign it's holding up
+  // Post top sits at 1.8 — the board is mounted right on top of it, not
+  // sunk down inside it
   const post = new THREE.Mesh(
     new THREE.BoxGeometry(0.14, 1.3, 0.14),
     new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
@@ -126,7 +126,7 @@ function makeSignBoard(text: string): THREE.Group {
     new THREE.BoxGeometry(1.34, 0.44, 0.16),
     new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
   );
-  backing.position.set(0, 1.6, -0.09);
+  backing.position.set(0, 2, -0.09);
   group.add(backing);
 
   const texture = new THREE.CanvasTexture(drawSignCanvas(text));
@@ -135,7 +135,7 @@ function makeSignBoard(text: string): THREE.Group {
     new THREE.PlaneGeometry(1.3, 0.4),
     new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
   );
-  board.position.set(0, 1.6, 0.01);
+  board.position.set(0, 2, 0.01);
   group.add(board);
   return group;
 }
