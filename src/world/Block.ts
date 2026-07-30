@@ -142,9 +142,11 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Wheat]: S('Grâu', Tile.Wheat),
   [BlockType.Flour]: S('Făină', Tile.Flour),
   [BlockType.Mushroom]: S('Ciupercă', Tile.Mushroom),
-  // Not opaque: rendered as a small bread-loaf shape (BreadRenderer), not a
-  // cube. craftedOnly: not part of the starter stock — earned only via Cuptor.
-  [BlockType.Paine]: { name: 'Pâine', solid: true, opaque: false, textures: T(Tile.Paine, Tile.Paine, Tile.Paine), craftedOnly: true },
+  // A consumable, not a placeable block — Game.ts's placeBlock() intercepts
+  // it and eats it instead. It only lives in PLACEABLE_BLOCKS so the
+  // inventory/hotbar can show its icon and stock like any other item.
+  // craftedOnly: not part of the starter stock — earned only via Cuptor.
+  [BlockType.Paine]: C('Pâine', Tile.Paine),
 };
 
 export const PLACEABLE_BLOCKS: BlockType[] = [

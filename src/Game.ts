@@ -24,7 +24,6 @@ import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
 import { LightManager } from './rendering/LightManager';
 import { DoorRenderer } from './rendering/DoorRenderer';
-import { BreadRenderer } from './rendering/BreadRenderer';
 import { MeltManager } from './world/MeltManager';
 import { InputController } from './player/InputController';
 import { Player } from './player/Player';
@@ -100,7 +99,6 @@ export class Game {
   private meshManager: ChunkMeshManager;
   private lightManager: LightManager;
   private doorRenderer: DoorRenderer;
-  private breadRenderer: BreadRenderer;
   private meltManager = new MeltManager();
   private input: InputController;
   private player: Player;
@@ -179,7 +177,6 @@ export class Game {
     this.meshManager = new ChunkMeshManager(this.scene, atlas);
     this.lightManager = new LightManager(this.scene);
     this.doorRenderer = new DoorRenderer(this.scene, atlas);
-    this.breadRenderer = new BreadRenderer(this.scene);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -361,7 +358,6 @@ export class Game {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
-      this.breadRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
     }
     this.dayNight.setNetworkEpoch(init.epoch);
@@ -382,7 +378,6 @@ export class Game {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
-      this.breadRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
     }
     return affected;
@@ -520,16 +515,11 @@ export class Game {
     this.player.body.vy = Math.max(this.player.body.vy, 4);
   }
 
-  // Left click: eat bread / throw the bottle if one's selected, strike a mob
-  // in reach, or otherwise break the targeted block
+  // Left click: throw the bottle if one's selected, strike a mob in reach,
+  // or otherwise break the targeted block
   private attack(): void {
     if (this.health.dead || this.attackCooldown > 0) return;
     const selected = this.hotbar.selectedItem;
-    if (selected === BlockType.Paine) {
-      this.eatBread();
-      this.attackCooldown = 0.3;
-      return;
-    }
     if (isThrowable(selected)) {
       this.throwBottle(selected);
       return;
@@ -830,7 +820,6 @@ export class Game {
       this.meshManager.remesh(chunk, this.world);
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
-      this.breadRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
     }
 
@@ -853,7 +842,6 @@ export class Game {
       this.meshManager.removeMesh(cx, cz);
       this.lightManager.removeChunk(cx, cz);
       this.doorRenderer.removeChunk(cx, cz);
-      this.breadRenderer.removeChunk(cx, cz);
       this.meltManager.removeChunk(cx, cz);
       this.world.removeChunk(cx, cz);
     }
@@ -932,8 +920,9 @@ export class Game {
     );
   }
 
-  // Left click with Pâine selected eats it (right-click still places it as
-  // a block) — heals one full heart (2 hp), earned from the Cuptor lesson
+  // Right-click with Pâine selected eats it — it can't be placed as a
+  // block — heals one full heart (2 hp) if not already at max, earned from
+  // the Cuptor lesson
   private eatBread(): void {
     if (this.health.hp >= MAX_HP) return; // don't waste it at full health
     if (!this.inventory.remove(BlockType.Paine)) return;
@@ -945,6 +934,10 @@ export class Game {
     if (this.health.dead) return;
     if (this.buniculHit()) {
       this.openLessonInfo();
+      return;
+    }
+    if (this.hotbar.selectedItem === BlockType.Paine) {
+      this.eatBread();
       return;
     }
     const hit = this.raycastFromCamera();

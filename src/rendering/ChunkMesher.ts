@@ -88,9 +88,8 @@ export function meshChunk(chunk: Chunk, world: World, atlas: TextureAtlas): Chun
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
         const id = chunk.getBlock(lx, ly, lz);
-        // Doors, lamps and bread render as custom shapes (DoorRenderer /
-        // LightManager / BreadRenderer), not cubes
-        if (id === BlockType.Air || isDoor(id) || id === BlockType.Lamp || id === BlockType.Paine) continue;
+        // Doors and lamps render as custom shapes (DoorRenderer / LightManager), not cubes
+        if (id === BlockType.Air || isDoor(id) || id === BlockType.Lamp) continue;
         const def = BLOCKS[id];
         if (!def) continue;
 
