@@ -48,12 +48,12 @@ const BUCKET_LOW = 1.3;
 // the building's outer edge, not just past its center), so the board
 // never clips into brick/plank geometry behind it.
 const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = {
-  fantana: { dx: 0, dz: 6.5, label: 'Fântâna' },
-  cuptor: { dx: -6, dz: 3.5, label: 'Cuptorul' },
-  ulita: { dx: 8, dz: 3.5, label: 'Ulița cu felinare' },
-  fierarie: { dx: -7, dz: -3.5, label: 'Fierăria' },
-  grajd: { dx: 0, dz: -2.5, label: 'Grajdul' },
-  spalatorie: { dx: 7.5, dz: -2.5, label: 'Spălătoria' },
+  fantana: { dx: 0, dz: 5.5, label: 'Fântâna' },
+  cuptor: { dx: -6, dz: 2.5, label: 'Cuptorul' },
+  ulita: { dx: 8, dz: 2.5, label: 'Ulița cu felinare' },
+  fierarie: { dx: -7, dz: -4.5, label: 'Fierăria' },
+  grajd: { dx: 0, dz: -3.5, label: 'Grajdul' },
+  spalatorie: { dx: 7.5, dz: -3.5, label: 'Spălătoria' },
   gard: { dx: 0.5, dz: -3, label: 'Gardul Luncii' },
   camp_grau: { dx: 22.5, dz: 4, label: 'Câmpul de grâu' },
   moara: { dx: 21.5, dz: 6.5, label: 'Moara de apă' },
@@ -111,11 +111,13 @@ function makeSignBoard(text: string): THREE.Group {
   base.position.set(0, 0.25, 0);
   group.add(base);
 
+  // Tall enough to overlap well past the board's bottom edge (1.4), so
+  // there's no visible gap between the post and the sign it's holding up
   const post = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.9, 0.14),
+    new THREE.BoxGeometry(0.14, 1.3, 0.14),
     new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
   );
-  post.position.set(0, 0.95, 0);
+  post.position.set(0, 1.15, 0);
   group.add(post);
 
   // A solid backing block right behind the board, so it always has its own
