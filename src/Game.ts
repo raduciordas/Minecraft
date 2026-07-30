@@ -306,7 +306,10 @@ export class Game {
       if (BLOCKS[id].craftedOnly) continue;
       this.inventory.ensureAtLeast(id, STARTER_STOCK);
     }
-    for (const id of THROWABLE_IDS) this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
+    for (const id of THROWABLE_IDS) {
+      if (THROWABLES[id].craftedOnly) continue;
+      this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
+    }
 
     window.addEventListener('beforeunload', () => this.saveNow());
     document.addEventListener('visibilitychange', () => {

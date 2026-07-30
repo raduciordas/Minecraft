@@ -122,7 +122,8 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.Chirpici]: S('Chirpici', Tile.Chirpici),
   [BlockType.Obsidian]: H('Obsidian', Tile.Obsidian),
-  [BlockType.Hay]: S('Balot de Fân', Tile.Hay),
+  // craftedOnly: not part of the starter stock — earned only via Grajd.
+  [BlockType.Hay]: C('Balot de Fân', Tile.Hay),
   // Not opaque: these render as a thin custom panel (DoorRenderer), not a
   // cube, so neighboring block faces must still draw right up against them.
   [BlockType.DoorClosedX]: { name: 'Ușă', solid: true, opaque: false, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },

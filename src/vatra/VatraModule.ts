@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId, buildToolModel, disposeModel } from '../items/Tool';
 import { WeaponId } from '../items/Weapon';
+import { ThrowableId } from '../items/Throwable';
 import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
 import type { World } from '../world/World';
@@ -190,6 +191,29 @@ function box(parent: THREE.Object3D, w: number, h: number, d: number, color: num
   return mesh;
 }
 
+// A simple blocky horse standing in the stable once Grajdul is solved
+function buildHorse(): THREE.Group {
+  const horse = new THREE.Group();
+  const BODY = 0x6b4226;
+  const MANE = 0x3a2414;
+  box(horse, 0.9, 0.5, 0.35, BODY, 0, 0.75, 0); // body
+  box(horse, 0.28, 0.35, 0.28, BODY, 0.55, 0.85, 0); // neck
+  const head = box(horse, 0.22, 0.22, 0.4, BODY, 0.8, 1.05, 0); // head
+  box(head, 0.06, 0.14, 0.06, BODY, 0.09, 0.15, 0.15); // ear
+  box(head, 0.06, 0.14, 0.06, BODY, -0.09, 0.15, 0.15); // ear
+  box(horse, 0.08, 0.28, 0.36, MANE, 0.38, 1.05, 0); // mane
+  for (const [dx, dz] of [
+    [-0.32, -0.13],
+    [-0.32, 0.13],
+    [0.32, -0.13],
+    [0.32, 0.13],
+  ] as const) {
+    box(horse, 0.12, 0.5, 0.12, BODY, dx, 0.25, dz); // legs
+  }
+  box(horse, 0.08, 0.32, 0.08, MANE, -0.48, 0.72, 0); // tail
+  return horse;
+}
+
 // Satul Codat, phase 0: six Vatra buildings as interactive coding puzzles
 // (pure sequences — Zone 1 of the design doc). Owns the puzzle state (which
 // are solved, persisted locally), the step-by-step 3D animations, the
@@ -222,6 +246,7 @@ export class VatraModule {
   private ovenLitThisRun = false;
   private doughMesh: THREE.Mesh | null = null;
   private pickaxeProp: THREE.Group | null = null;
+  private horseProp: THREE.Group | null = null;
   private readonly buniculPos = new THREE.Vector3();
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
@@ -274,6 +299,7 @@ export class VatraModule {
     this.buildMumaPadurii();
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
+    if (this.done.has('grajd')) this.setHorseProp(true);
   }
 
   // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
@@ -666,7 +692,10 @@ export class VatraModule {
       this.setPickaxeProp(true);
       this.spawnFlyingBits(this.ox - 7 + 0.5, this.groundY + 2.3, this.oz - 6 + 0.5, 0xb0b0b0, 1);
     }
-    if (puzzleId === 'grajd') this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
+    if (puzzleId === 'grajd') {
+      this.setHorseProp(true);
+      this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
+    }
     if (puzzleId === 'spalatorie') this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
     if (puzzleId === 'gard') this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
     if (puzzleId === 'camp_grau') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 1.3, this.loz - 0.5, 0xd8b840, 3, this.lunGroundY);
@@ -674,13 +703,17 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
-    // Fântâna, Ulița, Cuptor and Fierărie reward every completion (not just
-    // the first), so replaying them is worthwhile — this replaces their old
-    // one-time reward.
+    // Fântâna, Ulița, Cuptor, Fierărie and Grajd reward every completion
+    // (not just the first), so replaying them is worthwhile — this replaces
+    // their old one-time reward.
     if (puzzleId === 'fantana') this.inventory.add(WeaponId.IceSpear as unknown as BlockType, 1);
     if (puzzleId === 'ulita') this.inventory.add(BlockType.Lamp, 10);
     if (puzzleId === 'cuptor') this.inventory.add(BlockType.Paine, 10);
     if (puzzleId === 'fierarie') this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
+    if (puzzleId === 'grajd') {
+      this.inventory.add(BlockType.Hay, 10);
+      this.inventory.add(ThrowableId.SocataBottle as unknown as BlockType, 10);
+    }
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -690,10 +723,6 @@ export class VatraModule {
 
   private grantReward(puzzleId: string): void {
     switch (puzzleId) {
-      case 'grajd':
-        this.inventory.add(BlockType.Hay, 8);
-        this.inventory.add(BlockType.RockSalt, 4);
-        break;
       case 'spalatorie':
         this.inventory.add(BlockType.IeBlouse, 4);
         this.inventory.add(BlockType.RiverStone, 6);
@@ -730,6 +759,7 @@ export class VatraModule {
       this.forgeLight.intensity = 0;
       this.setPickaxeProp(false);
     }
+    if (puzzleId === 'grajd') this.setHorseProp(false);
     this.done.delete(puzzleId);
     this.save();
   }
@@ -855,6 +885,23 @@ export class VatraModule {
       this.oz + FORGE_CAVITY[2] + 0.5,
     );
     this.scene.add(this.pickaxeProp);
+  }
+
+  // The horse standing in the stable once Grajdul is solved. Gone on reset.
+  private setHorseProp(show: boolean): void {
+    if (!show) {
+      if (this.horseProp) {
+        this.scene.remove(this.horseProp);
+        disposeModel(this.horseProp);
+        this.horseProp = null;
+      }
+      return;
+    }
+    if (this.horseProp) return;
+    this.horseProp = buildHorse();
+    this.horseProp.position.set(this.ox + 1.3 + 0.5, this.groundY, this.oz - 6 + 0.5);
+    this.horseProp.rotation.y = Math.PI / 2; // facing the trough
+    this.scene.add(this.horseProp);
   }
 
   private spawnSmoke(x: number, y: number, z: number, color: number, size: number): void {

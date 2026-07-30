@@ -12,14 +12,17 @@ export interface ThrowableDef {
   blastRadius: number; // mobs within this radius of the impact point die
   shape: 'bottle' | 'gum';
   colors: { primary: number; secondary: number; accent: number };
+  craftedOnly?: boolean; // excluded from the automatic starter-stock grant; must be earned
 }
 
 export const THROWABLES: Record<number, ThrowableDef> = {
+  // craftedOnly: not part of the starter stock — earned only via Grajd.
   [ThrowableId.SocataBottle]: {
     name: 'Socată Fermentată',
     blastRadius: 3.5,
     shape: 'bottle',
     colors: { primary: 0x9fbf8a, secondary: 0xe6d9a3, accent: 0x8a5a2e },
+    craftedOnly: true,
   },
   [ThrowableId.HubaBuba]: {
     name: 'Huba Bubă',

@@ -279,7 +279,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Grajdul — calul flămând',
     intro:
       'BUNICUL FIERAR: „Calul așteaptă la poartă, flămând și însetat. Deschide poarta, adu-i fân și apă — pe rând, cum se cuvine — și abia apoi lasă-l să intre."',
-    success: 'Calul nechează mulțumit și mănâncă în tihnă! (+8 fân și 4 sare)',
+    success: 'Calul nechează mulțumit și intră în grajd! (+10 fân și 10 socată fermentată)',
     actions: [
       { id: 'deschide_poarta', label: 'Deschide poarta' },
       { id: 'adu_fan', label: 'Adu balot de fân' },
