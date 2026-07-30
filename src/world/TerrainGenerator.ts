@@ -136,8 +136,10 @@ export class TerrainGenerator {
     let height = h;
     const arc = this.arcFactor(wx, wz);
     if (arc > 0) {
+      // A gentler curve than ridge² — broad rounded massifs instead of
+      // narrow "witch hat" spikes, while still keeping a ridged look
       const ridge = 1 - Math.abs(this.mountainNoise(wx * MOUNTAIN_FREQ, wz * MOUNTAIN_FREQ));
-      const peak = MOUNTAIN_BASE_HEIGHT + ridge * ridge * MOUNTAIN_AMP;
+      const peak = MOUNTAIN_BASE_HEIGHT + Math.pow(ridge, 1.4) * MOUNTAIN_AMP;
       height = h + arc * (peak - h);
     }
     return Math.max(1, Math.min(CHUNK_HEIGHT - 10, Math.floor(height)));
@@ -200,9 +202,14 @@ export class TerrainGenerator {
         for (let wz = z0; wz <= z1; wz++) {
           const lx = wx - baseX;
           const lz = wz - baseZ;
+          // On jagged terrain (mountain peaks especially), a column's own
+          // natural height can rise above the pad's single reference
+          // ground+clearAbove — clear past whichever is taller so no
+          // leftover rock/spire is stranded floating over the flattened pad.
+          const clearTop = Math.max(s.groundY + s.clearAbove, this.heightAt(wx, wz) + 2);
           for (let y = 1; y < s.groundY; y++) chunk.setBlock(lx, y, lz, BlockType.Stone);
           chunk.setBlock(lx, s.groundY, lz, s.surface);
-          for (let y = s.groundY + 1; y <= s.groundY + s.clearAbove; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
+          for (let y = s.groundY + 1; y <= clearTop; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
         }
       }
 
@@ -280,6 +287,13 @@ export class TerrainGenerator {
             for (let dz = -radius; dz <= radius; dz++) {
               if (radius === 1 && Math.abs(dx) === 1 && Math.abs(dz) === 1 && hash2D(wx + dx, wz + dz + i, this.seed + 17) < 0.4) {
                 continue; // ragged edges instead of a perfect box
+              }
+              // The spire's width is built from the center column's ground
+              // height — on jagged terrain a neighbor a block over can sit
+              // noticeably lower or higher, so its slice would float or bury
+              // itself. Skip it there rather than stamp a disconnected chunk.
+              if ((dx !== 0 || dz !== 0) && Math.abs(this.heightAt(wx + dx, wz + dz) - ground) > 1) {
+                continue;
               }
               chunk.setBlock(lx + dx, y, lz + dz, BlockType.Crystal);
             }

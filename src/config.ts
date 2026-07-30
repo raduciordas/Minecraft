@@ -25,9 +25,9 @@ export const MOUNTAIN_RING_RADIUS = 80;
 export const MOUNTAIN_RING_WIDTH = 24;
 export const MOUNTAIN_GAP_ANGLE = (40 * Math.PI) / 180; // half-width of the open side
 export const MOUNTAIN_GAP_CENTER = Math.PI; // the arc opens toward -X
-export const MOUNTAIN_FREQ = 1 / 50;
+export const MOUNTAIN_FREQ = 1 / 85; // lower = wider, broader peaks instead of narrow spikes
 export const MOUNTAIN_BASE_HEIGHT = 34;
-export const MOUNTAIN_AMP = 42;
+export const MOUNTAIN_AMP = 30;
 export const SNOW_LINE = 56;
 export const CRYSTAL_LINE = 62;
 export const CRYSTAL_SPIRE_PROBABILITY = 0.02;
