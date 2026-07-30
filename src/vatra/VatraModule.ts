@@ -44,22 +44,22 @@ const TRAP_CENTER: [number, number, number] = [13, 1, -4];
 const BUCKET_HIGH = 3.4;
 const BUCKET_LOW = 1.3;
 
-// A low wooden signpost planted just in front of each lesson's activity
-// (not floating above the roof) — dx/dz already nudged a step toward the
-// square, the way a real signpost would stand beside the path leading in.
+// A low wooden signpost planted well clear of the activity's walls (past
+// the building's outer edge, not just past its center), so the board
+// never clips into brick/plank geometry behind it.
 const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = {
-  fantana: { dx: 0, dz: 4.5, label: 'Fântâna' },
-  cuptor: { dx: -6, dz: 1.5, label: 'Cuptorul' },
-  ulita: { dx: 8, dz: 1.5, label: 'Ulița cu felinare' },
-  fierarie: { dx: -7, dz: -5.5, label: 'Fierăria' },
-  grajd: { dx: 0, dz: -4.5, label: 'Grajdul' },
-  spalatorie: { dx: 7.5, dz: -4.5, label: 'Spălătoria' },
-  gard: { dx: 0.5, dz: -4.5, label: 'Gardul Luncii' },
-  camp_grau: { dx: 22.5, dz: 2.5, label: 'Câmpul de grâu' },
-  moara: { dx: 21.5, dz: 5.5, label: 'Moara de apă' },
-  poteca: { dx: 0, dz: -4.5, label: 'Poteca Mumei Pădurii' },
-  pod: { dx: 0, dz: 0.5, label: 'Podul mișcător' },
-  capcana: { dx: 13, dz: -2.5, label: 'Capcana de lup' },
+  fantana: { dx: 0, dz: 6.5, label: 'Fântâna' },
+  cuptor: { dx: -6, dz: 3.5, label: 'Cuptorul' },
+  ulita: { dx: 8, dz: 3.5, label: 'Ulița cu felinare' },
+  fierarie: { dx: -7, dz: -3.5, label: 'Fierăria' },
+  grajd: { dx: 0, dz: -2.5, label: 'Grajdul' },
+  spalatorie: { dx: 7.5, dz: -2.5, label: 'Spălătoria' },
+  gard: { dx: 0.5, dz: -3, label: 'Gardul Luncii' },
+  camp_grau: { dx: 22.5, dz: 4, label: 'Câmpul de grâu' },
+  moara: { dx: 21.5, dz: 6.5, label: 'Moara de apă' },
+  poteca: { dx: 0, dz: -3, label: 'Poteca Mumei Pădurii' },
+  pod: { dx: 0, dz: 2, label: 'Podul mișcător' },
+  capcana: { dx: 13, dz: -1, label: 'Capcana de lup' },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -98,17 +98,24 @@ function makeSign(text: string, width = 2.6): THREE.Sprite {
   return sprite;
 }
 
-// A lesson-location signpost: a real wood post + board planted at head
-// height in front of the activity, with a fixed orientation (not a
-// billboard) and normal depth-testing/fog, so it only reads up close —
-// unlike Bunicul's always-visible nametag, it doesn't shout across the map.
+// A lesson-location signpost: a sturdy wood-block base with a post rising
+// out of it and the board mounted well above both, with a fixed orientation
+// (not a billboard) and normal depth-testing/fog, so it only reads up close
+// — unlike Bunicul's always-visible nametag, it doesn't shout across the map.
 function makeSignBoard(text: string): THREE.Group {
   const group = new THREE.Group();
-  const post = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 1.3, 0.12),
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.5, 0.5),
     new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
   );
-  post.position.set(0, 0.65, 0);
+  base.position.set(0, 0.25, 0);
+  group.add(base);
+
+  const post = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.9, 0.14),
+    new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
+  );
+  post.position.set(0, 0.95, 0);
   group.add(post);
 
   const texture = new THREE.CanvasTexture(drawSignCanvas(text));
@@ -117,7 +124,7 @@ function makeSignBoard(text: string): THREE.Group {
     new THREE.PlaneGeometry(1.3, 0.4),
     new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
   );
-  board.position.set(0, 1.25, 0);
+  board.position.set(0, 1.6, 0);
   group.add(board);
   return group;
 }
