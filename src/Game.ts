@@ -948,38 +948,44 @@ export class Game {
       this.openLessonInfo();
       return;
     }
+    const hit = this.raycastFromCamera();
+
+    // Doors, the crafting table, and lessons always take priority over
+    // eating when they're what's actually being targeted.
+    if (hit) {
+      const targetedId = this.world.getBlock(hit.block.x, hit.block.y, hit.block.z);
+      if (isDoor(targetedId)) {
+        const { x, y, z } = hit.block;
+        const [y0, y1] = this.doorSpan(x, y, z);
+        const next = toggleDoorId(this.world.getBlock(x, y0, z));
+        this.applyBlockChange(x, y0, z, next);
+        this.applyBlockChange(x, y1, z, next);
+        this.sendEdit(x, y0, z, next);
+        this.sendEdit(x, y1, z, next);
+        this.sound.doorToggle();
+        return;
+      }
+      if (targetedId === BlockType.CraftingTable) {
+        this.toggleCraftingPanel();
+        return;
+      }
+      const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
+      if (vatraPuzzle) {
+        if (this.vatra.isComingSoon(vatraPuzzle)) {
+          this.showToast('În construcție, disponibil în curând.');
+        } else {
+          void this.openTabla(vatraPuzzle);
+        }
+        return;
+      }
+    }
+    // Bread eats regardless of whether anything's in reach — it's never
+    // placed as a block.
     if (this.hotbar.selectedItem === BlockType.Paine) {
       this.eatBread();
       return;
     }
-    const hit = this.raycastFromCamera();
     if (!hit) return;
-
-    const targetedId = this.world.getBlock(hit.block.x, hit.block.y, hit.block.z);
-    if (isDoor(targetedId)) {
-      const { x, y, z } = hit.block;
-      const [y0, y1] = this.doorSpan(x, y, z);
-      const next = toggleDoorId(this.world.getBlock(x, y0, z));
-      this.applyBlockChange(x, y0, z, next);
-      this.applyBlockChange(x, y1, z, next);
-      this.sendEdit(x, y0, z, next);
-      this.sendEdit(x, y1, z, next);
-      this.sound.doorToggle();
-      return;
-    }
-    if (targetedId === BlockType.CraftingTable) {
-      this.toggleCraftingPanel();
-      return;
-    }
-    const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
-    if (vatraPuzzle) {
-      if (this.vatra.isComingSoon(vatraPuzzle)) {
-        this.showToast('În construcție, disponibil în curând.');
-      } else {
-        void this.openTabla(vatraPuzzle);
-      }
-      return;
-    }
 
     const selected = this.hotbar.selectedItem;
     if (isWeapon(selected) || isThrowable(selected) || isTool(selected)) return; // can't be placed
