@@ -118,13 +118,22 @@ function makeSignBoard(text: string): THREE.Group {
   post.position.set(0, 0.95, 0);
   group.add(post);
 
+  // A solid backing block right behind the board, so it always has its own
+  // wood backdrop instead of whatever wall happens to be further back
+  const backing = new THREE.Mesh(
+    new THREE.BoxGeometry(1.34, 0.44, 0.16),
+    new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
+  );
+  backing.position.set(0, 1.6, -0.09);
+  group.add(backing);
+
   const texture = new THREE.CanvasTexture(drawSignCanvas(text));
   texture.minFilter = THREE.LinearFilter;
   const board = new THREE.Mesh(
     new THREE.PlaneGeometry(1.3, 0.4),
     new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
   );
-  board.position.set(0, 1.6, 0);
+  board.position.set(0, 1.6, 0.01);
   group.add(board);
   return group;
 }
