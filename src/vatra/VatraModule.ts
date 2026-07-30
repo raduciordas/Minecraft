@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
-import { ToolId } from '../items/Tool';
+import { ToolId, buildToolModel, disposeModel } from '../items/Tool';
 import { WeaponId } from '../items/Weapon';
 import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
@@ -155,10 +155,10 @@ interface PuzzleEffect {
 }
 const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   fantana: TROUGH_Z.map((z) => ({ pos: [0, 2, z], solved: BlockType.Water, unsolved: BlockType.Air })),
-  // Cuptor's "solved" state isn't a block — it's a permanent low fire + smoke
-  // (see applySuccess/resetPuzzle/update for the ovenLight-driven visual).
+  // Cuptor's and fierarie's "solved" states aren't blocks — they're a
+  // permanent fire + chimney smoke (and, for fierarie, a pickaxe prop); see
+  // applySuccess/resetPuzzle/update for the ovenLight/forgeLight visuals.
   ulita: LANTERNS.map((pos) => ({ pos, solved: BlockType.Lamp, unsolved: BlockType.Glass })),
-  fierarie: [{ pos: FORGE_CAVITY, solved: BlockType.Lamp, unsolved: BlockType.Air }],
   grajd: [{ pos: STABLE_TROUGH, solved: BlockType.Hay, unsolved: BlockType.Plank }],
   spalatorie: [{ pos: LAUNDRY_SPOT, solved: BlockType.IeBlouse, unsolved: BlockType.Air }],
   gard: FENCE_DX.map((x) => ({ pos: [x, 1, -6] as [number, number, number], solved: BlockType.Log, unsolved: BlockType.Air })),
@@ -221,6 +221,7 @@ export class VatraModule {
   private forgeSmokeTimer = 0;
   private ovenLitThisRun = false;
   private doughMesh: THREE.Mesh | null = null;
+  private pickaxeProp: THREE.Group | null = null;
   private readonly buniculPos = new THREE.Vector3();
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
@@ -263,14 +264,16 @@ export class VatraModule {
     this.ovenLight.position.set(this.ox - 6 + 0.5, this.groundY + 2.5, this.oz + 0.5);
     scene.add(this.ovenLight);
 
-    // Forge fire glow (flares up on the "aprinde forja" step)
-    this.forgeLight = new THREE.PointLight(0xff8a30, 0, 6, 1);
+    // Forge fire glow (flares up on the "aprinde forja" step; stays lit for
+    // good once the lesson is solved — see applySuccess/update)
+    this.forgeLight = new THREE.PointLight(0xff8a30, this.done.has('fierarie') ? 1.8 : 0, 6, 1);
     this.forgeLight.position.set(this.ox - 7 + 0.5, this.groundY + 2.5, this.oz - 7 + 0.5);
     scene.add(this.forgeLight);
 
     this.buildBunicul();
     this.buildMumaPadurii();
     this.buildSigns();
+    if (this.done.has('fierarie')) this.setPickaxeProp(true);
   }
 
   // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
@@ -421,7 +424,8 @@ export class VatraModule {
       this.ovenLitThisRun = false;
       this.setDough(false);
     }
-    if (puzzleId === 'fierarie') this.forgeLight.intensity = 0;
+    // Only zero the flame out if it's not the solved lesson's permanent fire
+    if (puzzleId === 'fierarie' && !this.done.has('fierarie')) this.forgeLight.intensity = 0;
     if (puzzleId === 'gard') this.gardIndex = 0;
     if (puzzleId === 'camp_grau') this.campIndex = 0;
   }
@@ -657,7 +661,11 @@ export class VatraModule {
       this.ovenLight.intensity = 1.8; // a fire keeps burning in the oven from now on, not just a lamp block
       this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.3, this.oz + 1.2, 0xc98d3a, 3);
     }
-    if (puzzleId === 'fierarie') this.spawnFlyingBits(this.ox - 7 + 0.5, this.groundY + 2.3, this.oz - 6 + 0.5, 0xb0b0b0, 1);
+    if (puzzleId === 'fierarie') {
+      this.forgeLight.intensity = 1.8; // the forge keeps burning for good, not just a lamp block
+      this.setPickaxeProp(true);
+      this.spawnFlyingBits(this.ox - 7 + 0.5, this.groundY + 2.3, this.oz - 6 + 0.5, 0xb0b0b0, 1);
+    }
     if (puzzleId === 'grajd') this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
     if (puzzleId === 'spalatorie') this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
     if (puzzleId === 'gard') this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
@@ -666,12 +674,13 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
-    // Fântâna, Ulița and Cuptor reward every completion (not just the
-    // first), so replaying them is worthwhile — this replaces their old
+    // Fântâna, Ulița, Cuptor and Fierărie reward every completion (not just
+    // the first), so replaying them is worthwhile — this replaces their old
     // one-time reward.
     if (puzzleId === 'fantana') this.inventory.add(WeaponId.IceSpear as unknown as BlockType, 1);
     if (puzzleId === 'ulita') this.inventory.add(BlockType.Lamp, 10);
     if (puzzleId === 'cuptor') this.inventory.add(BlockType.Paine, 10);
+    if (puzzleId === 'fierarie') this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -681,10 +690,6 @@ export class VatraModule {
 
   private grantReward(puzzleId: string): void {
     switch (puzzleId) {
-      case 'fierarie':
-        this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
-        this.inventory.add(BlockType.Stone, 4);
-        break;
       case 'grajd':
         this.inventory.add(BlockType.Hay, 8);
         this.inventory.add(BlockType.RockSalt, 4);
@@ -721,6 +726,10 @@ export class VatraModule {
     if (!this.done.has(puzzleId)) return;
     this.revertEffects(puzzleId);
     if (puzzleId === 'cuptor') this.ovenLight.intensity = 0; // the permanent fire goes out too
+    if (puzzleId === 'fierarie') {
+      this.forgeLight.intensity = 0;
+      this.setPickaxeProp(false);
+    }
     this.done.delete(puzzleId);
     this.save();
   }
@@ -825,6 +834,29 @@ export class VatraModule {
     this.scene.add(this.doughMesh);
   }
 
+  // The finished pickaxe sitting in the forge cavity once fierarie is
+  // solved — replaces the old Lamp block. Gone again on reset.
+  private setPickaxeProp(show: boolean): void {
+    if (!show) {
+      if (this.pickaxeProp) {
+        this.scene.remove(this.pickaxeProp);
+        disposeModel(this.pickaxeProp);
+        this.pickaxeProp = null;
+      }
+      return;
+    }
+    if (this.pickaxeProp) return;
+    this.pickaxeProp = buildToolModel(ToolId.Tarnacop);
+    this.pickaxeProp.scale.setScalar(1.7);
+    this.pickaxeProp.rotation.z = 0.4; // leaning against the cavity wall
+    this.pickaxeProp.position.set(
+      this.ox + FORGE_CAVITY[0] + 0.5,
+      this.groundY + FORGE_CAVITY[1] - 0.2,
+      this.oz + FORGE_CAVITY[2] + 0.5,
+    );
+    this.scene.add(this.pickaxeProp);
+  }
+
   private spawnSmoke(x: number, y: number, z: number, color: number, size: number): void {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(size, 6, 5),
@@ -840,12 +872,14 @@ export class VatraModule {
     const dy = this.bucketTargetY - this.bucket.position.y;
     if (Math.abs(dy) > 0.01) this.bucket.position.y += Math.sign(dy) * Math.min(Math.abs(dy), 2.5 * dt);
 
-    // Oven / forge fire glow fades — except the oven's, once the lesson is
-    // solved: it then burns for good, with its chimney puffing smoke forever
+    // Oven / forge fire glow fades — except once solved: they then burn for
+    // good, with the chimney puffing smoke forever
     if (this.ovenLight.intensity > 0 && !this.done.has('cuptor')) {
       this.ovenLight.intensity = Math.max(0, this.ovenLight.intensity - 2.2 * dt);
     }
-    if (this.forgeLight.intensity > 0) this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
+    if (this.forgeLight.intensity > 0 && !this.done.has('fierarie')) {
+      this.forgeLight.intensity = Math.max(0, this.forgeLight.intensity - 2.2 * dt);
+    }
 
     // A lit oven/forge keeps puffing smoke, not just once per step — right at
     // the cavity mouth (same spot as the fire glow), so it's visible from
@@ -857,10 +891,13 @@ export class VatraModule {
         this.ovenSmokeTimer = 0.5;
       }
     }
+    // Fierărie's smoke only ever comes from its actual chimney stack (dx-7,
+    // dz-8, atop the 2-block cobblestone flue), sized to grow into a puff
+    // roughly 3 blocks tall as it rises — never from the cavity mouth itself.
     if (this.forgeLight.intensity > 0.3) {
       this.forgeSmokeTimer -= dt;
       if (this.forgeSmokeTimer <= 0) {
-        this.spawnSmoke(this.ox - 7 + 0.5, this.groundY + 3.6, this.oz - 7 + 0.5, 0x9a9a9a, 0.14);
+        this.spawnSmoke(this.ox - 7 + 0.5, this.groundY + 6, this.oz - 8 + 0.5, 0x9a9a9a, 0.55);
         this.forgeSmokeTimer = 0.5;
       }
     }
@@ -935,6 +972,16 @@ export class VatraModule {
           this.setBlock(this.ox + cx, this.groundY + cy, this.oz + cz, BlockType.Air);
         }
         this.ovenLight.intensity = 1.8;
+      }
+      // Same migration for fierarie: it used to leave a Lamp block in the
+      // forge cavity, replaced by the pickaxe prop + permanent fire.
+      if (this.done.has('fierarie')) {
+        const [fx, fy, fz] = FORGE_CAVITY;
+        if (this.world.getBlock(this.ox + fx, this.groundY + fy, this.oz + fz) === BlockType.Lamp) {
+          this.setBlock(this.ox + fx, this.groundY + fy, this.oz + fz, BlockType.Air);
+        }
+        this.forgeLight.intensity = 1.8;
+        this.setPickaxeProp(true);
       }
     }
     // Same, once the Lunca chunk is loaded, for its own puzzles

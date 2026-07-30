@@ -232,7 +232,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Fierăria lui Bunicul — potcoava norocoasă',
     intro:
       'BUNICUL FIERAR: „Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Pune o buclă cu trei lovituri de ciocan, apoi călire-n apă rece, și gata potcoava. Nu sări nicio treaptă!"',
-    success: 'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. (+târnăcop și 4 piatră)',
+    success: 'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. (+1 târnăcop)',
     actions: [
       { id: 'aprinde_forja', label: 'Aprinde forja' },
       { id: 'pune_fier', label: 'Pune fierul în foc' },
