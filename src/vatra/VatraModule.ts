@@ -44,26 +44,27 @@ const TRAP_CENTER: [number, number, number] = [13, 1, -4];
 const BUCKET_HIGH = 3.4;
 const BUCKET_LOW = 1.3;
 
-// A wooden nametag/placard floating above each lesson location, so it's
-// readable from a distance before the player even walks up to it
+// A low wooden signpost planted just in front of each lesson's activity
+// (not floating above the roof) — dx/dz already nudged a step toward the
+// square, the way a real signpost would stand beside the path leading in.
 const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = {
-  fantana: { dx: 0, dz: 1.5, label: 'Fântâna' },
-  cuptor: { dx: -6, dz: -0.5, label: 'Cuptorul' },
-  ulita: { dx: 8, dz: 0, label: 'Ulița cu felinare' },
-  fierarie: { dx: -7, dz: -7, label: 'Fierăria' },
-  grajd: { dx: 0, dz: -6.5, label: 'Grajdul' },
-  spalatorie: { dx: 7.5, dz: -6.5, label: 'Spălătoria' },
-  gard: { dx: 0.5, dz: -6, label: 'Gardul Luncii' },
-  camp_grau: { dx: 22.5, dz: -0.5, label: 'Câmpul de grâu' },
-  moara: { dx: 21.5, dz: 8, label: 'Moara de apă' },
-  poteca: { dx: 0, dz: -6.5, label: 'Poteca Mumei Pădurii' },
-  pod: { dx: 0, dz: 3, label: 'Podul mișcător' },
-  capcana: { dx: 13, dz: -5, label: 'Capcana de lup' },
+  fantana: { dx: 0, dz: 4.5, label: 'Fântâna' },
+  cuptor: { dx: -6, dz: 1.5, label: 'Cuptorul' },
+  ulita: { dx: 8, dz: 1.5, label: 'Ulița cu felinare' },
+  fierarie: { dx: -7, dz: -5.5, label: 'Fierăria' },
+  grajd: { dx: 0, dz: -4.5, label: 'Grajdul' },
+  spalatorie: { dx: 7.5, dz: -4.5, label: 'Spălătoria' },
+  gard: { dx: 0.5, dz: -4.5, label: 'Gardul Luncii' },
+  camp_grau: { dx: 22.5, dz: 2.5, label: 'Câmpul de grâu' },
+  moara: { dx: 21.5, dz: 5.5, label: 'Moara de apă' },
+  poteca: { dx: 0, dz: -4.5, label: 'Poteca Mumei Pădurii' },
+  pod: { dx: 0, dz: 0.5, label: 'Podul mișcător' },
+  capcana: { dx: 13, dz: -2.5, label: 'Capcana de lup' },
 };
 
-// A wood-plank placard with a name burned into it — used both for the big
-// lesson-location signs and Bunicul's small personal nametag
-function makeSign(text: string, width = 2.6): THREE.Sprite {
+// Draws the wood-plank canvas texture shared by both the big lesson
+// signposts and Bunicul's small personal nametag.
+function drawSignCanvas(text: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 96;
@@ -82,14 +83,43 @@ function makeSign(text: string, width = 2.6): THREE.Sprite {
   } while (ctx.measureText(text).width > 292 && fontSize > 14);
   ctx.fillStyle = '#f4e6c8';
   ctx.fillText(text, 160, 50);
+  return canvas;
+}
 
-  const texture = new THREE.CanvasTexture(canvas);
+// Bunicul's personal nametag: a small billboard that always faces the
+// camera and stays legible from a distance, like a player's nametag.
+function makeSign(text: string, width = 2.6): THREE.Sprite {
+  const texture = new THREE.CanvasTexture(drawSignCanvas(text));
   texture.minFilter = THREE.LinearFilter;
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(width, width * 0.3, 1);
   sprite.renderOrder = 999;
   return sprite;
+}
+
+// A lesson-location signpost: a real wood post + board planted at head
+// height in front of the activity, with a fixed orientation (not a
+// billboard) and normal depth-testing/fog, so it only reads up close —
+// unlike Bunicul's always-visible nametag, it doesn't shout across the map.
+function makeSignBoard(text: string): THREE.Group {
+  const group = new THREE.Group();
+  const post = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 1.3, 0.12),
+    new THREE.MeshLambertMaterial({ color: 0x4a2f16 }),
+  );
+  post.position.set(0, 0.65, 0);
+  group.add(post);
+
+  const texture = new THREE.CanvasTexture(drawSignCanvas(text));
+  texture.minFilter = THREE.LinearFilter;
+  const board = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.3, 0.4),
+    new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
+  );
+  board.position.set(0, 1.25, 0);
+  group.add(board);
+  return group;
 }
 
 // Which puzzles live in Zona 2 (Lunca) or Zona 3 (Pădurea) rather than the
@@ -268,12 +298,13 @@ export class VatraModule {
     this.scene.add(nameSign);
   }
 
-  // One placard per lesson location, floating above its roofline
+  // One signpost per lesson location, planted at ground level right in
+  // front of the activity
   private buildSigns(): void {
     for (const [puzzleId, info] of Object.entries(LESSON_SIGNS)) {
       const [ox, gy, oz] = this.originFor(puzzleId);
-      const sign = makeSign(info.label);
-      sign.position.set(ox + info.dx + 0.5, gy + 7, oz + info.dz + 0.5);
+      const sign = makeSignBoard(info.label);
+      sign.position.set(ox + info.dx + 0.5, gy, oz + info.dz + 0.5);
       this.scene.add(sign);
     }
   }
