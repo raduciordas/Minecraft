@@ -321,14 +321,16 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Rufele nu se spală oricum, copile. Adu-le, înmoaie-le-n pârâu, freacă-le cu săpun, clătește-le-n apă curată, stoarce-le bine și abia apoi întinde-le pe frânghie."',
     success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+10 ii tradiționale și 10 sticlă)',
+    // Deliberately shuffled: listed in solution order the puzzle solves
+    // itself just by dragging the palette down in the order it's given
     actions: [
-      { id: 'adu_haine', label: 'Adu hainele murdare' },
-      { id: 'inmoaie', label: 'Înmoaie în pârâu' },
-      { id: 'freaca', label: 'Freacă cu săpun' },
-      { id: 'clateste', label: 'Clătește în apă curată' },
       { id: 'stoarce', label: 'Stoarce hainele' },
-      { id: 'intinde', label: 'Întinde pe frânghie' },
+      { id: 'adu_haine', label: 'Adu hainele murdare' },
+      { id: 'freaca', label: 'Freacă cu săpun' },
       { id: 'canta_la_rau', label: 'Cântă la marginea râului' },
+      { id: 'intinde', label: 'Întinde pe frânghie' },
+      { id: 'clateste', label: 'Clătește în apă curată' },
+      { id: 'inmoaie', label: 'Înmoaie în pârâu' },
     ],
     solution: [A('adu_haine'), A('inmoaie'), A('freaca'), A('clateste'), A('stoarce'), A('intinde')],
     fails: [
