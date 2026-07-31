@@ -899,8 +899,11 @@ export class VatraModule {
     }
     if (this.horseProp) return;
     this.horseProp = buildHorse();
-    this.horseProp.position.set(this.ox + 1.3 + 0.5, this.groundY, this.oz - 6 + 0.5);
-    this.horseProp.rotation.y = Math.PI / 2; // facing the trough
+    this.horseProp.scale.setScalar(1.2);
+    // Standing on the stable floor (its top is groundY + 1, like Bunicul),
+    // in the free row behind the trough, head reaching over the hay.
+    this.horseProp.position.set(this.ox + 0.5, this.groundY + 1, this.oz - 6.4);
+    this.horseProp.rotation.y = -Math.PI / 2; // facing the trough
     this.scene.add(this.horseProp);
   }
 
