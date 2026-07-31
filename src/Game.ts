@@ -47,7 +47,7 @@ import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
 import { WEAPONS, isWeapon } from './items/Weapon';
-import { THROWABLES, THROWABLE_IDS, isThrowable } from './items/Throwable';
+import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Throwable';
 import { ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
@@ -309,6 +309,13 @@ export class Game {
     for (const id of THROWABLE_IDS) {
       if (THROWABLES[id].craftedOnly) continue;
       this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
+    }
+    // Migration: Hay and Socată Fermentată used to be free starter stock —
+    // a save from before they became Grajd-only rewards may still be
+    // carrying that old free stock. Strip it unless Grajd is actually solved.
+    if (!this.vatra.isDone('grajd')) {
+      this.inventory.remove(BlockType.Hay, this.inventory.count(BlockType.Hay));
+      this.inventory.remove(ThrowableId.SocataBottle as unknown as BlockType, this.inventory.count(ThrowableId.SocataBottle as unknown as BlockType));
     }
 
     window.addEventListener('beforeunload', () => this.saveNow());
