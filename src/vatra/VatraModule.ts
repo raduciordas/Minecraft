@@ -214,6 +214,25 @@ function buildHorse(): THREE.Group {
   return horse;
 }
 
+// The washing hung out on the clothesline once Spălătoria is solved. Each
+// shirt is its own group pivoting at the line, so it can swing in the wind.
+function buildLaundryLine(): THREE.Group {
+  const line = new THREE.Group();
+  const CLOTH = 0xf2efe6;
+  const TRIM = 0xb03a2e;
+  // dz 0 is skipped — that's where the solved-state ie block itself hangs
+  for (const dz of [-1, 1, 2]) {
+    const shirt = new THREE.Group();
+    shirt.position.set(0, 0, dz);
+    box(shirt, 0.06, 0.62, 0.42, CLOTH, 0, -0.36, 0); // body of the ie
+    box(shirt, 0.06, 0.1, 0.42, TRIM, 0, -0.72, 0); // embroidered hem
+    box(shirt, 0.06, 0.3, 0.14, CLOTH, 0, -0.2, 0.26); // sleeve
+    box(shirt, 0.06, 0.3, 0.14, CLOTH, 0, -0.2, -0.26); // sleeve
+    line.add(shirt);
+  }
+  return line;
+}
+
 // Satul Codat, phase 0: six Vatra buildings as interactive coding puzzles
 // (pure sequences — Zone 1 of the design doc). Owns the puzzle state (which
 // are solved, persisted locally), the step-by-step 3D animations, the
@@ -247,6 +266,10 @@ export class VatraModule {
   private doughMesh: THREE.Mesh | null = null;
   private pickaxeProp: THREE.Group | null = null;
   private horseProp: THREE.Group | null = null;
+  private laundryProp: THREE.Group | null = null;
+  private laundryWind = 0; // drives the swaying of the hung washing
+  private laundryFxTimer = 0; // soap-bubble celebration right after a solve
+  private laundryBubbleTimer = 0;
   private readonly buniculPos = new THREE.Vector3();
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
@@ -300,6 +323,7 @@ export class VatraModule {
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
     if (this.done.has('grajd')) this.setHorseProp(true);
+    if (this.done.has('spalatorie')) this.setLaundryProp(true);
   }
 
   // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
@@ -696,7 +720,12 @@ export class VatraModule {
       this.setHorseProp(true);
       this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.3, this.oz - 6 + 0.5, 0xd9c27a, 2);
     }
-    if (puzzleId === 'spalatorie') this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
+    if (puzzleId === 'spalatorie') {
+      this.setLaundryProp(true);
+      this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
+      this.laundryFxTimer = 3; // soap bubbles boil up off the stream for a beat
+      this.laundryBubbleTimer = 0;
+    }
     if (puzzleId === 'gard') this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
     if (puzzleId === 'camp_grau') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 1.3, this.loz - 0.5, 0xd8b840, 3, this.lunGroundY);
     if (puzzleId === 'moara') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 2, this.lunGroundY);
@@ -714,6 +743,10 @@ export class VatraModule {
       this.inventory.add(BlockType.Hay, 10);
       this.inventory.add(ThrowableId.SocataBottle as unknown as BlockType, 10);
     }
+    if (puzzleId === 'spalatorie') {
+      this.inventory.add(BlockType.IeBlouse, 10);
+      this.inventory.add(BlockType.Glass, 10);
+    }
     if (firstTime) {
       this.grantReward(puzzleId);
       this.done.add(puzzleId);
@@ -723,10 +756,6 @@ export class VatraModule {
 
   private grantReward(puzzleId: string): void {
     switch (puzzleId) {
-      case 'spalatorie':
-        this.inventory.add(BlockType.IeBlouse, 4);
-        this.inventory.add(BlockType.RiverStone, 6);
-        break;
       case 'gard':
         this.inventory.add(BlockType.Wool, 10);
         break;
@@ -760,6 +789,10 @@ export class VatraModule {
       this.setPickaxeProp(false);
     }
     if (puzzleId === 'grajd') this.setHorseProp(false);
+    if (puzzleId === 'spalatorie') {
+      this.setLaundryProp(false);
+      this.laundryFxTimer = 0;
+    }
     this.done.delete(puzzleId);
     this.save();
   }
@@ -907,6 +940,25 @@ export class VatraModule {
     this.scene.add(this.horseProp);
   }
 
+  // The washing hung out to dry once Spălătoria is solved. Gone on reset.
+  private setLaundryProp(show: boolean): void {
+    if (!show) {
+      if (this.laundryProp) {
+        this.scene.remove(this.laundryProp);
+        disposeModel(this.laundryProp);
+        this.laundryProp = null;
+      }
+      return;
+    }
+    if (this.laundryProp) return;
+    this.laundryProp = buildLaundryLine();
+    // Draped over the near (east) face of the clothesline bar (dx 6, dy 3,
+    // running along z) — hanging inside the bar's own column would bury the
+    // end shirts in the two corner posts, which stand at the same dx.
+    this.laundryProp.position.set(this.ox + 7.03, this.groundY + 3, this.oz - 6.5);
+    this.scene.add(this.laundryProp);
+  }
+
   private spawnSmoke(x: number, y: number, z: number, color: number, size: number): void {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(size, 6, 5),
@@ -949,6 +1001,34 @@ export class VatraModule {
       if (this.forgeSmokeTimer <= 0) {
         this.spawnSmoke(this.ox - 7 + 0.5, this.groundY + 6, this.oz - 8 + 0.5, 0x9a9a9a, 0.55);
         this.forgeSmokeTimer = 0.5;
+      }
+    }
+
+    // Hung washing sways in the wind, each shirt on its own beat
+    if (this.laundryProp) {
+      this.laundryWind += dt;
+      const shirts = this.laundryProp.children;
+      for (let i = 0; i < shirts.length; i++) {
+        // Always a positive angle: the gusts only ever lift the washing away
+        // from the line, never back through the posts behind it
+        shirts[i].rotation.z = (Math.sin(this.laundryWind * 1.7 + i * 0.9) * 0.5 + 0.5) * 0.24;
+      }
+    }
+
+    // Right after the solve, the stream froths with soap bubbles that drift
+    // up over the washing place
+    if (this.laundryFxTimer > 0) {
+      this.laundryFxTimer -= dt;
+      this.laundryBubbleTimer -= dt;
+      if (this.laundryBubbleTimer <= 0) {
+        this.spawnSmoke(
+          this.ox + 8 + Math.random() * 3,
+          this.groundY + 1.2,
+          this.oz - 7 + Math.random() * 2,
+          0xdfeeff,
+          0.12 + Math.random() * 0.12,
+        );
+        this.laundryBubbleTimer = 0.09;
       }
     }
 

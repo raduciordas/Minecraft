@@ -109,7 +109,8 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Cobblestone]: S('Cobble', Tile.Cobble),
   [BlockType.Brick]: S('Brick', Tile.Brick),
   [BlockType.Snow]: S('Snow', Tile.Snow),
-  [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass) },
+  // craftedOnly: not part of the starter stock — earned only via Spălătoria.
+  [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass), craftedOnly: true },
   [BlockType.StoneBrick]: H('Stone Brick', Tile.StoneBrick),
   [BlockType.Crystal]: H('Crystal', Tile.Crystal),
   [BlockType.Mamaliga]: S('Mămăligă', Tile.Mamaliga),
@@ -135,7 +136,8 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Caramida]: C('Cărămidă', Tile.Caramida),
   [BlockType.HorezuCeramic]: S('Ceramică de Horezu', Tile.HorezuCeramic),
   [BlockType.RockSalt]: S('Sare', Tile.RockSalt),
-  [BlockType.IeBlouse]: S('Ie Tradițională', Tile.IeBlouse),
+  // craftedOnly: not part of the starter stock — earned only via Spălătoria.
+  [BlockType.IeBlouse]: C('Ie Tradițională', Tile.IeBlouse),
   [BlockType.RiverStone]: H('Bolovan de Râu', Tile.RiverStone),
   [BlockType.DacianGold]: H('Comoara Dacică', Tile.DacianGold),
   [BlockType.CraftingTable]: S('Masă de Cioplit', Tile.CraftingTable),

@@ -320,7 +320,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Spălătoria la pârâu — rufele curate',
     intro:
       'BUNICUL FIERAR: „Rufele nu se spală oricum, copile. Adu-le, înmoaie-le-n pârâu, freacă-le cu săpun, clătește-le-n apă curată, stoarce-le bine și abia apoi întinde-le pe frânghie."',
-    success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+4 ie tradițională și 6 bolovani de râu)',
+    success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+10 ii tradiționale și 10 sticlă)',
     actions: [
       { id: 'adu_haine', label: 'Adu hainele murdare' },
       { id: 'inmoaie', label: 'Înmoaie în pârâu' },

@@ -56,6 +56,17 @@ import { RemotePlayerManager } from './net/RemotePlayer';
 
 const THROWABLE_STARTER_STOCK = 20;
 
+// Materials that used to be free starter stock but are now handed out only by
+// the lesson listed beside them. Marking them craftedOnly stops new grants,
+// but ensureAtLeast only ever tops a count up, so a save from before the
+// change would keep its old free stock forever — hence the load-time cleanup.
+const LESSON_ONLY_STOCK: [BlockType, string][] = [
+  [BlockType.Hay, 'grajd'],
+  [ThrowableId.SocataBottle as unknown as BlockType, 'grajd'],
+  [BlockType.IeBlouse, 'spalatorie'],
+  [BlockType.Glass, 'spalatorie'],
+];
+
 interface ChunkTask {
   cx: number;
   cz: number;
@@ -310,12 +321,8 @@ export class Game {
       if (THROWABLES[id].craftedOnly) continue;
       this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
     }
-    // Migration: Hay and Socată Fermentată used to be free starter stock —
-    // a save from before they became Grajd-only rewards may still be
-    // carrying that old free stock. Strip it unless Grajd is actually solved.
-    if (!this.vatra.isDone('grajd')) {
-      this.inventory.remove(BlockType.Hay, this.inventory.count(BlockType.Hay));
-      this.inventory.remove(ThrowableId.SocataBottle as unknown as BlockType, this.inventory.count(ThrowableId.SocataBottle as unknown as BlockType));
+    for (const [id, lesson] of LESSON_ONLY_STOCK) {
+      if (!this.vatra.isDone(lesson)) this.inventory.remove(id, this.inventory.count(id));
     }
 
     window.addEventListener('beforeunload', () => this.saveNow());
