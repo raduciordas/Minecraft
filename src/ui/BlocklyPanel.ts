@@ -2,7 +2,7 @@ import * as Blockly from 'blockly/core';
 import 'blockly/blocks';
 import * as Ro from 'blockly/msg/ro';
 import { pythonGenerator } from 'blockly/python';
-import { VATRA_PUZZLES, type ProgramNode, type VatraPuzzle } from '../vatra/VatraPuzzles';
+import { VATRA_PUZZLES, rewardWhen, type ProgramNode, type VatraPuzzle } from '../vatra/VatraPuzzles';
 
 // Tabla de Blocuri — the block editor of Satul Codat, built on Blockly.
 // Palette on the left, program canvas on the right; repeat/while/if are
@@ -163,6 +163,7 @@ export class BlocklyPanel {
   private blocklyDiv!: HTMLElement;
   private titleText!: HTMLElement;
   private introEl!: HTMLElement;
+  private rewardEl!: HTMLElement;
   private statusEl!: HTMLElement;
   private codeEl!: HTMLElement;
   private runBtn!: HTMLButtonElement;
@@ -200,6 +201,10 @@ export class BlocklyPanel {
     this.introEl = document.createElement('div');
     this.introEl.className = 'tabla-intro';
     this.panel.appendChild(this.introEl);
+
+    this.rewardEl = document.createElement('div');
+    this.rewardEl.className = 'tabla-reward';
+    this.panel.appendChild(this.rewardEl);
 
     this.blocklyDiv = document.createElement('div');
     this.blocklyDiv.className = 'tabla-workspace';
@@ -262,6 +267,15 @@ export class BlocklyPanel {
     this.root.classList.remove('hidden');
     this.titleText.textContent = puzzle.title;
     this.introEl.textContent = puzzle.intro;
+    this.rewardEl.innerHTML = '';
+    const rewardLabel = document.createElement('b');
+    rewardLabel.textContent = '🎁 Răsplată: ';
+    this.rewardEl.appendChild(rewardLabel);
+    this.rewardEl.appendChild(document.createTextNode(`${puzzle.reward} `));
+    const rewardWhenEl = document.createElement('span');
+    rewardWhenEl.className = 'reward-when';
+    rewardWhenEl.textContent = `(${rewardWhen(puzzle)})`;
+    this.rewardEl.appendChild(rewardWhenEl);
 
     const narrow = window.innerWidth < 720;
     if (!this.workspace) {

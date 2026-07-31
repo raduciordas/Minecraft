@@ -35,6 +35,8 @@ export interface VatraPuzzle {
   title: string;
   intro: string; // Bunicul Fierar's guidance shown when the tabla opens
   success: string;
+  reward: string; // what solving it hands over, shown under the intro
+  rewardRepeats?: boolean; // paid out on every solve, not just the first
   actions: VatraAction[]; // atomic action blocks available in the palette
   conditions?: VatraCondition[]; // available for while/if, when allowed
   allowRepeat?: boolean; // shows the generic "repetă de N ori" container
@@ -42,6 +44,12 @@ export interface VatraPuzzle {
   allowIf?: boolean; // shows the generic "dacă <condiție> / altfel" container
   solution: ProgramNode[];
   fails: VatraFail[]; // checked in order; first match wins
+}
+
+// How often a lesson pays out, spelled out for the reward line the tabla and
+// Bunicul's lesson list both show under the brief
+export function rewardWhen(puzzle: VatraPuzzle): string {
+  return puzzle.rewardRepeats ? 'la fiecare rezolvare' : 'o singură dată, la prima rezolvare';
 }
 
 const A = (id: string): ProgramNode => ({ kind: 'action', id });
@@ -125,6 +133,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Fântâna-i secată de-un veac, copile. Leagă frânghia de găleată, apoi coboar-o, umple-o, urc-o și varsă apa în jgheab. Hai, arată-mi!"',
     success: 'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Bunicul îți dă o Suliță de Gheață, uneltită din chiar gheața fântânii. (+1 Ice Spear)',
+    reward: '1 suliță de gheață',
+    rewardRepeats: true,
     actions: [
       { id: 'leaga', label: 'Leagă frânghia' },
       { id: 'umple', label: 'Umple găleata' },
@@ -161,6 +171,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Șase porunci pentru un colac ca lumea. Da\' bagă de seamă: aluatul necopt nu-i pâine, iar pâinea nefrământată-i… cărbune!"',
     success: 'COLACI CALZI! Miroase-n tot satul. (+10 pâini în traistă)',
+    reward: '10 pâini',
+    rewardRepeats: true,
     actions: [
       { id: 'dospeste', label: 'Lasă la dospit' },
       { id: 'baga', label: 'Bagă în cuptor' },
@@ -197,6 +209,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       'BUNICUL FIERAR: „Verifică-ntâi untdelemnul, apoi spune tăbliței «repetă de atâtea ori» și pune înăuntru «aprinde felinarul». N-ai nevoie să-l apeși de cinci ori — bucla face treaba, tu doar alegi numărul."',
     success:
       'Ulița-i luminată dintr-o mișcare — bucla a aprins toate felinarele! Bunicul zâmbește: „Vezi? Nu mai trebuia s-o faci de cinci ori tu însuți." (+4 lămpi și 6 bolovani de râu)',
+    reward: '10 lămpi',
+    rewardRepeats: true,
     actions: [
       { id: 'verifica', label: 'Verifică untdelemnul' },
       { id: 'aprinde_felinar', label: 'Aprinde felinarul' },
@@ -233,6 +247,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Pune o buclă cu trei lovituri de ciocan, apoi călire-n apă rece, și gata potcoava. Nu sări nicio treaptă!"',
     success: 'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. (+1 târnăcop)',
+    reward: '1 târnăcop',
+    rewardRepeats: true,
     actions: [
       { id: 'aprinde_forja', label: 'Aprinde forja' },
       { id: 'pune_fier', label: 'Pune fierul în foc' },
@@ -280,6 +296,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Calul așteaptă la poartă, flămând și însetat. Deschide poarta, adu-i fân și apă — pe rând, cum se cuvine — și abia apoi lasă-l să intre."',
     success: 'Calul nechează mulțumit și intră în grajd! (+10 fân și 10 socată fermentată)',
+    reward: '10 baloturi de fân și 10 sticle de socată fermentată',
+    rewardRepeats: true,
     actions: [
       { id: 'deschide_poarta', label: 'Deschide poarta' },
       { id: 'adu_fan', label: 'Adu balot de fân' },
@@ -323,6 +341,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+10 ii tradiționale și 10 sticlă)',
     // Deliberately shuffled: listed in solution order the puzzle solves
     // itself just by dragging the palette down in the order it's given
+    reward: '10 ii tradiționale și 10 blocuri de sticlă',
+    rewardRepeats: true,
     actions: [
       { id: 'stoarce', label: 'Stoarce hainele' },
       { id: 'adu_haine', label: 'Adu hainele murdare' },
@@ -357,6 +377,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Lunca are nevoie de exact 30 de stâlpi de gard, copile. Pune o buclă «repetă de N ori» cu «pune un stâlp» înăuntru și scrie tu numărul potrivit — nu-l aleg eu pentru tine!"',
     success: 'GARDUL S-A RIDICAT SINGUR, stâlp după stâlp! Oile pot intra în Lunca. (+10 lână)',
+    reward: '10 lână',
     actions: [
       { id: 'pune_stalp', label: 'Pune un stâlp' },
       { id: 'prinde_capatul', label: 'Prinde capătul gardului' },
@@ -388,6 +409,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă, ca niște cutii una-n alta. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
     success: 'CÂMPUL S-A ÎNVERZIT dintr-o dată, rând cu rând! (+12 grâu)',
+    reward: '12 grâu',
     actions: [
       { id: 'planteaza_spic', label: 'Plantează spicul' },
       { id: 'canta_ciocarlia', label: 'Cântă ciocârliei' },
@@ -417,6 +439,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Pornește șuvoiul, apoi pune o buclă «cât timp curge apa» cu «macină» înăuntru. Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
     success: 'MOARA MACINĂ ÎNTRUNA, roata nu se mai oprește! (+14 făină)',
+    reward: '14 făină',
     actions: [
       { id: 'porneste_apa', label: 'Pornește șuvoiul de apă' },
       { id: 'macina', label: 'Macină' },
@@ -450,6 +473,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       'MUMA PĂDURII: „Hâhâhî! Vrei să treci prin pădurea mea, copile? Pune un bloc «dacă / altfel»: DACĂ e noapte, aprinde felinarul; ALTFEL, stinge-l. Alege bine condiția, ori te-ncurc în potecă!"',
     success:
       'Felinarul ascultă de noapte și de zi, cum se cuvine! Muma Pădurii chicotește mulțumită — poteca-i deschisă. (+8 ciuperci)',
+    reward: '8 ciuperci',
     actions: [
       { id: 'aprinde', label: 'Aprinde felinarul' },
       { id: 'stinge', label: 'Stinge felinarul' },
@@ -485,6 +509,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       'BUNICUL FIERAR: „Râul crește și scade fără veste, copile. Verifică semnul de nivel, apoi pune: DACĂ apa-i peste semn, ridică podul. Greșești comparația, și-i vai de cel care trece!"',
     success:
       'PODUL RĂSPUNDE LA RÂU, ca un senzor adevărat! Drum sigur peste apă, ploaie sau secetă. (+10 bolovani de râu)',
+    reward: '10 bolovani de râu',
     actions: [
       { id: 'verifica_semnul', label: 'Verifică semnul de nivel' },
       { id: 'ridica', label: 'Ridică podul' },
@@ -520,6 +545,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Verifică urmele, apoi pune: DACĂ e lup ȘI e noapte, declanșează capcana. Alege bine condiția din listă — oile care trec ziua nu-s treaba capcanei!"',
     success: 'CAPCANA-I ISCUSITĂ — prinde lupul, cruță oile! Turma-i pe deplin ocrotită. (+10 lână și 3 comoară dacică)',
+    reward: '10 lână și 3 comori dacice',
     actions: [
       { id: 'verifica_urme', label: 'Verifică urmele' },
       { id: 'declanseaza', label: 'Declanșează capcana' },

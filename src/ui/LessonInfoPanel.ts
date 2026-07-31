@@ -1,4 +1,4 @@
-import { VATRA_PUZZLES } from '../vatra/VatraPuzzles';
+import { VATRA_PUZZLES, rewardWhen } from '../vatra/VatraPuzzles';
 
 // Zona 1 (Vatra Satului) lessons, in teaching order
 const ZONE1_ORDER = ['fantana', 'cuptor', 'ulita', 'fierarie', 'grajd', 'spalatorie'];
@@ -91,6 +91,19 @@ export class LessonInfoPanel {
       hint.className = 'lore-hint';
       hint.textContent = puzzle.intro;
       body.appendChild(hint);
+
+      const reward = document.createElement('div');
+      reward.className = 'lore-reward';
+      const rewardLabel = document.createElement('b');
+      rewardLabel.textContent = '🎁 Răsplată: ';
+      reward.appendChild(rewardLabel);
+      reward.appendChild(document.createTextNode(`${puzzle.reward} `));
+      const rewardWhenEl = document.createElement('span');
+      rewardWhenEl.className = 'reward-when';
+      rewardWhenEl.textContent = `(${rewardWhen(puzzle)})`;
+      reward.appendChild(rewardWhenEl);
+      body.appendChild(reward);
+
       row.appendChild(body);
 
       const btn = document.createElement('button');
