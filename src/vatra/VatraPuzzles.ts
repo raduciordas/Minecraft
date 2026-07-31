@@ -133,7 +133,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Fântâna-i secată de-un veac, copile. Leagă frânghia de găleată, apoi coboar-o, umple-o, urc-o și varsă apa în jgheab. Hai, arată-mi!"',
     success: 'APA CURGE! Fântâna-i vie iarăși, iar jgheabul e plin. Bunicul îți dă o Suliță de Gheață, uneltită din chiar gheața fântânii. (+1 Ice Spear)',
-    reward: '1 suliță de gheață',
+    reward: '1 suliță de gheață (Ice Spear)',
     rewardRepeats: true,
     actions: [
       { id: 'leaga', label: 'Leagă frânghia' },
@@ -208,7 +208,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BUNICUL FIERAR: „Verifică-ntâi untdelemnul, apoi spune tăbliței «repetă de atâtea ori» și pune înăuntru «aprinde felinarul». N-ai nevoie să-l apeși de cinci ori — bucla face treaba, tu doar alegi numărul."',
     success:
-      'Ulița-i luminată dintr-o mișcare — bucla a aprins toate felinarele! Bunicul zâmbește: „Vezi? Nu mai trebuia s-o faci de cinci ori tu însuți." (+4 lămpi și 6 bolovani de râu)',
+      'Ulița-i luminată dintr-o mișcare — bucla a aprins toate felinarele! Bunicul zâmbește: „Vezi? Nu mai trebuia s-o faci de cinci ori tu însuți." (+10 lămpi)',
     reward: '10 lămpi',
     rewardRepeats: true,
     actions: [
@@ -341,7 +341,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     success: 'Rufele flutură curate-n vânt, albe ca zăpada! (+10 ii tradiționale și 10 sticlă)',
     // Deliberately shuffled: listed in solution order the puzzle solves
     // itself just by dragging the palette down in the order it's given
-    reward: '10 ii tradiționale și 10 blocuri de sticlă',
+    reward: '10 ii tradiționale și 10 blocuri de sticlă (Glass)',
     rewardRepeats: true,
     actions: [
       { id: 'stoarce', label: 'Stoarce hainele' },
@@ -544,7 +544,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     title: 'Capcana de lup — ȘI logic',
     intro:
       'BUNICUL FIERAR: „Verifică urmele, apoi pune: DACĂ e lup ȘI e noapte, declanșează capcana. Alege bine condiția din listă — oile care trec ziua nu-s treaba capcanei!"',
-    success: 'CAPCANA-I ISCUSITĂ — prinde lupul, cruță oile! Turma-i pe deplin ocrotită. (+10 lână și 3 comoară dacică)',
+    success: 'CAPCANA-I ISCUSITĂ — prinde lupul, cruță oile! Turma-i pe deplin ocrotită. (+10 lână și 3 comori dacice)',
     reward: '10 lână și 3 comori dacice',
     actions: [
       { id: 'verifica_urme', label: 'Verifică urmele' },
