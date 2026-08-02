@@ -56,6 +56,12 @@ import { RemotePlayerManager } from './net/RemotePlayer';
 
 const THROWABLE_STARTER_STOCK = 20;
 
+// A lesson left untouched this long closes itself and frees the spot for the
+// next player. Must stay at or below the server's own expiry (server/index.mjs)
+// so the polite client-side close always beats the server sweeping the lock.
+const LESSON_IDLE_MS = 60_000;
+const LESSON_PING_INTERVAL_MS = 10_000; // throttle: activity is bursty, the lock isn't
+
 // Materials that used to be free starter stock but are now handed out only by
 // the lesson listed beside them. Marking them craftedOnly stops new grants,
 // but ensureAtLeast only ever tops a count up, so a save from before the
@@ -145,6 +151,9 @@ export class Game {
   private network = new NetworkClient();
   private remotePlayers: RemotePlayerManager;
   private multiplayer = false;
+  private heldLesson: string | null = null;
+  private lessonIdleTimer: number | null = null;
+  private lessonPingAt = 0;
   private moveSendTimer = 0;
   private mpStatusEl: HTMLElement;
 
@@ -243,11 +252,15 @@ export class Game {
     // chunk and nobody needs it until they open their first lesson.
     this.tablaCallbacks = {
       onRunStart: (pz: string) => this.vatra.beginRun(pz),
-      onStep: (pz: string, block: string) => this.vatra.performStep(pz, block),
+      onStep: (pz: string, block: string) => {
+        this.noteLessonActivity(); // a long run is still the lesson being used
+        this.vatra.performStep(pz, block);
+      },
       onFinish: (pz: string, program: ProgramNode[]) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),
       isDone: (pz: string) => this.vatra.isDone(pz),
       onResetLesson: (pz: string) => this.vatra.resetPuzzle(pz),
+      onActivity: () => this.noteLessonActivity(),
     };
 
     this.health = new Health();
@@ -745,6 +758,19 @@ export class Game {
 
   private async openTabla(puzzleId: string): Promise<void> {
     if (this.tablaLoading) return;
+    if (this.heldLesson && this.heldLesson !== puzzleId) this.releaseLesson();
+    // One tabla per lesson across the whole server: ask before opening, so
+    // two children can't drag blocks into the same lesson at once.
+    if (this.multiplayer) {
+      const claim = await this.network.claimLesson(puzzleId);
+      if (!claim.ok) {
+        this.showToast(`${claim.byName ?? 'Alt jucător'} lucrează acum la lecția asta — așteaptă să termine.`);
+        this.sound.clink();
+        return;
+      }
+    }
+    this.heldLesson = puzzleId;
+    this.noteLessonActivity();
     const host = document.getElementById('tabla')!;
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();
@@ -765,8 +791,39 @@ export class Game {
   private closeTabla(): void {
     if (!this.tabla?.isOpen) return;
     this.tabla.close();
+    this.releaseLesson();
     this.input.setInventoryOpen(false);
     if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
+  }
+
+  // Hands the lesson back so the next player can open it
+  private releaseLesson(): void {
+    if (this.lessonIdleTimer !== null) {
+      clearTimeout(this.lessonIdleTimer);
+      this.lessonIdleTimer = null;
+    }
+    if (!this.heldLesson) return;
+    if (this.multiplayer) this.network.releaseLesson(this.heldLesson);
+    this.heldLesson = null;
+  }
+
+  // Any real interaction with the open tabla restarts the idle countdown. A
+  // lesson left untouched for a minute closes itself and frees the spot —
+  // solo play has nobody waiting, so it's left alone there.
+  private noteLessonActivity(): void {
+    if (!this.heldLesson || !this.multiplayer) return;
+    const now = performance.now();
+    if (now - this.lessonPingAt > LESSON_PING_INTERVAL_MS) {
+      this.lessonPingAt = now;
+      this.network.pingLesson(this.heldLesson);
+    }
+    if (this.lessonIdleTimer !== null) clearTimeout(this.lessonIdleTimer);
+    this.lessonIdleTimer = window.setTimeout(() => {
+      this.lessonIdleTimer = null;
+      this.closeTabla();
+      this.releaseLesson(); // in case the panel hadn't finished opening yet
+      this.showToast('Lecția s-a închis singură — n-ai atins nimic un minut, ca s-o poată lua altul.');
+    }, LESSON_IDLE_MS);
   }
 
   // --- Chunk streaming ---
@@ -1008,6 +1065,10 @@ export class Game {
     if (isWeapon(selected) || isThrowable(selected) || isTool(selected)) return; // can't be placed
 
     const { x, y, z } = hit.previous;
+    if (this.vatra.isProtected(x, y, z)) {
+      this.sound.clink(); // the lesson squares take no blocks either, same as they can't be mined
+      return;
+    }
     const target = this.world.getBlock(x, y, z);
     if (target !== BlockType.Air && target !== BlockType.Water) return;
     if (blockIntersectsBody(this.player.body, x, y, z)) return;

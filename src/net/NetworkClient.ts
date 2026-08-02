@@ -48,6 +48,16 @@ interface Handlers {
   blockEdit: (e: BlockEditEvent) => void;
 }
 
+export interface LessonClaim {
+  ok: boolean;
+  byName?: string;
+}
+
+// How long to wait for the server's verdict on a lesson before opening it
+// anyway — a laggy link (or an older server that doesn't know about locks)
+// shouldn't leave a child staring at nothing when they click a lesson.
+const CLAIM_TIMEOUT_MS = 1500;
+
 // Thin wrapper around a WebSocket connection to the CUBURIA server. connect()
 // resolves with the server's init payload on success, or null if the server
 // is unreachable within the timeout — callers should fall back to solo play.
@@ -56,6 +66,7 @@ export class NetworkClient {
   private ws: WebSocket | null = null;
   private handlers: Partial<Handlers> = {};
   private disconnectHandler: (() => void) | null = null;
+  private claims = new Map<string, (r: LessonClaim) => void>();
 
   connect(url: string, name: string): Promise<InitPayload | null> {
     return new Promise((resolve) => {
@@ -97,6 +108,14 @@ export class NetworkClient {
           }
           return;
         }
+        if (msg.type === 'lessonGranted' || msg.type === 'lessonDenied') {
+          const pending = this.claims.get(msg.puzzleId as string);
+          if (pending) {
+            this.claims.delete(msg.puzzleId as string);
+            pending({ ok: msg.type === 'lessonGranted', byName: msg.byName as string | undefined });
+          }
+          return;
+        }
         if (msg.type === 'join') this.handlers.join?.(msg as unknown as RemotePlayerState);
         else if (msg.type === 'leave') this.handlers.leave?.(msg.id as string);
         else if (msg.type === 'move') this.handlers.move?.(msg as unknown as MoveEvent);
@@ -133,6 +152,35 @@ export class NetworkClient {
   sendBlockEdit(x: number, y: number, z: number, blockId: number): void {
     if (!this.connected || !this.ws) return;
     this.ws.send(JSON.stringify({ type: 'blockEdit', x, y, z, blockId }));
+  }
+
+  // Asks the server for exclusive use of a lesson. Resolves ok:false with the
+  // holder's name when somebody else is already at that tabla.
+  claimLesson(puzzleId: string): Promise<LessonClaim> {
+    if (!this.connected || !this.ws) return Promise.resolve({ ok: true });
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (r: LessonClaim) => {
+        if (settled) return;
+        settled = true;
+        this.claims.delete(puzzleId);
+        resolve(r);
+      };
+      this.claims.set(puzzleId, finish);
+      this.ws!.send(JSON.stringify({ type: 'lessonClaim', puzzleId }));
+      setTimeout(() => finish({ ok: true }), CLAIM_TIMEOUT_MS);
+    });
+  }
+
+  // Keeps a held lesson from expiring while it's genuinely being worked on
+  pingLesson(puzzleId: string): void {
+    if (!this.connected || !this.ws) return;
+    this.ws.send(JSON.stringify({ type: 'lessonPing', puzzleId }));
+  }
+
+  releaseLesson(puzzleId: string): void {
+    if (!this.connected || !this.ws) return;
+    this.ws.send(JSON.stringify({ type: 'lessonRelease', puzzleId }));
   }
 }
 

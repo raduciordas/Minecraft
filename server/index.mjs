@@ -47,6 +47,39 @@ function colorFromName(name) {
 const players = new Map(); // id -> { ws, name, color, x, y, z, yaw }
 let nextId = 1;
 
+// One lesson, one player at a time: whoever opens a Tabla de Blocuri holds it
+// until they close it, go quiet for a minute, or drop off.
+const LESSON_IDLE_MS = 60_000;
+const LESSON_SWEEP_MS = 5_000;
+const lessons = new Map(); // puzzleId -> { holder, expiresAt }
+
+function announceLesson(puzzleId) {
+  const lock = lessons.get(puzzleId);
+  const holder = lock ? players.get(lock.holder) : null;
+  broadcast({ type: 'lessonLock', puzzleId, by: lock ? lock.holder : null, byName: holder ? holder.name : null });
+}
+
+function releaseLessonsOf(playerId) {
+  for (const [puzzleId, lock] of lessons) {
+    if (lock.holder !== playerId) continue;
+    lessons.delete(puzzleId);
+    announceLesson(puzzleId);
+  }
+}
+
+// A client that crashes or freezes never sends its release, so the server
+// expires stale holds on its own — the client's own idle timer is the polite
+// path, this is the backstop.
+setInterval(() => {
+  const now = Date.now();
+  for (const [puzzleId, lock] of lessons) {
+    if (lock.expiresAt > now) continue;
+    lessons.delete(puzzleId);
+    console.log(`${new Date().toISOString()} lesson ${puzzleId} expired (held by ${lock.holder})`);
+    announceLesson(puzzleId);
+  }
+}, LESSON_SWEEP_MS);
+
 function broadcast(msg, exceptId) {
   const data = JSON.stringify(msg);
   for (const [id, p] of players) {
@@ -124,6 +157,37 @@ wss.on('connection', (ws) => {
       else chunkEdits.push([index, blockId]);
       scheduleSave();
       broadcast({ type: 'blockEdit', x, y, z, blockId, by: id }, id);
+      return;
+    }
+
+    if (msg.type === 'lessonClaim') {
+      const puzzleId = String(msg.puzzleId || '');
+      if (!puzzleId) return;
+      const lock = lessons.get(puzzleId);
+      if (lock && lock.holder !== id && lock.expiresAt > Date.now()) {
+        const holder = players.get(lock.holder);
+        ws.send(JSON.stringify({ type: 'lessonDenied', puzzleId, byName: holder ? holder.name : 'Alt jucător' }));
+        return;
+      }
+      lessons.set(puzzleId, { holder: id, expiresAt: Date.now() + LESSON_IDLE_MS });
+      ws.send(JSON.stringify({ type: 'lessonGranted', puzzleId }));
+      announceLesson(puzzleId);
+      return;
+    }
+
+    if (msg.type === 'lessonPing') {
+      const lock = lessons.get(String(msg.puzzleId || ''));
+      if (lock && lock.holder === id) lock.expiresAt = Date.now() + LESSON_IDLE_MS;
+      return;
+    }
+
+    if (msg.type === 'lessonRelease') {
+      const puzzleId = String(msg.puzzleId || '');
+      const lock = lessons.get(puzzleId);
+      if (lock && lock.holder === id) {
+        lessons.delete(puzzleId);
+        announceLesson(puzzleId);
+      }
     }
   });
 
@@ -131,6 +195,7 @@ wss.on('connection', (ws) => {
     if (id !== null) {
       console.log(`${new Date().toISOString()} leave id=${id} name=${players.get(id)?.name}`);
       players.delete(id);
+      releaseLessonsOf(id);
       broadcast({ type: 'leave', id });
     }
   });

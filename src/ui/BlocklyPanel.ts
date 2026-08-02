@@ -26,6 +26,7 @@ export interface BlocklyCallbacks {
   onRequestClose: () => void;
   isDone: (puzzleId: string) => boolean;
   onResetLesson: (puzzleId: string) => void;
+  onActivity: () => void; // any sign of life at the tabla, for the idle timeout
 }
 
 Blockly.setLocale(Ro as unknown as { [key: string]: string });
@@ -224,7 +225,10 @@ export class BlocklyPanel {
     this.runBtn = document.createElement('button');
     this.runBtn.className = 'tabla-run';
     this.runBtn.textContent = '▶ Pornește';
-    this.runBtn.addEventListener('click', () => void this.run());
+    this.runBtn.addEventListener('click', () => {
+      this.cb.onActivity();
+      void this.run();
+    });
     actions.appendChild(this.runBtn);
 
     this.resetBtn = document.createElement('button');
@@ -243,6 +247,7 @@ export class BlocklyPanel {
     this.relearnBtn.textContent = '↺ Resetează lecția';
     this.relearnBtn.title = 'Reia lecția de la capăt — o poți rezolva din nou, pentru răsplată din nou';
     this.relearnBtn.addEventListener('click', () => {
+      this.cb.onActivity();
       if (this.running || !this.puzzle) return;
       this.cb.onResetLesson(this.puzzle.id);
       this.workspace?.clear();
@@ -298,7 +303,10 @@ export class BlocklyPanel {
         },
         grid: { spacing: 22, length: 2, colour: 'rgba(74,47,22,0.25)', snap: false },
       });
-      this.workspace.addChangeListener(() => {
+      this.workspace.addChangeListener((e) => {
+        // UI-only events (scroll, selection) fire constantly; only real edits
+        // count as the player still being at the tabla
+        if (!e.isUiEvent) this.cb.onActivity();
         if (!this.running) this.refresh();
       });
     } else {
