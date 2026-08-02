@@ -34,6 +34,7 @@ import { Hud } from './ui/Hud';
 import { InventoryPanel } from './ui/InventoryPanel';
 import { CraftingPanel } from './ui/CraftingPanel';
 import { LessonInfoPanel } from './ui/LessonInfoPanel';
+import { HelpPanel } from './ui/HelpPanel';
 import { VatraModule } from './vatra/VatraModule';
 import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
@@ -125,6 +126,7 @@ export class Game {
   private inventoryPanel: InventoryPanel;
   private craftingPanel: CraftingPanel;
   private lessonInfoPanel: LessonInfoPanel;
+  private helpPanel: HelpPanel;
   private vatra: VatraModule;
   private tabla: BlocklyPanel | null = null;
   private tablaCallbacks!: BlocklyCallbacks;
@@ -234,6 +236,7 @@ export class Game {
       },
       onClose: () => this.closeLessonInfo(),
     });
+    this.helpPanel = new HelpPanel(document.getElementById('help')!, atlas, () => this.toggleHelpPanel());
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
     this.remotePlayers = new RemotePlayerManager(this.scene);
@@ -289,6 +292,7 @@ export class Game {
     this.input.onBreak(() => this.attack());
     this.input.onPlace(() => this.placeBlock());
     this.input.onInventoryToggle(() => this.toggleInventoryPanel());
+    this.input.onHelpToggle(() => this.toggleHelpPanel());
 
     // Selection outline: slightly inflated unit cube wireframe
     const boxGeo = new THREE.BoxGeometry(1.001, 1.001, 1.001);
@@ -716,6 +720,20 @@ export class Game {
       if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
     } else {
       this.inventoryPanel.show();
+      this.input.setInventoryOpen(true);
+      if (!this.input.isTouchDevice) document.exitPointerLock();
+    }
+  }
+
+  // Ajutor (H): the material catalogue. Like the inventory, it pauses the
+  // game and releases the mouse while it's up.
+  private toggleHelpPanel(): void {
+    if (this.helpPanel.isOpen) {
+      this.helpPanel.close();
+      this.input.setInventoryOpen(false);
+      if (!this.input.isTouchDevice) this.renderer.domElement.requestPointerLock();
+    } else {
+      this.helpPanel.show();
       this.input.setInventoryOpen(true);
       if (!this.input.isTouchDevice) document.exitPointerLock();
     }

@@ -27,6 +27,7 @@ export class InputController {
   private scrollListeners: ((delta: number) => void)[] = [];
   private flyToggleListeners: (() => void)[] = [];
   private inventoryToggleListeners: (() => void)[] = [];
+  private helpToggleListeners: (() => void)[] = [];
   private touchModeListeners: ((active: boolean) => void)[] = [];
   private overlay: HTMLElement;
 
@@ -52,6 +53,12 @@ export class InputController {
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyE' && (this.active || this.inventoryOpen)) {
         this.inventoryToggleListeners.forEach((fn) => fn());
+        return;
+      }
+      // Same deal as E: has to work while the panel it opened is up, so it
+      // can close it again
+      if (e.code === 'KeyH' && (this.active || this.inventoryOpen)) {
+        this.helpToggleListeners.forEach((fn) => fn());
         return;
       }
       if (!this.active) return;
@@ -173,6 +180,9 @@ export class InputController {
   }
   onInventoryToggle(fn: () => void): void {
     this.inventoryToggleListeners.push(fn);
+  }
+  onHelpToggle(fn: () => void): void {
+    this.helpToggleListeners.push(fn);
   }
   onTouchModeChange(fn: (active: boolean) => void): void {
     this.touchModeListeners.push(fn);

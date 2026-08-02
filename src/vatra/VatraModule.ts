@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId, buildToolModel, disposeModel } from '../items/Tool';
-import { WeaponId } from '../items/Weapon';
-import { ThrowableId } from '../items/Throwable';
 import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
 import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
 import type { World } from '../world/World';
@@ -732,49 +730,17 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
-    // Fântâna, Ulița, Cuptor, Fierărie and Grajd reward every completion
-    // (not just the first), so replaying them is worthwhile — this replaces
-    // their old one-time reward.
-    if (puzzleId === 'fantana') this.inventory.add(WeaponId.IceSpear as unknown as BlockType, 1);
-    if (puzzleId === 'ulita') this.inventory.add(BlockType.Lamp, 10);
-    if (puzzleId === 'cuptor') this.inventory.add(BlockType.Paine, 10);
-    if (puzzleId === 'fierarie') this.inventory.add(ToolId.Tarnacop as unknown as BlockType, 1);
-    if (puzzleId === 'grajd') {
-      this.inventory.add(BlockType.Hay, 10);
-      this.inventory.add(ThrowableId.SocataBottle as unknown as BlockType, 10);
-    }
-    if (puzzleId === 'spalatorie') {
-      this.inventory.add(BlockType.IeBlouse, 10);
-      this.inventory.add(BlockType.Glass, 10);
+    // The payout is the puzzle's own rewardItems list, so what a lesson
+    // hands over, what its reward line says, and what the Ajutor panel lists
+    // can't drift apart. Vatra's six pay on every solve; the Luncă and
+    // Pădurea ones only the first time.
+    const puzzle = VATRA_PUZZLES[puzzleId];
+    if (puzzle && (puzzle.rewardRepeats || firstTime)) {
+      for (const item of puzzle.rewardItems) this.inventory.add(item.id as BlockType, item.count);
     }
     if (firstTime) {
-      this.grantReward(puzzleId);
       this.done.add(puzzleId);
       this.save();
-    }
-  }
-
-  private grantReward(puzzleId: string): void {
-    switch (puzzleId) {
-      case 'gard':
-        this.inventory.add(BlockType.Wool, 10);
-        break;
-      case 'camp_grau':
-        this.inventory.add(BlockType.Wheat, 12);
-        break;
-      case 'moara':
-        this.inventory.add(BlockType.Flour, 14);
-        break;
-      case 'poteca':
-        this.inventory.add(BlockType.Mushroom, 8);
-        break;
-      case 'pod':
-        this.inventory.add(BlockType.RiverStone, 10);
-        break;
-      case 'capcana':
-        this.inventory.add(BlockType.Wool, 10);
-        this.inventory.add(BlockType.DacianGold, 3);
-        break;
     }
   }
 

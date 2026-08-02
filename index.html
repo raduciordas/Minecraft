@@ -204,6 +204,66 @@
       .tabla-status.bad { color: #7c1408; }
 
       /* Bunicul's lore popup — what sequences are, plus Zona 1's lesson list */
+      /* Ajutor (H): the material catalogue */
+      #help {
+        position: fixed; inset: 0;
+        display: flex; align-items: flex-start; justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 17; font-family: monospace; padding: 3vh 0;
+      }
+      #help.hidden { display: none; }
+      .help-panel {
+        background: linear-gradient(#b08249, #8a5f33);
+        border: 6px solid #4a2f16; border-radius: 10px;
+        max-width: 640px; width: 94vw; max-height: 94vh; overflow: auto;
+        padding: 16px 18px; color: #2b1808;
+        box-shadow: 0 8px 0 #3a2410;
+      }
+      .help-title {
+        font-weight: bold; font-size: 16px;
+        display: flex; align-items: center; gap: 10px;
+        position: sticky; top: -16px; padding: 6px 0;
+        background: #b08249; border-bottom: 2px solid #4a2f16;
+      }
+      .help-close {
+        margin-left: auto; cursor: pointer;
+        border: 2px solid #4a2f16; border-radius: 4px; padding: 2px 8px;
+      }
+      .help-close:hover { background: rgba(255, 255, 255, 0.2); }
+      .help-lead {
+        font-size: 11px; line-height: 1.5; margin: 10px 0 4px;
+        background: rgba(255, 240, 200, 0.4);
+        border: 2px dashed #4a2f16; border-radius: 4px; padding: 7px 9px;
+      }
+      .help-section {
+        font-weight: bold; font-size: 14px;
+        margin: 16px 0 2px; padding-bottom: 3px;
+        border-bottom: 2px solid #4a2f16;
+      }
+      .help-section-intro { font-size: 11px; line-height: 1.4; margin-bottom: 8px; opacity: 0.85; }
+      .help-row {
+        display: flex; gap: 10px; align-items: flex-start;
+        background: rgba(255, 240, 200, 0.28);
+        border: 2px solid #6b4a26; border-radius: 6px;
+        padding: 7px 9px; margin-bottom: 6px;
+      }
+      .help-icon {
+        flex-shrink: 0; width: 34px; height: 34px;
+        border: 2px solid #4a2f16; border-radius: 4px;
+        background: rgba(0, 0, 0, 0.18);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .help-icon canvas {
+        width: 28px; height: 28px;
+        image-rendering: pixelated;
+      }
+      .help-body { min-width: 0; }
+      .help-name { font-weight: bold; font-size: 12px; }
+      .help-use { font-size: 11px; line-height: 1.4; margin: 2px 0 4px; }
+      .help-sources {
+        margin: 0; padding-left: 16px;
+        font-size: 11px; line-height: 1.45; color: #4a3312;
+      }
       #lore {
         position: fixed; inset: 0;
         display: flex; align-items: center; justify-content: center;
@@ -441,6 +501,7 @@
     <div id="crafting" class="hidden"></div>
     <div id="tabla" class="hidden"></div>
     <div id="lore" class="hidden"></div>
+    <div id="help" class="hidden"></div>
     <div id="toast"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
@@ -461,6 +522,7 @@
         Golem (heavy hitter) &nbsp;|&nbsp; Zmeu (fire breath, ranged) &nbsp;|&nbsp; Capcaun (giant, deadliest)<br />
         Satul Codat: caută Vatra (lângă spawn, spre nord-vest) — click dreapta pe fântână, cuptor sau felinare și programează-le!<br />
         1-9 / scroll — select slot &nbsp;|&nbsp; E — inventory (pick materials) &nbsp;|&nbsp; F — fly &nbsp;|&nbsp; Esc — pause<br />
+        <b>H — Ajutor: de unde iei fiecare material și la ce folosește</b><br />
         Progress is saved automatically in your browser.
       </p>
     </div>
