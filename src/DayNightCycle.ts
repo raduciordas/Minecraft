@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { FULL_DAY_SECONDS, DAY_START_TIME, FREEZE_DAY_NIGHT, RENDER_DISTANCE, CHUNK_SIZE } from './config';
+import {
+  FULL_DAY_SECONDS,
+  DAY_SECONDS,
+  DAY_START_TIME,
+  FREEZE_DAY_NIGHT,
+  RENDER_DISTANCE,
+  CHUNK_SIZE,
+} from './config';
 
 const DAY_SKY = new THREE.Color(0x87ceeb);
 const SUNSET_SKY = new THREE.Color(0xe8875a);
@@ -7,9 +14,40 @@ const NIGHT_SKY = new THREE.Color(0x070b21);
 
 const STAR_COUNT = 350;
 
-// time in [0,1): 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset
+// Share of the cycle spent in daylight. The sun still travels the same arc,
+// it just takes longer to cross it than the moon does.
+const DAY_PHASE = DAY_SECONDS / FULL_DAY_SECONDS;
+
+// `phase` runs 0..1 at a constant rate from sunrise, and is what the clock
+// actually advances. `time` is the sky position it maps to — still the old
+// convention (0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset), so
+// every reader downstream, and every saved world, keeps working unchanged.
+// The map is piecewise-linear: the day half of the sky (0.25 → 0.75) is
+// stretched over DAY_PHASE of the clock, the night half over the rest.
+function phaseToTime(phase: number): number {
+  const p = ((phase % 1) + 1) % 1;
+  if (p < DAY_PHASE) return 0.25 + (p / DAY_PHASE) * 0.5;
+  return (0.75 + ((p - DAY_PHASE) / (1 - DAY_PHASE)) * 0.5) % 1;
+}
+
+function timeToPhase(time: number): number {
+  const t = ((time % 1) + 1) % 1;
+  if (t >= 0.25 && t < 0.75) return ((t - 0.25) / 0.5) * DAY_PHASE;
+  const nightT = t < 0.25 ? t + 1 : t; // the night arc wraps past midnight
+  return DAY_PHASE + ((nightT - 0.75) / 0.5) * (1 - DAY_PHASE);
+}
+
 export class DayNightCycle {
-  time = DAY_START_TIME;
+  private phase = timeToPhase(DAY_START_TIME);
+
+  // Where the sun sits in the sky, derived from the clock. Assigning it
+  // (a loaded save, a test) rewinds the clock to match.
+  get time(): number {
+    return phaseToTime(this.phase);
+  }
+  set time(value: number) {
+    this.phase = timeToPhase(value);
+  }
 
   // When set (multiplayer), time is derived from wall-clock time relative to
   // this epoch instead of accumulated locally, so every connected player
@@ -82,12 +120,13 @@ export class DayNightCycle {
 
   update(dt: number, camera: THREE.Camera): void {
     if (FREEZE_DAY_NIGHT) {
-      this.time = DAY_START_TIME;
+      this.phase = timeToPhase(DAY_START_TIME);
     } else if (this.networkEpoch !== null) {
       const elapsedSeconds = (Date.now() - this.networkEpoch) / 1000;
-      this.time = (((elapsedSeconds / FULL_DAY_SECONDS + DAY_START_TIME) % 1) + 1) % 1;
+      const start = timeToPhase(DAY_START_TIME);
+      this.phase = (((elapsedSeconds / FULL_DAY_SECONDS + start) % 1) + 1) % 1;
     } else {
-      this.time = (this.time + dt / FULL_DAY_SECONDS) % 1;
+      this.phase = (this.phase + dt / FULL_DAY_SECONDS) % 1;
     }
 
     const angle = (this.time - 0.25) * Math.PI * 2;

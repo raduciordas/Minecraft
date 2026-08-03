@@ -34,7 +34,10 @@ export class InputController {
   constructor(canvas: HTMLCanvasElement, overlay: HTMLElement) {
     this.overlay = overlay;
 
-    overlay.addEventListener('click', () => {
+    overlay.addEventListener('click', (e) => {
+      // The overlay is one big "click to play" target, but it also carries a
+      // link — let that open instead of starting the game underneath it
+      if ((e.target as HTMLElement).closest('a')) return;
       if (this.isTouchDevice) this.setTouchActive(true);
       else canvas.requestPointerLock();
     });

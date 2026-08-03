@@ -60,13 +60,15 @@ export const MESH_BUDGET_MS = 7; // per-frame budget for chunk gen/meshing
 // Sky
 export const SKY_COLOR = 0x87ceeb;
 
-// Day/night cycle
-export const FULL_DAY_SECONDS = 240; // one full day+night
+// Day/night cycle. The two halves run at different speeds — daylight is
+// generous, night is short enough that waiting it out isn't a chore.
+export const DAY_SECONDS = 300; // sunrise to sunset
+export const NIGHT_SECONDS = 180; // sunset to sunrise
+export const FULL_DAY_SECONDS = DAY_SECONDS + NIGHT_SECONDS;
 export const DAY_START_TIME = 0.35; // fresh worlds start mid-morning
 // Dev-branch testing convenience: keeps the sky frozen at DAY_START_TIME so
-// lesson testing isn't interrupted by nightfall/mob spawns. Flip to false
-// (or drop this before merging) once this branch goes live.
-export const FREEZE_DAY_NIGHT = true;
+// lesson testing isn't interrupted by nightfall/mob spawns.
+export const FREEZE_DAY_NIGHT = false;
 
 // Survival
 export const MAX_HP = 20; // half-hearts
