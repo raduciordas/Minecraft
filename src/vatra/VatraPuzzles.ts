@@ -488,6 +488,128 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
     ],
   },
+  livada: {
+    id: 'livada',
+    title: 'Livada de meri — bucla cu mai mulți pași',
+    intro:
+      'BACIUL LUNCII: „Până acum ai pus câte-o singură poruncă în buclă. Da\' un pom nu se sădește dintr-o mișcare: sapi groapa, pui puietul, îl uzi. Bagă toți trei pașii ÎN buclă, în ordinea lor, și repetă pentru fiecare din cei patru pomi — nu uita sapa la-nceput și gardul la sfârșit."',
+    success: 'LIVADA S-A ÎNVERZIT — patru meri, sădiți unul după altul de aceeași buclă! (+16 frunze și 12 bușteni)',
+    rewardItems: [{ id: BlockType.Leaves, count: 16 }, { id: BlockType.Log, count: 12 }],
+    reward: '16 frunze și 12 bușteni',
+    rewardRepeats: true,
+    actions: [
+      { id: 'uda_puietul', label: 'Udă puietul' },
+      { id: 'ia_sapa', label: 'Ia sapa din șură' },
+      { id: 'ingradeste_livada', label: 'Îngrădește livada' },
+      { id: 'sapa_groapa', label: 'Sapă groapa' },
+      { id: 'sperie_ciorile', label: 'Sperie ciorile' },
+      { id: 'pune_puietul', label: 'Pune puietul' },
+    ],
+    allowRepeat: true,
+    solution: [
+      A('ia_sapa'),
+      REPEAT(4, [A('sapa_groapa'), A('pune_puietul'), A('uda_puietul')]),
+      A('ingradeste_livada'),
+    ],
+    fails: [
+      {
+        text: 'Ai udat gropile GOALE — patru bălți frumoase și niciun pom în ele! Pune puietul înainte să torni apa.',
+        anim: 'splash',
+        matches: (p) => before(p, 'uda_puietul', 'pune_puietul'),
+      },
+      {
+        text: 'Ai înfipt puieții în pământ NESĂPAT — s-au îndoit toți patru ca niște cârlige. Sapă groapa întâi!',
+        anim: 'dark',
+        matches: (p) => before(p, 'pune_puietul', 'sapa_groapa'),
+      },
+      {
+        text: 'Numărul buclei nu-i bun — livada are loc de exact patru meri, nici mai mulți, nici mai puțini.',
+        anim: 'dark',
+        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count !== 4),
+      },
+      {
+        text: 'Ai pus pașii pe rând, pe dinafara buclei — merge, dar e trudă de pomana. Bagă toți trei pașii ÎNĂUNTRUL buclei.',
+        anim: 'none',
+        matches: (p) => hasTopLevelAction(p, 'sapa_groapa') || hasTopLevelAction(p, 'pune_puietul'),
+      },
+      {
+        text: 'Livada a rămas pe jumătate sădită. Sapa întâi, apoi bucla cu cei trei pași, apoi gardul — încearcă din nou!',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  capite: {
+    id: 'capite',
+    title: 'Căpițele de fân — bucla din buclă, cu pași',
+    intro:
+      'BACIUL LUNCII: „Asta-i cea mai grea din luncă, copile. Trei căpițe, și fiecare se face la fel: înfigi parul, arunci fânul de patru ori, legi vârful. Va să zică o buclă mică de aruncat fân, băgată într-o buclă mare care face toate cele trei căpițe — și amândouă cu pași înainte și după. Coasa întâi!"',
+    success: 'TREI CĂPIȚE ÎNALTE, legate ca la carte — bucla din buclă le-a ridicat pe toate! (+20 baloturi de fân)',
+    rewardItems: [{ id: BlockType.Hay, count: 20 }],
+    reward: '20 baloturi de fân',
+    rewardRepeats: true,
+    actions: [
+      { id: 'arunca_fanul', label: 'Aruncă fânul cu furca' },
+      { id: 'leaga_capita', label: 'Leagă vârful căpiței' },
+      { id: 'coseste_iarba', label: 'Cosește iarba' },
+      { id: 'infige_parul', label: 'Înfige parul' },
+      { id: 'bea_apa', label: 'Bea o gură de apă' },
+    ],
+    allowRepeat: true,
+    solution: [
+      A('coseste_iarba'),
+      REPEAT(3, [A('infige_parul'), REPEAT(4, [A('arunca_fanul')]), A('leaga_capita')]),
+    ],
+    fails: [
+      {
+        text: 'Ai aruncat fânul fără PAR în mijloc — s-a împrăștiat tot, de l-a luat vântul peste luncă!',
+        anim: 'dark',
+        matches: (p) => before(p, 'arunca_fanul', 'infige_parul'),
+      },
+      {
+        text: 'Ai legat vârful ÎNAINTE să arunci fânul — ai legat un par gol, frumos și singur. Fânul întâi!',
+        anim: 'dark',
+        matches: (p) => before(p, 'leaga_capita', 'arunca_fanul'),
+      },
+      {
+        text: 'Bucla dinăuntru n-are numărul bun — o căpiță se face din exact patru furci de fân, altfel iese o movilă strâmbă.',
+        anim: 'dark',
+        matches: (p) =>
+          hasNode(
+            p,
+            (n) =>
+              n.kind === 'repeat' &&
+              n.count !== 4 &&
+              n.body.length === 1 &&
+              n.body[0].kind === 'action' &&
+              n.body[0].id === 'arunca_fanul',
+          ),
+      },
+      {
+        text: 'Bucla din afară n-are numărul bun — lunca are loc de exact trei căpițe.',
+        anim: 'dark',
+        matches: (p) =>
+          hasNode(
+            p,
+            (n) =>
+              n.kind === 'repeat' &&
+              n.count !== 3 &&
+              n.body.some((m) => m.kind === 'action' && m.id === 'infige_parul'),
+          ),
+      },
+      {
+        text: 'Cositul se face O SINGURĂ DATĂ, la început — nu la fiecare căpiță. Scoate-l din buclă!',
+        anim: 'dark',
+        matches: (p) =>
+          hasNode(p, (n) => n.kind === 'repeat' && hasNode(n.body, (m) => m.kind === 'action' && m.id === 'coseste_iarba')),
+      },
+      {
+        text: 'Căpițele-s strâmbe. Cosește, apoi o buclă de trei cu: par, patru furci de fân, legat vârful. Mai încearcă!',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
   poteca: {
     id: 'poteca',
     title: 'Poteca Mumei Pădurii — prima decizie',

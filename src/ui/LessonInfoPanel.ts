@@ -24,7 +24,7 @@ export const ZONES: Record<string, ZoneInfo> = {
       'în loc să pui aceeași poruncă de treizeci de ori. Tu alegi numărul, iar bucla face ' +
       'toată truda. Și, dacă pui o buclă ÎN altă buclă, cea dinăuntru se învârte de la capăt ' +
       'la fiecare rotire a celei din afară — așa plantezi un câmp întreg, rând cu rând.',
-    lessons: ['gard', 'camp_grau', 'moara'],
+    lessons: ['gard', 'camp_grau', 'moara', 'livada', 'capite'],
   },
 };
 

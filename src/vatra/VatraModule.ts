@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
 import { ToolId, buildToolModel, disposeModel } from '../items/Tool';
-import { VATRA_ORIGIN, LUNCA_ORIGIN, PADUREA_ORIGIN } from '../world/Structures';
+import {
+  VATRA_ORIGIN,
+  LUNCA_ORIGIN,
+  PADUREA_ORIGIN,
+  ORCHARD_DX,
+  ORCHARD_DZ,
+  HAYSTACK_DX,
+  HAYSTACK_DZ,
+} from '../world/Structures';
 import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
 import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
@@ -42,6 +50,54 @@ const MILL_WHEEL_LOGS: [number, number, number][] = [
   [19, 2, 7],
   [19, 2, 9],
 ];
+// One orchard tree: a 2-block trunk under a leaf cross with a cap. The
+// planting mound (dy 1) is Dirt until the tree takes root.
+type Rel = [number, number, number];
+function orchardTree(x: number): { trunk: Rel[]; canopy: Rel[] } {
+  const z = ORCHARD_DZ;
+  return {
+    trunk: [
+      [x, 1, z],
+      [x, 2, z],
+    ],
+    canopy: [
+      [x, 3, z],
+      [x - 1, 3, z],
+      [x + 1, 3, z],
+      [x, 3, z - 1],
+      [x, 3, z + 1],
+      [x, 4, z],
+    ],
+  };
+}
+
+// One haystack: a pole with hay heaped round it, narrowing toward the top.
+// The hay goes on in four forkfuls, so it's split into four equal batches.
+function haystack(x: number): { pole: Rel[]; forkfuls: Rel[][]; cap: Rel } {
+  const z = HAYSTACK_DZ;
+  const lower: Rel[] = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (dx !== 0 || dz !== 0) lower.push([x + dx, 1, z + dz]);
+    }
+  }
+  const upper: Rel[] = [
+    [x - 1, 2, z],
+    [x + 1, 2, z],
+    [x, 2, z - 1],
+    [x, 2, z + 1],
+  ];
+  const hay = [...lower, ...upper]; // 8 + 4 = 12, four forkfuls of three
+  return {
+    pole: [
+      [x, 1, z],
+      [x, 2, z],
+    ],
+    forkfuls: [hay.slice(0, 3), hay.slice(3, 6), hay.slice(6, 9), hay.slice(9, 12)],
+    cap: [x, 3, z],
+  };
+}
+
 // Where the sheep graze once the fence closes, relative to the Luncă origin
 const SHEEP_SPOTS: [number, number][] = [
   [-6, -4],
@@ -70,6 +126,8 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = 
   gard: { dx: 0.5, dz: -3, label: 'Gardul Luncii' },
   camp_grau: { dx: 22.5, dz: 4, label: 'Câmpul de grâu' },
   moara: { dx: 21.5, dz: 6.5, label: 'Moara de apă' },
+  livada: { dx: -9.5, dz: 5.5, label: 'Livada de meri' },
+  capite: { dx: -10, dz: 10.5, label: 'Căpițele de fân' },
   poteca: { dx: 0, dz: -3, label: 'Poteca Mumei Pădurii' },
   pod: { dx: 0, dz: 2, label: 'Podul mișcător' },
   capcana: { dx: 13, dz: -1, label: 'Capcana de lup' },
@@ -155,7 +213,7 @@ function makeSignBoard(text: string): THREE.Group {
 
 // Which puzzles live in Zona 2 (Lunca) or Zona 3 (Pădurea) rather than the
 // Vatra square — their world positions are relative to a different origin.
-const LUNCA_PUZZLES = new Set(['gard', 'camp_grau', 'moara']);
+const LUNCA_PUZZLES = new Set(['gard', 'camp_grau', 'moara', 'livada', 'capite']);
 const PADUREA_PUZZLES = new Set(['poteca', 'pod', 'capcana']);
 
 // The persistent world change each puzzle makes on success, and what it
@@ -181,6 +239,23 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
     // The log wheel gives way to the turning prop (see setMillWheelProp)
     ...MILL_WHEEL_LOGS.map((pos) => ({ pos, solved: BlockType.Air, unsolved: BlockType.Log })),
   ],
+  livada: ORCHARD_DX.flatMap((x) => {
+    const t = orchardTree(x);
+    return [
+      // the dug mound becomes the trunk's foot, so it reverts to Dirt
+      { pos: t.trunk[0], solved: BlockType.Log, unsolved: BlockType.Dirt },
+      { pos: t.trunk[1], solved: BlockType.Log, unsolved: BlockType.Air },
+      ...t.canopy.map((pos) => ({ pos, solved: BlockType.Leaves, unsolved: BlockType.Air })),
+    ];
+  }),
+  capite: HAYSTACK_DX.flatMap((x) => {
+    const h = haystack(x);
+    return [
+      ...h.pole.map((pos) => ({ pos, solved: BlockType.Log, unsolved: BlockType.Air })),
+      ...h.forkfuls.flat().map((pos) => ({ pos, solved: BlockType.Hay, unsolved: BlockType.Air })),
+      { pos: h.cap, solved: BlockType.Hay, unsolved: BlockType.Air },
+    ];
+  }),
   poteca: [{ pos: LANTERN_POTECA, solved: BlockType.Lamp, unsolved: BlockType.Glass }],
   pod: [{ pos: BRIDGE_RAIL, solved: BlockType.Log, unsolved: BlockType.Air }],
   capcana: [{ pos: TRAP_CENTER, solved: BlockType.Hay, unsolved: BlockType.Plank }],
@@ -347,6 +422,9 @@ export class VatraModule {
   private tempBlocks: { x: number; y: number; z: number; revertTo: BlockType }[] = [];
   private gardIndex = 0; // which fence post 'pune_stalp' places next
   private campIndex = 0; // which field tile 'planteaza_spic' places next
+  private livadaIndex = 0; // which orchard spot the loop body is working on
+  private capitaIndex = 0; // which haystack the outer loop is on
+  private forkIndex = 0; // which forkful of hay within that haystack
 
   constructor(
     private scene: THREE.Scene,
@@ -525,6 +603,8 @@ export class VatraModule {
       if (lx >= -15 && lx <= 16 && lz >= -6 && lz <= -6) return 'gard';
       if (lx >= 20 && lx <= 25 && lz >= -2 && lz <= 1) return 'camp_grau';
       if (lx >= 19 && lx <= 24 && lz >= 6 && lz <= 10) return 'moara';
+      if (lx >= -16 && lx <= -3 && lz >= 2 && lz <= 4) return 'livada';
+      if (lx >= -15 && lx <= -5 && lz >= 7 && lz <= 9) return 'capite';
     }
 
     const px = bx - this.pox;
@@ -586,6 +666,11 @@ export class VatraModule {
     if (puzzleId === 'fierarie' && !this.done.has('fierarie')) this.forgeLight.intensity = 0;
     if (puzzleId === 'gard') this.gardIndex = 0;
     if (puzzleId === 'camp_grau') this.campIndex = 0;
+    if (puzzleId === 'livada') this.livadaIndex = 0;
+    if (puzzleId === 'capite') {
+      this.capitaIndex = 0;
+      this.forkIndex = 0;
+    }
   }
 
   // One program block executes: animate the matching mechanism
@@ -723,6 +808,68 @@ export class VatraModule {
       } else {
         this.sound.stepTick();
       }
+    } else if (puzzleId === 'livada') {
+      const spot = ORCHARD_DX[Math.min(this.livadaIndex, ORCHARD_DX.length - 1)];
+      const tree = orchardTree(spot);
+      if (blockId === 'sapa_groapa') {
+        this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a4a, 3, this.lunGroundY);
+        this.sound.stepTick();
+      } else if (blockId === 'pune_puietul') {
+        if (this.livadaIndex < ORCHARD_DX.length) {
+          for (const [x, y, z] of tree.trunk) {
+            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, y === 1 ? BlockType.Dirt : BlockType.Air);
+          }
+        }
+        this.sound.place();
+      } else if (blockId === 'uda_puietul') {
+        if (this.livadaIndex < ORCHARD_DX.length) {
+          for (const [x, y, z] of tree.canopy) {
+            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Leaves, BlockType.Air);
+          }
+        }
+        this.livadaIndex++; // the tree is finished; the next pass digs the next hole
+        this.sound.splash();
+      } else if (blockId === 'ingradeste_livada') {
+        this.spawnFlyingBits(this.lox - 9 + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a3a, 3, this.lunGroundY);
+        this.sound.clink();
+      } else {
+        this.sound.stepTick();
+      }
+    } else if (puzzleId === 'capite') {
+      const spot = HAYSTACK_DX[Math.min(this.capitaIndex, HAYSTACK_DX.length - 1)];
+      const stack = haystack(spot);
+      const inRange = this.capitaIndex < HAYSTACK_DX.length;
+      if (blockId === 'coseste_iarba') {
+        this.spawnFlyingBits(this.lox - 10 + 0.5, this.lunGroundY + 1.3, this.loz + HAYSTACK_DZ + 0.5, 0x8fb54a, 3, this.lunGroundY);
+        this.sound.stepTick();
+      } else if (blockId === 'infige_parul') {
+        if (inRange) {
+          for (const [x, y, z] of stack.pole) {
+            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, BlockType.Air);
+          }
+        }
+        this.forkIndex = 0;
+        this.sound.place();
+      } else if (blockId === 'arunca_fanul') {
+        if (inRange && this.forkIndex < stack.forkfuls.length) {
+          for (const [x, y, z] of stack.forkfuls[this.forkIndex]) {
+            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Hay, BlockType.Air);
+          }
+        }
+        this.forkIndex++;
+        this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 2.2, this.loz + HAYSTACK_DZ + 0.5, 0xd9c27a, 2, this.lunGroundY);
+        this.sound.place();
+      } else if (blockId === 'leaga_capita') {
+        if (inRange) {
+          const [x, y, z] = stack.cap;
+          this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Hay, BlockType.Air);
+        }
+        this.capitaIndex++; // on to the next haystack
+        this.forkIndex = 0;
+        this.sound.clink();
+      } else {
+        this.sound.stepTick();
+      }
     } else if (puzzleId === 'poteca') {
       if (blockId === 'aprinde') {
         this.placeTemp(
@@ -843,6 +990,8 @@ export class VatraModule {
       this.setMillWheelProp(true);
       this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 2, this.lunGroundY);
     }
+    if (puzzleId === 'livada') this.spawnFlyingBits(this.lox - 9 + 0.5, this.lunGroundY + 3, this.loz + ORCHARD_DZ + 0.5, 0x5aa03a, 4, this.lunGroundY);
+    if (puzzleId === 'capite') this.spawnFlyingBits(this.lox - 10 + 0.5, this.lunGroundY + 3, this.loz + HAYSTACK_DZ + 0.5, 0xd9c27a, 4, this.lunGroundY);
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);

@@ -285,6 +285,14 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
 // and VatraModule (loop-puzzle interactions).
 export const LUNCA_ORIGIN = { x: -15, z: -40 };
 
+// Livada's four planting spots and Căpițele's three haystack spots, shared
+// with VatraModule so the world layout and the puzzle mechanics can't drift.
+// Spaced 3 apart so neighbouring canopies/heaps never claim the same block.
+export const ORCHARD_DX = [-14, -11, -8, -5];
+export const ORCHARD_DZ = 3;
+export const HAYSTACK_DX = [-13, -10, -7];
+export const HAYSTACK_DZ = 8;
+
 // Lunca: the meadow zone that teaches loops — a 30-post fence with a gap
 // the "repetă" block fills, an empty tilled field waiting to be planted in
 // one motion, and a water mill that never stops grinding on its own.
@@ -324,6 +332,19 @@ export function buildLuncaZone(originX: number, originZ: number): StructureTempl
   B(19, 3, 8, BlockType.Log);
   B(19, 2, 7, BlockType.Log);
   B(19, 2, 9, BlockType.Log);
+
+  // Livada: four dug planting mounds, bare until the loop plants a tree on
+  // each — the loop body here is a whole sequence (dig, plant, water)
+  for (const x of ORCHARD_DX) {
+    B(x, 1, ORCHARD_DZ, BlockType.Dirt);
+  }
+
+  // Căpițele: three mown patches waiting for a haystack apiece
+  for (const x of HAYSTACK_DX) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) B(x + dx, 0, HAYSTACK_DZ + dz, BlockType.Dirt);
+    }
+  }
 
   return {
     name: 'Lunca',
