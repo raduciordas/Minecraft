@@ -1,7 +1,32 @@
 import { VATRA_PUZZLES, rewardWhen } from '../vatra/VatraPuzzles';
 
-// Zona 1 (Vatra Satului) lessons, in teaching order
-const ZONE1_ORDER = ['fantana', 'cuptor', 'ulita', 'fierarie', 'grajd', 'spalatorie'];
+// One teaching zone: its guide NPC, the concept that zone drills, and its
+// lessons in teaching order. Clicking the guide opens his own page.
+interface ZoneInfo {
+  guide: string;
+  concept: string; // innerHTML: a <b> lead-in plus the explanation
+  lessons: string[];
+}
+
+export const ZONES: Record<string, ZoneInfo> = {
+  vatra: {
+    guide: '🧓 Bunicul Fierar',
+    concept:
+      '<b>Ce-s secvențele?</b> O secvență e o listă de porunci care se-ntâmplă una după alta, ' +
+      'exact în ordinea-n care le pui pe tăbliță — ca pașii unei rețete. Schimbă ordinea și ' +
+      'rezultatul se schimbă: dacă verși apa înainte s-o umpli, jgheabul rămâne uscat!',
+    lessons: ['fantana', 'cuptor', 'ulita', 'fierarie', 'grajd', 'spalatorie'],
+  },
+  lunca: {
+    guide: '🐑 Baciul Luncii',
+    concept:
+      '<b>Ce-s buclele?</b> O buclă spune tăbliței „fă asta de atâtea ori" — o singură dată, ' +
+      'în loc să pui aceeași poruncă de treizeci de ori. Tu alegi numărul, iar bucla face ' +
+      'toată truda. Și, dacă pui o buclă ÎN altă buclă, cea dinăuntru se învârte de la capăt ' +
+      'la fiecare rotire a celei din afară — așa plantezi un câmp întreg, rând cu rând.',
+    lessons: ['gard', 'camp_grau', 'moara'],
+  },
+};
 
 export interface LessonInfoCallbacks {
   isDone: (puzzleId: string) => boolean;
@@ -9,12 +34,16 @@ export interface LessonInfoCallbacks {
   onClose: () => void;
 }
 
-// Bunicul's lore popup, opened by clicking him: explains what "secvențe"
-// (sequences) are and lists Zona 1's six lessons with Bunicul's own guidance
-// text (reused from VATRA_PUZZLES' `intro`) and each lesson's solved status.
+// The guide's lore popup, opened by clicking him: explains the concept his
+// zone teaches and lists that zone's lessons with his own guidance text
+// (reused from VATRA_PUZZLES' `intro`), each one's reward, and whether it's
+// solved yet.
 export class LessonInfoPanel {
   private root: HTMLElement;
+  private titleText: Text;
+  private conceptEl: HTMLElement;
   private list: HTMLElement;
+  private zone = 'vatra';
   isOpen = false;
 
   constructor(
@@ -31,7 +60,8 @@ export class LessonInfoPanel {
 
     const title = document.createElement('div');
     title.className = 'lore-title';
-    title.textContent = '🧓 Bunicul Fierar';
+    this.titleText = document.createTextNode('');
+    title.appendChild(this.titleText);
     const closeButton = document.createElement('span');
     closeButton.className = 'lore-close';
     closeButton.textContent = '✕';
@@ -39,13 +69,9 @@ export class LessonInfoPanel {
     title.appendChild(closeButton);
     panel.appendChild(title);
 
-    const concept = document.createElement('div');
-    concept.className = 'lore-concept';
-    concept.innerHTML =
-      '<b>Ce-s secvențele?</b> O secvență e o listă de porunci care se-ntâmplă una după alta, ' +
-      'exact în ordinea-n care le pui pe tăbliță — ca pașii unei rețete. Schimbă ordinea și ' +
-      'rezultatul se schimbă: dacă verși apa înainte s-o umpli, jgheabul rămâne uscat!';
-    panel.appendChild(concept);
+    this.conceptEl = document.createElement('div');
+    this.conceptEl.className = 'lore-concept';
+    panel.appendChild(this.conceptEl);
 
     this.list = document.createElement('div');
     this.list.className = 'lore-list';
@@ -55,10 +81,11 @@ export class LessonInfoPanel {
     this.root.appendChild(panel);
   }
 
-  show(): void {
+  show(zone: string): void {
+    this.zone = ZONES[zone] ? zone : 'vatra';
     this.isOpen = true;
     this.root.classList.remove('hidden');
-    this.renderList();
+    this.render();
   }
 
   close(): void {
@@ -66,9 +93,13 @@ export class LessonInfoPanel {
     this.root.classList.add('hidden');
   }
 
-  private renderList(): void {
+  private render(): void {
+    const info = ZONES[this.zone];
+    this.titleText.data = info.guide;
+    this.conceptEl.innerHTML = info.concept;
+
     this.list.innerHTML = '';
-    for (const id of ZONE1_ORDER) {
+    for (const id of info.lessons) {
       const puzzle = VATRA_PUZZLES[id];
       if (!puzzle) continue;
       const done = this.callbacks.isDone(id);

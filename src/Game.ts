@@ -751,9 +751,9 @@ export class Game {
     }
   }
 
-  private openLessonInfo(): void {
+  private openLessonInfo(zone: string): void {
     if (this.lessonInfoPanel.isOpen) return;
-    this.lessonInfoPanel.show();
+    this.lessonInfoPanel.show(zone);
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();
   }
@@ -1012,12 +1012,13 @@ export class Game {
     }
   }
 
-  // Bunicul is a decorative NPC, not a voxel block, so he can't be found via
-  // the usual block-grid raycast — this is a simple ray-sphere hit test instead.
-  private buniculHit(): boolean {
+  // Which zone guide (Bunicul in the Vatra, Baciul in the Luncă) is being
+  // looked at, if any. They're decorative NPCs, not voxel blocks, so the
+  // usual block-grid raycast can't find them — this is a ray-sphere test.
+  private guideHit(): string | null {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
-    return this.vatra.raycastBunicul(
+    return this.vatra.guideAt(
       { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
       { x: dir.x, y: dir.y, z: dir.z },
       REACH_DISTANCE,
@@ -1036,8 +1037,9 @@ export class Game {
 
   private placeBlock(): void {
     if (this.health.dead) return;
-    if (this.buniculHit()) {
-      this.openLessonInfo();
+    const guideZone = this.guideHit();
+    if (guideZone) {
+      this.openLessonInfo(guideZone);
       return;
     }
     const hit = this.raycastFromCamera();

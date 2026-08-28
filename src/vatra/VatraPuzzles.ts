@@ -391,10 +391,11 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'gard',
     title: 'Gardul Luncii — momentul AHA',
     intro:
-      'BUNICUL FIERAR: „Lunca are nevoie de exact 30 de stâlpi de gard, copile. Pune o buclă «repetă de N ori» cu «pune un stâlp» înăuntru și scrie tu numărul potrivit — nu-l aleg eu pentru tine!"',
+      'BACIUL LUNCII: „Lunca are nevoie de exact 30 de stâlpi de gard, copile. Pune o buclă «repetă de N ori» cu «pune un stâlp» înăuntru și scrie tu numărul potrivit — nu-l aleg eu pentru tine!"',
     success: 'GARDUL S-A RIDICAT SINGUR, stâlp după stâlp! Oile pot intra în Lunca. (+10 lână)',
     rewardItems: [{ id: BlockType.Wool, count: 10 }],
     reward: '10 lână',
+    rewardRepeats: true,
     actions: [
       { id: 'pune_stalp', label: 'Pune un stâlp' },
       { id: 'prinde_capatul', label: 'Prinde capătul gardului' },
@@ -424,10 +425,11 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'camp_grau',
     title: 'Câmpul de grâu — bucle în bucle',
     intro:
-      'BUNICUL FIERAR: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă, ca niște cutii una-n alta. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
+      'BACIUL LUNCII: „Patru rânduri, șase spice pe rând — o buclă ÎN altă buclă, ca niște cutii una-n alta. Cea dinăuntru plantează un rând întreg; cea din afară o repetă pentru toate cele patru rânduri."',
     success: 'CÂMPUL S-A ÎNVERZIT dintr-o dată, rând cu rând! (+12 grâu)',
     rewardItems: [{ id: BlockType.Wheat, count: 12 }],
     reward: '12 grâu',
+    rewardRepeats: true,
     actions: [
       { id: 'planteaza_spic', label: 'Plantează spicul' },
       { id: 'canta_ciocarlia', label: 'Cântă ciocârliei' },
@@ -455,10 +457,11 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'moara',
     title: 'Moara de apă — bucla infinită',
     intro:
-      'BUNICUL FIERAR: „Pornește șuvoiul, apoi pune o buclă «cât timp curge apa» cu «macină» înăuntru. Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
+      'BACIUL LUNCII: „Pornește șuvoiul, apoi pune o buclă «cât timp curge apa» cu «macină» înăuntru. Asta-i o buclă fără capăt — moara nu se oprește niciodată singură, cât timp apa curge."',
     success: 'MOARA MACINĂ ÎNTRUNA, roata nu se mai oprește! (+14 făină)',
     rewardItems: [{ id: BlockType.Flour, count: 14 }],
     reward: '14 făină',
+    rewardRepeats: true,
     actions: [
       { id: 'porneste_apa', label: 'Pornește șuvoiul de apă' },
       { id: 'macina', label: 'Macină' },

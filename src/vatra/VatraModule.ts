@@ -34,6 +34,20 @@ function fencePostPos(index: number): number {
 const FIELD_POS: [number, number, number][] = [];
 for (let x = 20; x <= 25; x++) for (let z = -2; z <= 1; z++) FIELD_POS.push([x, 1, z]);
 const MILL_FLOUR: [number, number, number] = [22, 1, 8];
+// The mill's static log wheel, swapped out for the spinning prop on success
+const MILL_WHEEL_LOGS: [number, number, number][] = [
+  [19, 1, 8],
+  [19, 2, 8],
+  [19, 3, 8],
+  [19, 2, 7],
+  [19, 2, 9],
+];
+// Where the sheep graze once the fence closes, relative to the Luncă origin
+const SHEEP_SPOTS: [number, number][] = [
+  [-6, -4],
+  [-3, -3.2],
+  [6, -4.5],
+];
 
 // Pădurea's conditional-puzzle markers, relative to the Pădurea origin
 const LANTERN_POTECA: [number, number, number] = [0, 3, -6];
@@ -162,7 +176,11 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   spalatorie: [{ pos: LAUNDRY_SPOT, solved: BlockType.IeBlouse, unsolved: BlockType.Air }],
   gard: FENCE_DX.map((x) => ({ pos: [x, 1, -6] as [number, number, number], solved: BlockType.Log, unsolved: BlockType.Air })),
   camp_grau: FIELD_POS.map((pos) => ({ pos, solved: BlockType.Wheat, unsolved: BlockType.Dirt })),
-  moara: [{ pos: MILL_FLOUR, solved: BlockType.Flour, unsolved: BlockType.Air }],
+  moara: [
+    { pos: MILL_FLOUR, solved: BlockType.Flour, unsolved: BlockType.Air },
+    // The log wheel gives way to the turning prop (see setMillWheelProp)
+    ...MILL_WHEEL_LOGS.map((pos) => ({ pos, solved: BlockType.Air, unsolved: BlockType.Log })),
+  ],
   poteca: [{ pos: LANTERN_POTECA, solved: BlockType.Lamp, unsolved: BlockType.Glass }],
   pod: [{ pos: BRIDGE_RAIL, solved: BlockType.Log, unsolved: BlockType.Air }],
   capcana: [{ pos: TRAP_CENTER, solved: BlockType.Hay, unsolved: BlockType.Plank }],
@@ -231,6 +249,49 @@ function buildLaundryLine(): THREE.Group {
   return line;
 }
 
+// One of the sheep let into the Luncă once its fence finally closes
+function buildSheep(): THREE.Group {
+  const sheep = new THREE.Group();
+  const WOOL = 0xf0ece0;
+  const SKIN = 0x4a4038;
+  box(sheep, 0.85, 0.55, 0.42, WOOL, 0, 0.72, 0); // fleecy body
+  const head = box(sheep, 0.28, 0.3, 0.26, SKIN, 0.53, 0.82, 0);
+  box(head, 0.3, 0.16, 0.28, WOOL, -0.04, 0.14, 0); // woolly forehead
+  for (const [dx, dz] of [
+    [-0.28, -0.14],
+    [-0.28, 0.14],
+    [0.28, -0.14],
+    [0.28, 0.14],
+  ] as const) {
+    box(sheep, 0.11, 0.45, 0.11, SKIN, dx, 0.22, dz); // legs
+  }
+  box(sheep, 0.1, 0.16, 0.1, WOOL, -0.45, 0.78, 0); // tail
+  return sheep;
+}
+
+// The mill's paddle wheel, which starts turning for good once the "while"
+// loop is solved — the moment the endless loop becomes visible. Its axle
+// runs along X, so it turns in the Y-Z plane (rotation about X).
+function buildMillWheel(): THREE.Group {
+  const wheel = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: 0x6b4a26 });
+  const paddleMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
+  const R = 1.5;
+  wheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.32), wood)); // hub
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.14, R, 0.12), wood);
+    spoke.position.set(0, (Math.cos(a) * R) / 2, (Math.sin(a) * R) / 2);
+    spoke.rotation.x = a;
+    wheel.add(spoke);
+    const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.12, 0.44), paddleMat);
+    paddle.position.set(0, Math.cos(a) * R, Math.sin(a) * R);
+    paddle.rotation.x = a;
+    wheel.add(paddle);
+  }
+  return wheel;
+}
+
 // Satul Codat, phase 0: six Vatra buildings as interactive coding puzzles
 // (pure sequences — Zone 1 of the design doc). Owns the puzzle state (which
 // are solved, persisted locally), the step-by-step 3D animations, the
@@ -265,10 +326,14 @@ export class VatraModule {
   private pickaxeProp: THREE.Group | null = null;
   private horseProp: THREE.Group | null = null;
   private laundryProp: THREE.Group | null = null;
+  private sheepProps: THREE.Group[] = [];
+  private sheepGraze = 0;
+  private sheepBaseY = 0;
+  private millWheelProp: THREE.Group | null = null;
   private laundryWind = 0; // drives the swaying of the hung washing
   private laundryFxTimer = 0; // soap-bubble celebration right after a solve
   private laundryBubbleTimer = 0;
-  private readonly buniculPos = new THREE.Vector3();
+  private readonly guides: { zone: string; pos: THREE.Vector3 }[] = [];
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
   private litCount = 0;
@@ -317,11 +382,46 @@ export class VatraModule {
     scene.add(this.forgeLight);
 
     this.buildBunicul();
+    this.buildBaciul();
     this.buildMumaPadurii();
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
     if (this.done.has('grajd')) this.setHorseProp(true);
     if (this.done.has('spalatorie')) this.setLaundryProp(true);
+    if (this.done.has('gard')) this.setSheepProps(true);
+    if (this.done.has('moara')) this.setMillWheelProp(true);
+  }
+
+  // Baciul Luncii: the shepherd who teaches loops, standing in the meadow
+  // between the fence line and the field. Clickable, like Bunicul.
+  private buildBaciul(): void {
+    const npc = new THREE.Group();
+    const COJOC = 0xe8e0cc; // sheepskin waistcoat
+    const SHIRT = 0xf4f1e4;
+    box(npc, 0.5, 0.75, 0.3, SHIRT, 0, 1.05, 0); // shirt
+    box(npc, 0.54, 0.5, 0.34, COJOC, 0, 1.15, 0); // sheepskin waistcoat over it
+    const head = box(npc, 0.42, 0.42, 0.42, 0xd8a878, 0, 1.66, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.09, 0.09, 0.05, 0xfaf6ea, side * 0.11, 0.05, -0.21); // eye whites
+      box(head, 0.045, 0.045, 0.05, 0x241a0e, side * 0.11, 0.05, -0.23); // pupils
+    }
+    box(head, 0.26, 0.16, 0.06, 0x4a3a26, 0, -0.16, -0.22); // moustache
+    box(head, 0.44, 0.3, 0.44, 0x2e2318, 0, 0.32, 0); // căciulă (tall wool hat)
+    for (const side of [-1, 1]) {
+      box(npc, 0.14, 0.5, 0.14, SHIRT, side * 0.32, 0.85, 0); // arms
+      box(npc, 0.16, 0.16, 0.16, 0xd8a878, side * 0.32, 0.55, 0); // hands
+      box(npc, 0.16, 0.7, 0.16, 0x3a2e1e, side * 0.14, 0.35, 0); // legs
+    }
+    box(npc, 0.09, 1.7, 0.09, 0x8a6a3a, 0.44, 0.85, 0.1); // bâta (shepherd's staff)
+
+    npc.position.set(this.lox + 2 + 0.5, this.lunGroundY + 1, this.loz - 2 + 0.5);
+    npc.rotation.y = Math.PI; // facing south, toward the player coming in
+    this.scene.add(npc);
+    this.registerGuide('lunca', npc.position.x, this.lunGroundY + 1.9, npc.position.z);
+
+    const nameSign = makeSign('Baciul Luncii', 1.6);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
+    this.scene.add(nameSign);
   }
 
   // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
@@ -358,9 +458,7 @@ export class VatraModule {
     npc.position.set(this.ox - 2 + 0.5, this.groundY + 1, this.oz + 3 + 0.5);
     npc.rotation.y = -Math.PI / 4; // facing the well
     this.scene.add(npc);
-    // World position used to hit-test clicks on Bunicul (he's decorative, not
-    // a voxel block, so puzzleAt()'s block-grid lookup can't see him)
-    this.buniculPos.set(npc.position.x, this.groundY + 1.9, npc.position.z);
+    this.registerGuide('vatra', npc.position.x, this.groundY + 1.9, npc.position.z);
 
     const nameSign = makeSign('Bunicul Fierar', 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
@@ -378,19 +476,32 @@ export class VatraModule {
     }
   }
 
-  // True if a camera ray (within reach) hits Bunicul — opens the lesson info popup
-  raycastBunicul(
+  // Each zone's teacher NPC, for the click hit-test below
+  private registerGuide(zone: string, x: number, y: number, z: number): void {
+    this.guides.push({ zone, pos: new THREE.Vector3(x, y, z) });
+  }
+
+  // Which zone's guide a camera ray (within reach) hits, if any — opens that
+  // zone's lesson popup. They're decorative NPCs, not voxel blocks, so
+  // puzzleAt()'s block-grid lookup can't see them; this is a ray-sphere test.
+  guideAt(
     origin: { x: number; y: number; z: number },
     dir: { x: number; y: number; z: number },
     maxDist: number,
-  ): boolean {
+  ): string | null {
     const ray = new THREE.Ray(
       new THREE.Vector3(origin.x, origin.y, origin.z),
       new THREE.Vector3(dir.x, dir.y, dir.z).normalize(),
     );
     const hitPoint = new THREE.Vector3();
-    if (!ray.intersectSphere(new THREE.Sphere(this.buniculPos, 0.9), hitPoint)) return false;
-    return ray.origin.distanceTo(hitPoint) <= maxDist;
+    let best: { zone: string; dist: number } | null = null;
+    for (const guide of this.guides) {
+      if (!ray.intersectSphere(new THREE.Sphere(guide.pos, 0.9), hitPoint)) continue;
+      const dist = ray.origin.distanceTo(hitPoint);
+      if (dist > maxDist) continue;
+      if (!best || dist < best.dist) best = { zone: guide.zone, dist };
+    }
+    return best ? best.zone : null;
   }
 
   // Which puzzle (if any) the targeted block belongs to — drives right-click
@@ -449,12 +560,11 @@ export class VatraModule {
     return this.done.has(puzzleId);
   }
 
-  // Zona 2 (Lunca) and Zona 3 (Pădurea) are built and playable in code, but
-  // not yet exposed to players — Game.ts shows a "coming soon" toast for
-  // these instead of opening the tabla. All the puzzle logic stays intact
-  // for whenever they're switched back on.
+  // Zona 3 (Pădurea) is built and playable in code, but not yet opened to
+  // players — Game.ts shows a "coming soon" toast for it instead of opening
+  // the tabla. Zona 1 (Vatra) and Zona 2 (Lunca) are live.
   isComingSoon(puzzleId: string): boolean {
-    return LUNCA_PUZZLES.has(puzzleId) || PADUREA_PUZZLES.has(puzzleId);
+    return PADUREA_PUZZLES.has(puzzleId);
   }
 
   beginRun(puzzleId: string): void {
@@ -724,9 +834,15 @@ export class VatraModule {
       this.laundryFxTimer = 3; // soap bubbles boil up off the stream for a beat
       this.laundryBubbleTimer = 0;
     }
-    if (puzzleId === 'gard') this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
+    if (puzzleId === 'gard') {
+      this.setSheepProps(true);
+      this.spawnFlyingBits(this.lox + 0.5, this.lunGroundY + 1.3, this.loz - 6 + 0.5, 0xf0ece0, 3, this.lunGroundY);
+    }
     if (puzzleId === 'camp_grau') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 1.3, this.loz - 0.5, 0xd8b840, 3, this.lunGroundY);
-    if (puzzleId === 'moara') this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 2, this.lunGroundY);
+    if (puzzleId === 'moara') {
+      this.setMillWheelProp(true);
+      this.spawnFlyingBits(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 2, this.lunGroundY);
+    }
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
@@ -759,6 +875,8 @@ export class VatraModule {
       this.setLaundryProp(false);
       this.laundryFxTimer = 0;
     }
+    if (puzzleId === 'gard') this.setSheepProps(false);
+    if (puzzleId === 'moara') this.setMillWheelProp(false);
     this.done.delete(puzzleId);
     this.save();
   }
@@ -906,6 +1024,48 @@ export class VatraModule {
     this.scene.add(this.horseProp);
   }
 
+  // The sheep finally let into the Luncă once its fence closes. Gone on reset.
+  private setSheepProps(show: boolean): void {
+    if (!show) {
+      for (const sheep of this.sheepProps) {
+        this.scene.remove(sheep);
+        disposeModel(sheep);
+      }
+      this.sheepProps = [];
+      return;
+    }
+    if (this.sheepProps.length > 0) return;
+    for (const [dx, dz] of SHEEP_SPOTS) {
+      const sheep = buildSheep();
+      // Standing on the meadow surface (its top is lunGroundY + 1), each one
+      // turned a different way so the flock doesn't look stamped out
+      sheep.position.set(this.lox + dx + 0.5, this.lunGroundY + 1, this.loz + dz + 0.5);
+      sheep.rotation.y = (dx * 1.3 + dz) % (Math.PI * 2);
+      this.scene.add(sheep);
+      this.sheepProps.push(sheep);
+    }
+    this.sheepBaseY = this.lunGroundY + 1;
+  }
+
+  // The mill wheel, turning for good once the "while" loop is solved. The
+  // static log wheel is cleared by moara's block effects at the same moment,
+  // so exactly one wheel is ever in that spot.
+  private setMillWheelProp(show: boolean): void {
+    if (!show) {
+      if (this.millWheelProp) {
+        this.scene.remove(this.millWheelProp);
+        disposeModel(this.millWheelProp);
+        this.millWheelProp = null;
+      }
+      return;
+    }
+    if (this.millWheelProp) return;
+    this.millWheelProp = buildMillWheel();
+    // Centred on the hub block it replaces (dx 19, dy 2, dz 8)
+    this.millWheelProp.position.set(this.lox + 19 + 0.5, this.lunGroundY + 2 + 0.5, this.loz + 8 + 0.5);
+    this.scene.add(this.millWheelProp);
+  }
+
   // The washing hung out to dry once Spălătoria is solved. Gone on reset.
   private setLaundryProp(show: boolean): void {
     if (!show) {
@@ -967,6 +1127,22 @@ export class VatraModule {
       if (this.forgeSmokeTimer <= 0) {
         this.spawnSmoke(this.ox - 7 + 0.5, this.groundY + 6, this.oz - 8 + 0.5, 0x9a9a9a, 0.55);
         this.forgeSmokeTimer = 0.5;
+      }
+    }
+
+    // Once solved, the mill wheel never stops — the "while" loop made visible
+    if (this.millWheelProp) this.millWheelProp.rotation.x += dt * 1.1;
+
+    // The flock grazes on the spot — a slow dip and sway each, out of step
+    // with one another, so they don't stand there like statues next to the
+    // sheep that actually wander the map
+    if (this.sheepProps.length > 0) {
+      this.sheepGraze += dt;
+      for (let i = 0; i < this.sheepProps.length; i++) {
+        const t = this.sheepGraze * 0.9 + i * 2.1;
+        const sheep = this.sheepProps[i];
+        sheep.position.y = this.sheepBaseY + Math.max(0, Math.sin(t)) * 0.07;
+        sheep.rotation.z = Math.sin(t) * 0.06; // nose dipping to the grass
       }
     }
 
