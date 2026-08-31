@@ -15,6 +15,7 @@ export interface WeaponDef {
   cooldown: number;
   knockback: number;
   slowSeconds?: number; // ice spear chills its target
+  notStarterStock?: boolean; // must be earned; without one in the pack you swing bare-handed
   colors: { blade: number; accent: number; handle: number };
 }
 
@@ -28,6 +29,7 @@ export const WEAPONS: Record<number, WeaponDef> = {
     colors: { blade: 0xffe14d, accent: 0x4db8ff, handle: 0x5a3d1e },
   },
   [WeaponId.CrystalSword]: {
+    notStarterStock: true,
     name: 'Crystal Sword',
     damage: 6,
     range: 3.5,
@@ -36,6 +38,7 @@ export const WEAPONS: Record<number, WeaponDef> = {
     colors: { blade: 0x7df0e8, accent: 0xc77dff, handle: 0x3a2b52 },
   },
   [WeaponId.MagmaHammer]: {
+    notStarterStock: true,
     name: 'Magma Hammer',
     damage: 8,
     range: 3,
@@ -44,6 +47,7 @@ export const WEAPONS: Record<number, WeaponDef> = {
     colors: { blade: 0xff7a2f, accent: 0x7a3010, handle: 0x6b6b6b },
   },
   [WeaponId.IceSpear]: {
+    notStarterStock: true, // the Fântâna reward
     name: 'Ice Spear',
     damage: 3,
     range: 5.5,

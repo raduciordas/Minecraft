@@ -42,7 +42,7 @@ const NOTES: Record<number, HelpNote> = {
   [BlockType.HorezuCeramic]: { use: 'Ceramică de Horezu, cu model pictat. Cub de podoabă.' },
   [BlockType.RockSalt]: { use: 'Sare de ocnă, albă. Decor de salină.' },
   [BlockType.IeBlouse]: { use: 'Ie cusută cu altiță. Agățată pe perete, ține loc de tablou.' },
-  [BlockType.RiverStone]: { found: 'Pe fundul râurilor și pe potecile satului.', use: 'Bolovan rotunjit de apă — alei, maluri, temelii.' },
+  [BlockType.RiverStone]: { use: 'Bolovan rotunjit de apă — alei, maluri, temelii. (Cei de pe ulița satului sunt ai satului: pe pătratele lecțiilor nu se sapă.)' },
   [BlockType.DacianGold]: { use: 'Comoara dacică — aurul cel mai de preț. Se scoate doar cu târnăcopul.' },
   [BlockType.CraftingTable]: { use: 'Pune-o jos și dă click dreapta pe ea ca să deschizi rețetele de cioplit.' },
   [BlockType.Wool]: { use: 'Lână de oaie — pereți moi, covoare, culoare caldă.' },
@@ -104,16 +104,35 @@ function recipeSources(id: number): string[] {
   });
 }
 
-function sourcesFor(id: number, note: HelpNote | undefined): string[] {
+// Whether an item is still part of the free stock handed out at session start
+function isFreeAtStart(id: number): boolean {
+  if (isWeapon(id)) return !WEAPONS[id].notStarterStock;
+  if (isThrowable(id)) return !THROWABLES[id].notStarterStock;
+  if (isTool(id)) return false; // tools are always crafted or earned
+  if (id === BlockType.Water) return false; // you can't carry water
+  return !!BLOCKS[id] && !BLOCKS[id].notStarterStock;
+}
+
+function startAmount(id: number): string {
+  if (isThrowable(id)) return 'Primești 20 la începutul fiecărei sesiuni.';
+  if (isWeapon(id)) return 'O ai din start, nelimitat, în inventar (E).';
+  return 'Primești 64 la începutul fiecărei sesiuni.';
+}
+
+function sourcesFor(id: number, note?: HelpNote): string[] {
   const sources: string[] = [];
+  const free = isFreeAtStart(id);
+  if (!free) sources.push('🚫 NU se primește la începutul sesiunii — trebuie câștigat.');
   if (note?.found) sources.push(`Se găsește în lume: ${note.found}`);
-  if (BLOCKS[id] && !BLOCKS[id].craftedOnly && id !== BlockType.Water) {
-    sources.push('Primești 64 la începutul fiecărei sesiuni.');
+  if (free) sources.push(startAmount(id));
+  const ways = [...recipeSources(id), ...lessonSources(id)];
+  sources.push(...ways);
+  // Nothing found it, nothing crafts it, no lesson pays it out, and it isn't
+  // free — say so plainly rather than inventing a way to get it
+  if (!free && !note?.found && ways.length === 0) {
+    sources.push('⚠ Deocamdată nu are nicio sursă în joc — nu se poate obține.');
   }
-  sources.push(...recipeSources(id));
-  sources.push(...lessonSources(id));
   if (requiresPickaxe(id)) sources.push('⛏ Ai nevoie de târnăcop în mână ca să-l spargi.');
-  if (sources.length === 0) sources.push('Se ia spărgând unul deja pus în lume.');
   return sources;
 }
 
@@ -122,8 +141,8 @@ export function buildHelpSections(): HelpSection[] {
   const blockIds = Object.keys(NOTES).map(Number).filter((id) => BLOCKS[id]);
   const natural = blockIds.filter((id) => NOTES[id].found);
   const rest = blockIds.filter((id) => !NOTES[id].found);
-  const earned = rest.filter((id) => BLOCKS[id].craftedOnly);
-  const plain = rest.filter((id) => !BLOCKS[id].craftedOnly);
+  const earned = rest.filter((id) => BLOCKS[id].notStarterStock);
+  const plain = rest.filter((id) => !BLOCKS[id].notStarterStock);
 
   const toItems = (ids: number[]): HelpItem[] =>
     ids.map((id) => ({ id, name: itemName(id), sources: sourcesFor(id, NOTES[id]), use: NOTES[id].use }));
@@ -131,7 +150,7 @@ export function buildHelpSections(): HelpSection[] {
   return [
     {
       title: '⛰ Materiale din lume',
-      intro: 'Astea chiar cresc pe hartă — le sapi cu click stânga și-ți intră în traistă.',
+      intro: 'Astea chiar cresc pe hartă — le sapi cu click stânga și-ți intră în traistă. Unele nu se mai primesc gratuit la început, deci chiar trebuie săpate.',
       items: toItems(natural),
     },
     {
@@ -141,17 +160,17 @@ export function buildHelpSections(): HelpSection[] {
     },
     {
       title: '🎁 Materiale de câștigat',
-      intro: 'Astea încep de la 0 — le scoți doar din lecțiile Bunicului sau de la Masa de Cioplit.',
+      intro: 'Astea încep de la 0 — le câștigi din lecții, le ciopleșți la Masa de Cioplit sau le sapi din lume.',
       items: toItems(earned),
     },
     {
       title: '⚔ Arme',
-      intro: 'Se lovește cu click stânga. Le găsești în inventar (E).',
+      intro: 'Se lovește cu click stânga. Le găsești în inventar (E) — dar nu toate se mai dau gratuit.',
       items: WEAPON_IDS.map((id) => ({
         id,
         name: WEAPONS[id].name,
-        sources: lessonSources(id).length ? lessonSources(id) : ['Le ai din start, nelimitat, în inventar (E).'],
-        use: `${WEAPONS[id].damage} damage, rază ${WEAPONS[id].range} cuburi${WEAPONS[id].slowSeconds ? `, și îngheață dușmanul ${WEAPONS[id].slowSeconds} secunde` : ''}.`,
+        sources: sourcesFor(id),
+        use: `${WEAPONS[id].damage} damage, rază ${WEAPONS[id].range} cuburi${WEAPONS[id].slowSeconds ? `, și îngheață dușmanul ${WEAPONS[id].slowSeconds} secunde` : ''}. Fără una în traistă, lovești cu mâna goală.`,
       })),
     },
     {
@@ -159,9 +178,7 @@ export function buildHelpSections(): HelpSection[] {
       items: THROWABLE_IDS.map((id) => ({
         id,
         name: THROWABLES[id].name,
-        sources: THROWABLES[id].craftedOnly
-          ? lessonSources(id)
-          : ['Primești 20 la începutul fiecărei sesiuni.'],
+        sources: sourcesFor(id),
         use: THROWABLE_NOTES[id],
       })),
     },
@@ -170,7 +187,7 @@ export function buildHelpSections(): HelpSection[] {
       items: [ToolId.Tarnacop].map((id) => ({
         id: id as number,
         name: TOOLS[id].name,
-        sources: [...recipeSources(id), ...lessonSources(id)],
+        sources: sourcesFor(id),
         use: TOOL_NOTES[id],
       })),
     },

@@ -47,7 +47,7 @@ import { ProjectileManager } from './mobs/Projectile';
 import { DayNightCycle } from './DayNightCycle';
 import { Health } from './player/Health';
 import { SoundManager } from './Sound';
-import { WEAPONS, isWeapon } from './items/Weapon';
+import { WEAPONS, WeaponId, isWeapon } from './items/Weapon';
 import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Throwable';
 import { ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
@@ -64,7 +64,7 @@ const LESSON_IDLE_MS = 60_000;
 const LESSON_PING_INTERVAL_MS = 10_000; // throttle: activity is bursty, the lock isn't
 
 // Materials that used to be free starter stock but are now handed out only by
-// the lesson listed beside them. Marking them craftedOnly stops new grants,
+// the lesson listed beside them. Marking them notStarterStock stops new grants,
 // but ensureAtLeast only ever tops a count up, so a save from before the
 // change would keep its old free stock forever — hence the load-time cleanup.
 const LESSON_ONLY_STOCK: [BlockType, string][] = [
@@ -72,6 +72,27 @@ const LESSON_ONLY_STOCK: [BlockType, string][] = [
   [ThrowableId.SocataBottle as unknown as BlockType, 'grajd'],
   [BlockType.IeBlouse, 'spalatorie'],
   [BlockType.Glass, 'spalatorie'],
+];
+
+// Bump this whenever more materials leave the free starter stock, and list
+// the newly-removed ones below. A save carrying an older revision has its
+// old free pile of those cleared once, so the change is real for players who
+// already have a world — and only once, so a pile they later mine or earn
+// back is theirs to keep.
+const STOCK_REV = 1;
+const STOCK_REV_1_REMOVED: BlockType[] = [
+  BlockType.Leaves,
+  BlockType.Crystal,
+  BlockType.RiverStone,
+  BlockType.Obsidian,
+  BlockType.DacianGold,
+  BlockType.Wool,
+  BlockType.Wheat,
+  BlockType.Flour,
+  BlockType.Mushroom,
+  WeaponId.CrystalSword as unknown as BlockType,
+  WeaponId.MagmaHammer as unknown as BlockType,
+  ThrowableId.HubaBuba as unknown as BlockType,
 ];
 
 interface ChunkTask {
@@ -331,15 +352,20 @@ export class Game {
     // Every session starts with a healthy stock of each material — except
     // blocks that must be crafted at a Crafting Table (Țiglă, Boltar, Cărămidă)
     for (const id of PLACEABLE_BLOCKS) {
-      if (BLOCKS[id].craftedOnly) continue;
+      if (BLOCKS[id].notStarterStock) continue;
       this.inventory.ensureAtLeast(id, STARTER_STOCK);
     }
     for (const id of THROWABLE_IDS) {
-      if (THROWABLES[id].craftedOnly) continue;
+      if (THROWABLES[id].notStarterStock) continue;
       this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
     }
     for (const [id, lesson] of LESSON_ONLY_STOCK) {
       if (!this.vatra.isDone(lesson)) this.inventory.remove(id, this.inventory.count(id));
+    }
+    // One-off: clear the free pile a pre-existing save still holds of the
+    // materials that have since stopped being handed out
+    if ((save?.stockRev ?? 0) < STOCK_REV) {
+      for (const id of STOCK_REV_1_REMOVED) this.inventory.remove(id, this.inventory.count(id));
     }
 
     window.addEventListener('beforeunload', () => this.saveNow());
@@ -554,6 +580,11 @@ export class Game {
 
   // Left click: throw the bottle if one's selected, strike a mob in reach,
   // or otherwise break the targeted block
+  // Free-stock weapons are always usable; the earned ones need one in the pack
+  private ownsWeapon(id: number): boolean {
+    return !WEAPONS[id]?.notStarterStock || this.inventory.count(id as BlockType) > 0;
+  }
+
   private attack(): void {
     if (this.health.dead || this.attackCooldown > 0) return;
     const selected = this.hotbar.selectedItem;
@@ -561,7 +592,9 @@ export class Game {
       this.throwBottle(selected);
       return;
     }
-    const weapon = isWeapon(selected) ? WEAPONS[selected] : null;
+    // An earned weapon you don't actually have swings like a bare hand —
+    // same convention as a block you're out of, which simply won't place.
+    const weapon = isWeapon(selected) && this.ownsWeapon(selected) ? WEAPONS[selected] : null;
     const range = weapon ? weapon.range : 3;
 
     const mob = this.raycastMob(range);
@@ -709,6 +742,7 @@ export class Game {
       inventory: this.inventory.serialize(),
       selectedSlot: this.hotbar.selectedIndex,
       hotbar: this.hotbar.getLayout(),
+      stockRev: STOCK_REV,
       edits: this.world.serializeEdits(),
     });
   }

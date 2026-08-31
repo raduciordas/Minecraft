@@ -89,13 +89,17 @@ export interface BlockDef {
   opaque: boolean; // hides its neighbors' faces during meshing
   textures: { top: Tile; side: Tile; bottom: Tile };
   requiresPickaxe?: boolean; // breakBlock() refuses without the Târnăcop tool selected
-  craftedOnly?: boolean; // excluded from the automatic starter-stock grant; must be crafted
+  notStarterStock?: boolean; // not handed out free at session start; must be mined, crafted or earned
 }
 
 const T = (top: Tile, side: Tile, bottom: Tile) => ({ top, side, bottom });
 const S = (name: string, tile: Tile): BlockDef => ({ name, solid: true, opaque: true, textures: T(tile, tile, tile) });
 const H = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), requiresPickaxe: true });
-const C = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), craftedOnly: true });
+const C = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), notStarterStock: true });
+// Mined with a pickaxe, and not part of the free starter stock
+const HN = (name: string, tile: Tile): BlockDef => ({ ...H(name, tile), notStarterStock: true });
+// Plain block, earned rather than handed out
+const SN = (name: string, tile: Tile): BlockDef => ({ ...S(name, tile), notStarterStock: true });
 
 export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Grass]: { name: 'Grass', solid: true, opaque: true, textures: T(Tile.GrassTop, Tile.GrassSide, Tile.Dirt) },
@@ -103,27 +107,27 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Stone]: H('Stone', Tile.Stone),
   [BlockType.Sand]: S('Sand', Tile.Sand),
   [BlockType.Log]: { name: 'Log', solid: true, opaque: true, textures: T(Tile.LogTop, Tile.LogSide, Tile.LogTop) },
-  [BlockType.Leaves]: S('Leaves', Tile.Leaves),
+  [BlockType.Leaves]: SN('Leaves', Tile.Leaves),
   [BlockType.Plank]: S('Plank', Tile.Plank),
   [BlockType.Water]: { name: 'Water', solid: false, opaque: false, textures: T(Tile.Water, Tile.Water, Tile.Water) },
   [BlockType.Cobblestone]: S('Cobble', Tile.Cobble),
   [BlockType.Brick]: S('Brick', Tile.Brick),
   [BlockType.Snow]: S('Snow', Tile.Snow),
-  // craftedOnly: not part of the starter stock — earned only via Spălătoria.
-  [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass), craftedOnly: true },
+  // notStarterStock: not part of the starter stock — earned only via Spălătoria.
+  [BlockType.Glass]: { name: 'Glass', solid: true, opaque: false, textures: T(Tile.Glass, Tile.Glass, Tile.Glass), notStarterStock: true },
   [BlockType.StoneBrick]: H('Stone Brick', Tile.StoneBrick),
-  [BlockType.Crystal]: H('Crystal', Tile.Crystal),
+  [BlockType.Crystal]: HN('Crystal', Tile.Crystal),
   [BlockType.Mamaliga]: S('Mămăligă', Tile.Mamaliga),
   // Not opaque: rendered as a narrow lamp-post shape (LightManager), not a
   // cube, so neighboring block faces must still draw right up against it.
-  // craftedOnly: not part of the starter stock — earned only via Ulița.
-  [BlockType.Lamp]: { name: 'Lampă', solid: true, opaque: false, textures: T(Tile.Lamp, Tile.Lamp, Tile.Lamp), craftedOnly: true },
+  // notStarterStock: not part of the starter stock — earned only via Ulița.
+  [BlockType.Lamp]: { name: 'Lampă', solid: true, opaque: false, textures: T(Tile.Lamp, Tile.Lamp, Tile.Lamp), notStarterStock: true },
   // The hotbar/inventory item; placeBlock() converts it to an oriented
   // DoorClosedX/Z below and never writes BlockType.Door into the world.
   [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
   [BlockType.Chirpici]: S('Chirpici', Tile.Chirpici),
-  [BlockType.Obsidian]: H('Obsidian', Tile.Obsidian),
-  // craftedOnly: not part of the starter stock — earned only via Grajd.
+  [BlockType.Obsidian]: HN('Obsidian', Tile.Obsidian),
+  // notStarterStock: not part of the starter stock — earned only via Grajd.
   [BlockType.Hay]: C('Balot de Fân', Tile.Hay),
   // Not opaque: these render as a thin custom panel (DoorRenderer), not a
   // cube, so neighboring block faces must still draw right up against them.
@@ -136,19 +140,19 @@ export const BLOCKS: Record<number, BlockDef> = {
   [BlockType.Caramida]: C('Cărămidă', Tile.Caramida),
   [BlockType.HorezuCeramic]: S('Ceramică de Horezu', Tile.HorezuCeramic),
   [BlockType.RockSalt]: S('Sare', Tile.RockSalt),
-  // craftedOnly: not part of the starter stock — earned only via Spălătoria.
+  // notStarterStock: not part of the starter stock — earned only via Spălătoria.
   [BlockType.IeBlouse]: C('Ie Tradițională', Tile.IeBlouse),
-  [BlockType.RiverStone]: H('Bolovan de Râu', Tile.RiverStone),
-  [BlockType.DacianGold]: H('Comoara Dacică', Tile.DacianGold),
+  [BlockType.RiverStone]: HN('Bolovan de Râu', Tile.RiverStone),
+  [BlockType.DacianGold]: HN('Comoara Dacică', Tile.DacianGold),
   [BlockType.CraftingTable]: S('Masă de Cioplit', Tile.CraftingTable),
-  [BlockType.Wool]: S('Lână', Tile.Wool),
-  [BlockType.Wheat]: S('Grâu', Tile.Wheat),
-  [BlockType.Flour]: S('Făină', Tile.Flour),
-  [BlockType.Mushroom]: S('Ciupercă', Tile.Mushroom),
+  [BlockType.Wool]: SN('Lână', Tile.Wool),
+  [BlockType.Wheat]: SN('Grâu', Tile.Wheat),
+  [BlockType.Flour]: SN('Făină', Tile.Flour),
+  [BlockType.Mushroom]: SN('Ciupercă', Tile.Mushroom),
   // A consumable, not a placeable block — Game.ts's placeBlock() intercepts
   // it and eats it instead. It only lives in PLACEABLE_BLOCKS so the
   // inventory/hotbar can show its icon and stock like any other item.
-  // craftedOnly: not part of the starter stock — earned only via Cuptor.
+  // notStarterStock: not part of the starter stock — earned only via Cuptor.
   [BlockType.Paine]: C('Pâine', Tile.Paine),
 };
 

@@ -9,6 +9,11 @@ export interface SaveData {
   inventory: Record<number, number>;
   selectedSlot: number;
   hotbar?: number[]; // absent in saves from before assignable hotbar slots
+  // Which round of "this material is no longer free" the save has been
+  // through. Bumped in Game.ts when items leave the starter stock, so the
+  // one-off cleanup runs once per save instead of wiping the player's
+  // hard-won pile on every load.
+  stockRev?: number;
   edits: EditsData;
 }
 
