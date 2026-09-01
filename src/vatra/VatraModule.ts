@@ -115,8 +115,10 @@ const BUCKET_LOW = 1.3;
 
 // A low wooden signpost planted well clear of the activity's walls (past
 // the building's outer edge, not just past its center), so the board
-// never clips into brick/plank geometry behind it.
-const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = {
+// never clips into brick/plank geometry behind it. `yaw` turns the board to
+// face whichever side a player actually walks up from: 0 looks south (+z),
+// which is the usual approach, ±PI/2 east/west, PI north.
+const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?: number }> = {
   fantana: { dx: 0, dz: 5.5, label: 'Fântâna' },
   cuptor: { dx: -6, dz: 2.5, label: 'Cuptorul' },
   ulita: { dx: 8, dz: 2.5, label: 'Ulița cu felinare' },
@@ -124,8 +126,11 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string }> = 
   grajd: { dx: 0, dz: -3.5, label: 'Grajdul' },
   spalatorie: { dx: 7.5, dz: -3.5, label: 'Spălătoria' },
   gard: { dx: 0.5, dz: -3, label: 'Gardul Luncii' },
-  camp_grau: { dx: 22.5, dz: 4, label: 'Câmpul de grâu' },
-  moara: { dx: 21.5, dz: 6.5, label: 'Moara de apă' },
+  // West of the field, turned to face the open meadow you cross to reach it
+  camp_grau: { dx: 18.5, dz: -0.5, label: 'Câmpul de grâu', yaw: -Math.PI / 2 },
+  // Outside the mill's south wall, off to the side of its doorway — the old
+  // spot was inside the building, buried in the north wall
+  moara: { dx: 20.5, dz: 11, label: 'Moara de apă' },
   livada: { dx: -9.5, dz: 5.5, label: 'Livada de meri' },
   capite: { dx: -10, dz: 10.5, label: 'Căpițele de fân' },
   poteca: { dx: 0, dz: -3, label: 'Poteca Mumei Pădurii' },
@@ -550,6 +555,7 @@ export class VatraModule {
       const [ox, gy, oz] = this.originFor(puzzleId);
       const sign = makeSignBoard(info.label);
       sign.position.set(ox + info.dx + 0.5, gy, oz + info.dz + 0.5);
+      sign.rotation.y = info.yaw ?? 0;
       this.scene.add(sign);
     }
   }

@@ -28,14 +28,15 @@ interface MobSpec {
   chaseSpeed: number;
   hostile: boolean;
   flying?: boolean;
+  avoidsWater?: boolean; // farm animals keep their feet dry: they won't wade in
   teleports?: boolean;
   ranged?: boolean;
   fireCooldown?: number;
 }
 
 const SPECS: Record<MobKind, MobSpec> = {
-  pig: { halfWidth: 0.35, height: 0.85, speed: 1.7, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false },
-  sheep: { halfWidth: 0.35, height: 1.0, speed: 1.4, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false },
+  pig: { halfWidth: 0.35, height: 0.85, speed: 1.7, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false, avoidsWater: true },
+  sheep: { halfWidth: 0.35, height: 1.0, speed: 1.4, jumpSpeed: 7.5, hp: 6, damage: 0, attackRange: 0, chaseRange: 0, chaseSpeed: 0, hostile: false, avoidsWater: true },
   zombie: { halfWidth: 0.25, height: 1.85, speed: 1.1, jumpSpeed: 7.5, hp: 8, damage: 2, attackRange: 1.4, chaseRange: 20, chaseSpeed: 2.6, hostile: true },
   // Umbra: fast, fragile wraith that blinks toward you through the dark
   shadow: { halfWidth: 0.25, height: 1.9, speed: 1.3, jumpSpeed: 7.5, hp: 6, damage: 2, attackRange: 1.3, chaseRange: 26, chaseSpeed: 3.2, hostile: true, teleports: true },
@@ -403,6 +404,8 @@ export class Mob {
     const turnSpeed = chasing ? TURN_SPEED * 2 : TURN_SPEED;
     this.yaw += Math.max(-turnSpeed * dt, Math.min(turnSpeed * dt, deltaYaw));
 
+    if (this.spec.avoidsWater && !this.spec.flying) this.keepOutOfWater(world);
+
     let speed = this.walking ? (chasing ? this.spec.chaseSpeed : this.spec.speed) : 0;
     if (this.slowTimer > 0) speed *= 0.45;
 
@@ -429,6 +432,65 @@ export class Mob {
 
     this.legPhase += dt * (this.walking ? (chasing ? 10 : 7) : 0);
     this.syncTransform();
+  }
+
+  // Farm animals stay on dry land: they stop rather than walk into water, and
+  // if they somehow end up in it they strike out for the nearest bank. Forward
+  // is (-sin yaw, -cos yaw), same as the velocity below.
+  private keepOutOfWater(world: World): void {
+    // Probe from the body's own base, not from head height: a mob afloat in a
+    // channel that has something solid over it (the mill's wheel logs sit
+    // right above its stream) would otherwise sample the block above and
+    // decide it was standing on dry land.
+    const baseY = Math.floor(this.body.y);
+    // A column counts as water when it's water at that level, or when the
+    // footing one step down is — a stream cut below the bank reads as plain
+    // air ahead, and they'd walk straight off into it.
+    const columnIsWet = (x: number, z: number) => {
+      const bx = Math.floor(x);
+      const bz = Math.floor(z);
+      const at = world.getBlock(bx, baseY, bz);
+      if (isWater(at)) return true;
+      return !isSolid(at) && isWater(world.getBlock(bx, baseY - 1, bz));
+    };
+    const ahead = (yaw: number, dist: number) =>
+      columnIsWet(this.body.x - Math.sin(yaw) * dist, this.body.z - Math.cos(yaw) * dist);
+    // A bank worth swimming to: solid footing at the swimmer's own level to
+    // climb onto, with room above it. Testing for "dry" instead would accept
+    // the mill's plank wall, and they'd paddle into it forever; testing for
+    // "empty at my level" would reject the bank itself, since from down in
+    // the water the bank block sits at exactly that height.
+    const canLandAt = (yaw: number, dist: number) => {
+      const bx = Math.floor(this.body.x - Math.sin(yaw) * dist);
+      const bz = Math.floor(this.body.z - Math.cos(yaw) * dist);
+      const footing = world.getBlock(bx, baseY, bz);
+      const room = world.getBlock(bx, baseY + 1, bz);
+      return isSolid(footing) && !isSolid(room) && !isWater(room);
+    };
+
+    if (columnIsWet(this.body.x, this.body.z)) {
+      // Already wet: turn to the nearest bank we could climb out onto
+      for (let i = 1; i <= 8; i++) {
+        const yaw = this.yaw + (i * Math.PI) / 4;
+        if (canLandAt(yaw, 1.3)) {
+          this.yaw = yaw;
+          this.targetYaw = yaw;
+          this.walking = true;
+          // Scramble up the bank. Bobbing at the surface never counts as
+          // onGround, so the usual hop-over-an-obstacle jump can never fire
+          // and the animal would paddle against the bank forever.
+          this.body.vy = Math.max(this.body.vy, this.spec.jumpSpeed * 0.7);
+          return;
+        }
+      }
+      return; // no bank within reach — keep swimming and try again next tick
+    }
+
+    // Dry, but water right ahead: pull up short and turn away
+    if (ahead(this.yaw, 0.9)) {
+      this.targetYaw = this.yaw + Math.PI + (Math.random() - 0.5);
+      this.walking = false;
+    }
   }
 
   private updateFlying(world: World, dt: number, ctx: MobContext | undefined, chasing: boolean, speed: number): void {
