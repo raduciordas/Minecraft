@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../config';
-import { BLOCKS, BlockType, isOpaque, isWater, isDoor } from '../world/Block';
+import { BLOCKS, BlockType, isOpaque, isWater, isDoor, hasCustomMesh } from '../world/Block';
 import type { Chunk } from '../world/Chunk';
 import type { World } from '../world/World';
 import type { TextureAtlas } from './TextureAtlas';
@@ -88,8 +88,8 @@ export function meshChunk(chunk: Chunk, world: World, atlas: TextureAtlas): Chun
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
         const id = chunk.getBlock(lx, ly, lz);
-        // Doors and lamps render as custom shapes (DoorRenderer / LightManager), not cubes
-        if (id === BlockType.Air || isDoor(id) || id === BlockType.Lamp) continue;
+        // Doors, lamps and torches render as custom shapes (DoorRenderer / LightManager), not cubes
+        if (id === BlockType.Air || isDoor(id) || hasCustomMesh(id)) continue;
         const def = BLOCKS[id];
         if (!def) continue;
 

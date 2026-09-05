@@ -1,21 +1,20 @@
-import type { BlockType } from '../world/Block';
-
-// Survival-style block stock: breaking a block adds it, placing consumes it.
+// Survival-style stock of every item (blocks, tools, food, gear…): breaking
+// a block adds it, placing or eating consumes it.
 export class Inventory {
   private counts = new Map<number, number>();
   private listeners: (() => void)[] = [];
 
-  count(id: BlockType): number {
+  count(id: number): number {
     return this.counts.get(id) ?? 0;
   }
 
-  add(id: BlockType, amount = 1): void {
+  add(id: number, amount = 1): void {
     this.counts.set(id, this.count(id) + amount);
     this.emit();
   }
 
   // Returns false (and changes nothing) if there is no stock left.
-  remove(id: BlockType, amount = 1): boolean {
+  remove(id: number, amount = 1): boolean {
     const have = this.count(id);
     if (have < amount) return false;
     this.counts.set(id, have - amount);
@@ -24,7 +23,7 @@ export class Inventory {
   }
 
   // Top up to at least n (session starter stock)
-  ensureAtLeast(id: BlockType, n: number): void {
+  ensureAtLeast(id: number, n: number): void {
     if (this.count(id) < n) {
       this.counts.set(id, n);
       this.emit();

@@ -1,12 +1,10 @@
-import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
-import { WEAPONS, WEAPON_IDS, makeWeaponIcon } from '../items/Weapon';
-import { THROWABLES, THROWABLE_IDS, makeThrowableIcon } from '../items/Throwable';
-import { TOOLS, TOOL_IDS, makeToolIcon } from '../items/Tool';
+import { WEAPONS, isWeapon } from '../items/Weapon';
+import { ALL_ITEM_IDS, itemName, makeItemIcon } from '../items/Items';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
 
 // Full-screen inventory overlay (toggled with E). Shows the stock of every
-// material; clicking one puts it in the currently selected hotbar slot.
+// item; clicking one puts it in the currently selected hotbar slot.
 export class InventoryPanel {
   private root: HTMLElement;
   private countedCells: { id: number; el: HTMLElement }[] = [];
@@ -39,45 +37,24 @@ export class InventoryPanel {
     grid.className = 'inv-grid';
     panel.appendChild(grid);
 
-    const addCell = (id: number, icon: HTMLCanvasElement, label: string, isWeaponCell: boolean) => {
+    for (const id of ALL_ITEM_IDS) {
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
-      cell.appendChild(icon);
+      cell.appendChild(makeItemIcon(id, atlas));
       const name = document.createElement('span');
       name.className = 'name';
-      name.textContent = label;
+      name.textContent = itemName(id);
       cell.appendChild(name);
       const count = document.createElement('span');
       count.className = 'cnt';
-      if (isWeaponCell) count.textContent = '∞';
+      // Only the weapons still handed out free at the start of a session get
+      // the "∞"; everything earned shows its real stock
+      if (isWeapon(id) && !WEAPONS[id]?.notStarterStock) count.textContent = '∞';
+      else this.countedCells.push({ id, el: count });
       cell.addEventListener('click', () => onPick(id));
       cell.appendChild(count);
       grid.appendChild(cell);
-      return count;
-    };
-
-    for (const id of WEAPON_IDS) {
-      // Earned weapons show their real stock; only the ones still handed out
-      // free at the start of a session get the "∞".
-      if (WEAPONS[id].notStarterStock) {
-        const count = addCell(id, makeWeaponIcon(id), WEAPONS[id].name, false);
-        this.countedCells.push({ id, el: count });
-      } else {
-        addCell(id, makeWeaponIcon(id), WEAPONS[id].name, true);
-      }
     }
-    THROWABLE_IDS.forEach((id) => {
-      const count = addCell(id, makeThrowableIcon(id), THROWABLES[id].name, false);
-      this.countedCells.push({ id, el: count });
-    });
-    TOOL_IDS.forEach((id) => {
-      const count = addCell(id, makeToolIcon(id), TOOLS[id].name, false);
-      this.countedCells.push({ id, el: count });
-    });
-    PLACEABLE_BLOCKS.forEach((id) => {
-      const count = addCell(id, atlas.makeTileIcon(BLOCKS[id].textures.side), BLOCKS[id].name, false);
-      this.countedCells.push({ id, el: count });
-    });
 
     this.root.appendChild(panel);
     this.refreshCounts();
@@ -96,7 +73,7 @@ export class InventoryPanel {
 
   private refreshCounts(): void {
     this.countedCells.forEach(({ id, el }) => {
-      const count = this.inventory.count(id as BlockType);
+      const count = this.inventory.count(id);
       el.textContent = count > 0 ? `x${count}` : '—';
     });
   }

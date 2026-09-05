@@ -14,11 +14,15 @@ import {
   FALL_SAFE_SPEED,
   MULTIPLAYER_SERVER_URL,
   MOVE_SEND_INTERVAL,
-  MAX_HP,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import type { Chunk } from './world/Chunk';
-import { BlockType, isWater, isSolid, isDoor, toggleDoorId, requiresPickaxe, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
+import { BlockType, isWater, isSolid, isDoor, isClimbable, toggleDoorId, requiresPickaxe, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
+import { SpecialBlockIndex } from './world/SpecialBlockIndex';
+import { StatusEffects } from './player/StatusEffects';
+import { CONSUMABLES, ConsumableId, isConsumable } from './items/Consumable';
+import { GearId } from './items/Gear';
+import { isPlaceable } from './items/Items';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
@@ -56,6 +60,16 @@ import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/Network
 import { RemotePlayerManager } from './net/RemotePlayer';
 
 const THROWABLE_STARTER_STOCK = 20;
+
+// Item mechanics (see the Ajutor page for the child's view of each)
+const SCARECROW_RADIUS = 8; // monsters this close to a scarecrow won't give chase
+const TRAP_DAMAGE = 6;
+const TRAP_SLOW_SECONDS = 4;
+const MATTRESS_BOUNCE = 9; // the upward speed a straw mattress throws you back with
+const FISHING_SECONDS = 2;
+const AXE_LOG_YIELD = 3;
+const SHOVEL_DEPTH = 3;
+const SOFT_EARTH = new Set<number>([BlockType.Dirt, BlockType.Grass, BlockType.Sand]);
 
 // A lesson left untouched this long closes itself and frees the spot for the
 // next player. Must stay at or below the server's own expiry (server/index.mjs)
@@ -170,6 +184,10 @@ export class Game {
   private hand: THREE.Group | null = null;
   private handItemId: number | null = null;
   private handSwing = 0;
+  private heldLight: THREE.PointLight | null = null; // a torch in hand lights the way
+  private effects = new StatusEffects();
+  private specials: SpecialBlockIndex;
+  private fishingTimer = 0; // > 0 while a line is in the water
   private playerName: string;
   private network = new NetworkClient();
   private remotePlayers: RemotePlayerManager;
@@ -222,6 +240,7 @@ export class Game {
     this.meshManager = new ChunkMeshManager(this.scene, atlas);
     this.lightManager = new LightManager(this.scene);
     this.doorRenderer = new DoorRenderer(this.scene, atlas);
+    this.specials = new SpecialBlockIndex([BlockType.Scarecrow, BlockType.WolfTrap, BlockType.StrawMattress]);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -307,12 +326,25 @@ export class Game {
       if (!this.input.isTouchDevice) document.exitPointerLock();
     });
     this.player.onLand = (impactSpeed) => {
+      const body = this.player.body;
+      // A straw mattress takes the fall and throws you back up a little
+      if (this.world.getBlock(Math.floor(body.x), Math.floor(body.y - 0.05), Math.floor(body.z)) === BlockType.StrawMattress) {
+        body.vy = Math.min(MATTRESS_BOUNCE, impactSpeed * 0.6);
+        this.sound.land(false);
+        return;
+      }
       this.sound.land(impactSpeed > FALL_SAFE_SPEED);
       if (!this.player.flying) {
         // ~ (fall height in blocks) - 3, derived from v² = 2·g·h
         const damage = Math.floor((impactSpeed * impactSpeed) / (2 * 25) - 3);
         if (damage > 0) this.health.damage(damage);
       }
+    };
+    // Flight is earned: the Aripile Zmeului come from Muma Pădurii's last lesson
+    this.player.canFly = () => this.owns(GearId.AripileZmeului);
+    this.player.onFlyDenied = () => {
+      this.showToast('Ca să zbori ai nevoie de Aripile Zmeului — le dă Muma Pădurii la Răscruce, în Pădure.');
+      this.sound.clink();
     };
 
     this.underwaterOverlay = document.getElementById('underwater')!;
@@ -354,6 +386,7 @@ export class Game {
       this.input.yaw = save.player.yaw;
       this.input.pitch = save.player.pitch;
       if (save.time !== undefined) this.dayNight.time = save.time;
+      if (save.maxHp !== undefined) this.health.setMaxHp(save.maxHp);
       if (save.hp !== undefined) this.health.setHp(save.hp);
     } else {
       const spawnHeight = this.world.generator.heightAt(0, 0);
@@ -433,6 +466,7 @@ export class Game {
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
+      this.specials.syncChunk(chunk);
     }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
@@ -453,6 +487,7 @@ export class Game {
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
+      this.specials.syncChunk(chunk);
     }
     return affected;
   }
@@ -482,10 +517,16 @@ export class Game {
     this.processTasks();
 
     if (this.worldReady && !this.health.dead) {
+      // Passive bonuses from what's in the pack and what was eaten
+      this.effects.update(dt);
+      this.player.speedMul = this.effects.speedMul;
+      this.health.regenMul = this.effects.regenMul;
       const mobContext = {
         player: this.player.body,
         isNight: this.dayNight.isNight,
         playerDead: this.health.dead,
+        chaseMul: this.owns(GearId.AmuletaUsturoi) ? 0.5 : 1,
+        isScaredAt: (x: number, z: number) => this.specials.anyNear(BlockType.Scarecrow, x, z, SCARECROW_RADIUS),
         onMobAttack: (mob: Mob) => this.mobHit(mob),
         onRangedAttack: (mob: Mob) => this.zmeuFire(mob),
         onMobSound: (kind: MobKind) => this.sound.mob(kind),
@@ -503,11 +544,30 @@ export class Game {
           (damage) => this.health.damage(damage),
           () => this.sound.fireballImpact(),
         );
-        this.projectiles.updateBottles(PHYSICS_STEP, this.world, this.mobManager.all(), (x, y, z, radius) => this.explodeAt(x, y, z, radius));
+        this.projectiles.updateBottles(PHYSICS_STEP, this.world, this.mobManager.all(), (x, y, z, radius, damage, burns) =>
+          this.explodeAt(x, y, z, radius, damage, burns),
+        );
+        this.projectiles.updateArrows(PHYSICS_STEP, this.world, this.mobManager.all(), (mob, damage, dx, dz) => {
+          const len = Math.hypot(dx, dz) || 1;
+          mob.hit(damage, (dx / len) * 4, (dz / len) * 4);
+          if (mob.dying) this.sound.mobDeath();
+          else this.sound.hitMob();
+        });
         this.accumulator -= PHYSICS_STEP;
         steps++;
       }
       if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
+      this.checkTraps();
+
+      // A line in the water: after a moment, a fish
+      if (this.fishingTimer > 0) {
+        this.fishingTimer -= dt;
+        if (this.fishingTimer <= 0) {
+          this.inventory.add(ConsumableId.Peste);
+          this.showToast('🐟 A tras! Un pește în traistă.');
+          this.sound.splash();
+        }
+      }
 
       // Mămăligă blocks sitting against water dissolve away after a couple of seconds
       for (const { x, y, z } of this.meltManager.update(dt, this.world)) {
@@ -577,8 +637,35 @@ export class Game {
     this.renderer.render(this.scene, this.camera);
   }
 
+  // A monster standing on a wolf trap springs it: hurt, slowed, and the trap
+  // is spent. Sheep and pigs are spared — the whole point of the lesson.
+  private checkTraps(): void {
+    for (const mob of this.mobManager.all()) {
+      if (!mob.hostile || mob.dying) continue;
+      const x = Math.floor(mob.body.x);
+      const y = Math.floor(mob.body.y - 0.05);
+      const z = Math.floor(mob.body.z);
+      if (this.world.getBlock(x, y, z) !== BlockType.WolfTrap) continue;
+      mob.hit(TRAP_DAMAGE, 0, 0, TRAP_SLOW_SECONDS);
+      this.applyBlockChange(x, y, z, BlockType.Air);
+      this.sendEdit(x, y, z, BlockType.Air);
+      this.sound.clink();
+      if (mob.dying) this.sound.mobDeath();
+      else this.sound.hitMob();
+    }
+  }
+
+  // Damage a blow takes off before it lands, from the gear in the pack
+  private armor(): number {
+    let armor = 0;
+    if (this.owns(GearId.Cojoc)) armor += 1;
+    if (this.owns(GearId.CamasaZale)) armor += 2;
+    return armor;
+  }
+
   private mobHit(mob: Mob): void {
-    this.health.damage(mob.damage);
+    if (mob.kind === 'wasp' && this.owns(GearId.MascaPrisacar)) return; // the veil keeps the stings off
+    this.health.damage(Math.max(1, mob.damage - this.armor()));
     // Knock the player away; heavier hitters push harder
     const dx = this.player.body.x - mob.body.x;
     const dz = this.player.body.z - mob.body.z;
@@ -591,9 +678,15 @@ export class Game {
 
   // Left click: throw the bottle if one's selected, strike a mob in reach,
   // or otherwise break the targeted block
+  // Whether there's at least one of an item in the pack — gear works from
+  // there, no equipping
+  owns(id: number): boolean {
+    return this.inventory.count(id) > 0;
+  }
+
   // Free-stock weapons are always usable; the earned ones need one in the pack
   private ownsWeapon(id: number): boolean {
-    return !WEAPONS[id]?.notStarterStock || this.inventory.count(id as BlockType) > 0;
+    return !WEAPONS[id]?.notStarterStock || this.owns(id);
   }
 
   private attack(): void {
@@ -606,6 +699,10 @@ export class Game {
     // An earned weapon you don't actually have swings like a bare hand —
     // same convention as a block you're out of, which simply won't place.
     const weapon = isWeapon(selected) && this.ownsWeapon(selected) ? WEAPONS[selected] : null;
+    if (weapon?.ranged) {
+      this.shootArrow(weapon.damage, weapon.cooldown);
+      return;
+    }
     const range = weapon ? weapon.range : 3;
 
     const mob = this.raycastMob(range);
@@ -667,14 +764,27 @@ export class Game {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     const o = this.camera.position;
-    this.projectiles.spawnBottle(o.x, o.y, o.z, dir.x, dir.y, dir.z, def.shape, def.blastRadius);
+    this.projectiles.spawnBottle(o.x, o.y, o.z, dir.x, dir.y, dir.z, def.shape, def.blastRadius, def.damage, def.burns);
     this.sound.throwBottle();
     this.attackCooldown = 0.5;
     this.handSwing = 0.25;
   }
 
-  // A thrown bottle/gum's impact: every mob caught in the blast radius dies outright
-  private explodeAt(x: number, y: number, z: number, radius: number): void {
+  // The bow: an arrow from the camera along the crosshair
+  private shootArrow(damage: number, cooldown: number): void {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const o = this.camera.position;
+    this.projectiles.spawnArrow(o.x + dir.x * 0.6, o.y - 0.15 + dir.y * 0.6, o.z + dir.z * 0.6, dir.x, dir.y, dir.z, damage);
+    this.sound.swing();
+    this.attackCooldown = cooldown;
+    this.handSwing = 0.25;
+  }
+
+  // A thrown bottle/gum's impact: every mob caught in the blast radius dies
+  // outright — unless the throwable says otherwise (a sling stone just hurts,
+  // a jar of embers sets them alight)
+  private explodeAt(x: number, y: number, z: number, radius: number, damage = 9999, burns = false): void {
     for (const mob of this.mobManager.all()) {
       if (mob.dying) continue;
       const dx = mob.body.x - x;
@@ -682,8 +792,10 @@ export class Game {
       const dist = Math.hypot(dx, dz, mob.body.y - y);
       if (dist > radius) continue;
       const len = Math.hypot(dx, dz) || 1;
-      mob.hit(9999, (dx / len) * 10, (dz / len) * 10);
-      this.sound.mobDeath();
+      mob.hit(damage, (dx / len) * 10, (dz / len) * 10);
+      if (burns && mob.hostile) mob.burning = true;
+      if (mob.dying) this.sound.mobDeath();
+      else this.sound.hitMob();
     }
     this.sound.explosion();
   }
@@ -693,18 +805,28 @@ export class Game {
   // has some in stock), and plays the swing animation
   private updateHand(dt: number): void {
     const selected = this.hotbar.selectedItem;
-    const held = isWeapon(selected) || this.inventory.count(selected as BlockType) > 0 ? selected : null;
+    const held = (isWeapon(selected) && !WEAPONS[selected]?.notStarterStock) || this.inventory.count(selected) > 0 ? selected : null;
     if (held !== this.handItemId) {
       if (this.hand) {
         this.camera.remove(this.hand);
         disposeModel(this.hand);
         this.hand = null;
       }
+      if (this.heldLight) {
+        this.camera.remove(this.heldLight);
+        this.heldLight = null;
+      }
       if (held !== null) {
         this.hand = buildHeldItem(held, this.atlas);
         this.hand.position.set(0.42, -0.42, -0.7);
         this.hand.rotation.set(0.25, -0.35, -0.25);
         this.camera.add(this.hand);
+        // A torch in hand throws light around you as you walk
+        if (held === BlockType.Torch) {
+          this.heldLight = new THREE.PointLight(0xffb060, 1.4, 9, 1);
+          this.heldLight.position.set(0.3, -0.2, -0.5);
+          this.camera.add(this.heldLight);
+        }
       }
       this.handItemId = held;
     }
@@ -743,6 +865,7 @@ export class Game {
       seed: WORLD_SEED,
       time: this.dayNight.time,
       hp: this.health.hp,
+      maxHp: this.health.maxHp,
       player: {
         x: this.player.body.x,
         y: this.player.body.y,
@@ -978,6 +1101,7 @@ export class Game {
       this.lightManager.syncChunk(chunk);
       this.doorRenderer.syncChunk(chunk);
       this.meltManager.syncChunk(chunk);
+      this.specials.syncChunk(chunk);
     }
 
     if (!this.worldReady) {
@@ -1000,6 +1124,7 @@ export class Game {
       this.lightManager.removeChunk(cx, cz);
       this.doorRenderer.removeChunk(cx, cz);
       this.meltManager.removeChunk(cx, cz);
+      this.specials.removeChunk(cx, cz);
       this.world.removeChunk(cx, cz);
     }
   }
@@ -1016,7 +1141,21 @@ export class Game {
       { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
       { x: dir.x, y: dir.y, z: dir.z },
       REACH_DISTANCE,
-      (id) => isSolid(id) || isDoor(id),
+      (id) => isSolid(id) || isDoor(id) || isClimbable(id),
+    );
+  }
+
+  // Like raycastFromCamera, but water counts too — for the bucket and the
+  // fishing rod, which want the water block itself, not what's behind it
+  private raycastIncludingWater() {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    return raycastVoxels(
+      this.world,
+      { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+      { x: dir.x, y: dir.y, z: dir.z },
+      REACH_DISTANCE,
+      (id) => isSolid(id) || isDoor(id) || isClimbable(id) || isWater(id),
     );
   }
 
@@ -1053,15 +1192,28 @@ export class Game {
       return;
     }
 
-    if (requiresPickaxe(broken) && this.hotbar.selectedItem !== ToolId.Tarnacop) {
+    const tool = this.hotbar.selectedItem;
+    if (requiresPickaxe(broken) && tool !== ToolId.Tarnacop) {
       this.sound.clink(); // too hard to break by hand — needs the Târnăcop
       return;
     }
 
     if (this.applyBlockChange(x, y, z, BlockType.Air).length > 0) {
-      this.inventory.add(broken);
+      // The axe splits a log into three; the shovel digs a column of soft
+      // earth in one go (each block goes into the pack)
+      const yieldCount = broken === BlockType.Log && tool === ToolId.Topor && this.owns(tool) ? AXE_LOG_YIELD : 1;
+      this.inventory.add(broken, yieldCount);
       this.sound.breakBlock();
       this.sendEdit(x, y, z, BlockType.Air);
+      if (SOFT_EARTH.has(broken) && tool === ToolId.Lopata && this.owns(tool)) {
+        for (let d = 1; d < SHOVEL_DEPTH; d++) {
+          const below = this.world.getBlock(x, y - d, z);
+          if (y - d <= 0 || !SOFT_EARTH.has(below) || this.vatra.isProtected(x, y - d, z)) break;
+          this.applyBlockChange(x, y - d, z, BlockType.Air);
+          this.sendEdit(x, y - d, z, BlockType.Air);
+          this.inventory.add(below);
+        }
+      }
     }
   }
 
@@ -1078,14 +1230,59 @@ export class Game {
     );
   }
 
-  // Right-click with Pâine selected eats it — it can't be placed as a
-  // block — heals one full heart (2 hp) if not already at max, earned from
-  // the Cuptor lesson
-  private eatBread(): void {
-    if (this.health.hp >= MAX_HP) return; // don't waste it at full health
-    if (!this.inventory.remove(BlockType.Paine)) return;
-    this.health.heal(2);
+  // Right-click with food selected eats it — food is never placed as a
+  // block. Heals, and some foods leave a lingering bonus (see CONSUMABLES).
+  private eat(id: number): void {
+    const def = CONSUMABLES[id];
+    if (!def) return;
+    if (this.health.hp >= this.health.maxHp && !def.effect) return; // don't waste it at full health
+    if (!this.inventory.remove(id)) return;
+    this.health.heal(def.heal);
+    if (def.effect) this.effects.apply(def.effect);
     this.sound.eat();
+  }
+
+  // Right-click uses for the tools that do something on their own: the
+  // bucket scoops and pours water, the rod fishes. Returns true if handled.
+  private useTool(tool: number): boolean {
+    if (!this.owns(tool)) return false;
+    if (tool === ToolId.Galeata) {
+      const hit = this.raycastIncludingWater();
+      if (!hit || !isWater(this.world.getBlock(hit.block.x, hit.block.y, hit.block.z))) return true;
+      if (this.vatra.isProtected(hit.block.x, hit.block.y, hit.block.z)) {
+        this.sound.clink(); // the lesson squares keep their water
+        return true;
+      }
+      this.applyBlockChange(hit.block.x, hit.block.y, hit.block.z, BlockType.Air);
+      this.sendEdit(hit.block.x, hit.block.y, hit.block.z, BlockType.Air);
+      this.inventory.remove(ToolId.Galeata);
+      this.inventory.add(ToolId.GaleataPlina);
+      this.sound.splash();
+      return true;
+    }
+    if (tool === ToolId.GaleataPlina) {
+      const hit = this.raycastFromCamera();
+      if (!hit) return true;
+      const { x, y, z } = hit.previous;
+      if (this.vatra.isProtected(x, y, z) || this.world.getBlock(x, y, z) !== BlockType.Air) return true;
+      if (blockIntersectsBody(this.player.body, x, y, z)) return true;
+      this.applyBlockChange(x, y, z, BlockType.Water);
+      this.sendEdit(x, y, z, BlockType.Water);
+      this.inventory.remove(ToolId.GaleataPlina);
+      this.inventory.add(ToolId.Galeata);
+      this.sound.splash();
+      return true;
+    }
+    if (tool === ToolId.Undita) {
+      if (this.fishingTimer > 0) return true;
+      const hit = this.raycastIncludingWater();
+      if (!hit || !isWater(this.world.getBlock(hit.block.x, hit.block.y, hit.block.z))) return true;
+      this.fishingTimer = FISHING_SECONDS;
+      this.showToast('🎣 Ai aruncat undița… așteaptă.');
+      this.sound.splash();
+      return true;
+    }
+    return false;
   }
 
   private placeBlock(): void {
@@ -1118,24 +1315,21 @@ export class Game {
       }
       const vatraPuzzle = this.vatra.puzzleAt(hit.block.x, hit.block.y, hit.block.z);
       if (vatraPuzzle) {
-        if (this.vatra.isComingSoon(vatraPuzzle)) {
-          this.showToast('În construcție, disponibil în curând.');
-        } else {
-          void this.openTabla(vatraPuzzle);
-        }
+        void this.openTabla(vatraPuzzle);
         return;
       }
     }
-    // Bread eats regardless of whether anything's in reach — it's never
-    // placed as a block.
-    if (this.hotbar.selectedItem === BlockType.Paine) {
-      this.eatBread();
+    const selected = this.hotbar.selectedItem;
+    // Food eats regardless of whether anything's in reach — it's never
+    // placed as a block. Tools with a right-click use come next.
+    if (isConsumable(selected)) {
+      this.eat(selected);
       return;
     }
+    if (isTool(selected) && this.useTool(selected)) return;
     if (!hit) return;
 
-    const selected = this.hotbar.selectedItem;
-    if (isWeapon(selected) || isThrowable(selected) || isTool(selected)) return; // can't be placed
+    if (!isPlaceable(selected)) return; // weapons, tools, gear… can't be placed
 
     const { x, y, z } = hit.previous;
     if (this.vatra.isProtected(x, y, z)) {
@@ -1162,7 +1356,7 @@ export class Game {
       return;
     }
 
-    if (!this.inventory.remove(selected as BlockType)) return; // out of stock
+    if (!this.inventory.remove(selected)) return; // out of stock
     this.applyBlockChange(x, y, z, selected);
     this.sound.place();
     this.sendEdit(x, y, z, selected);

@@ -217,10 +217,65 @@ function makeSignBoard(text: string): THREE.Group {
   return group;
 }
 
-// Which puzzles live in Zona 2 (Lunca) or Zona 3 (Pădurea) rather than the
-// Vatra square — their world positions are relative to a different origin.
-const LUNCA_PUZZLES = new Set(['gard', 'camp_grau', 'moara', 'livada', 'capite']);
-const PADUREA_PUZZLES = new Set(['poteca', 'pod', 'capcana']);
+// The teaching zones: where each one sits in the world, which lessons it
+// holds (their block positions are relative to the zone's origin), and the
+// box around it that can't be mined or built in. Adding a zone is one entry
+// here plus its structure in Structures.ts and its guide in LessonInfoPanel.
+export interface ZoneDef {
+  id: string;
+  origin: { x: number; z: number };
+  puzzles: string[];
+  protect: [x0: number, x1: number, z0: number, z1: number, y0: number, y1: number]; // relative to origin/ground
+}
+export const ZONE_DEFS: ZoneDef[] = [
+  {
+    id: 'vatra',
+    origin: VATRA_ORIGIN,
+    puzzles: ['fantana', 'cuptor', 'ulita', 'fierarie', 'grajd', 'spalatorie'],
+    protect: [-10, 16, -9, 7, 0, 8],
+  },
+  {
+    id: 'lunca',
+    origin: LUNCA_ORIGIN,
+    puzzles: ['gard', 'camp_grau', 'moara', 'livada', 'capite'],
+    protect: [-16, 26, -7, 11, 0, 6],
+  },
+  {
+    id: 'padurea',
+    origin: PADUREA_ORIGIN,
+    puzzles: ['poteca', 'pod', 'capcana'],
+    protect: [-9, 17, -9, 7, 0, 6],
+  },
+];
+
+// The footprint a right-click on a block opens each lesson from, relative to
+// its zone's origin: [x0, x1, z0, z1], on the ground and up to 5 above it
+const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
+  fantana: [-1, 1, -1, 4],
+  cuptor: [-8, -4, -2, 1],
+  ulita: [3, 13, -1, 1],
+  fierarie: [-9, -5, -8, -6],
+  grajd: [-3, 3, -8, -5],
+  spalatorie: [5, 10, -8, -5],
+  gard: [-15, 16, -6, -6],
+  camp_grau: [20, 25, -2, 1],
+  moara: [19, 24, 6, 10],
+  livada: [-16, -3, 2, 4],
+  capite: [-15, -5, 7, 9],
+  poteca: [-8, 8, -8, -5],
+  pod: [-3, 3, 0, 6],
+  capcana: [10, 16, -8, -2],
+};
+
+// A zone once placed in the world: origin, ground height, and whether its
+// solved lessons' permanent effects have been re-applied since load
+interface ZoneRuntime {
+  def: ZoneDef;
+  ox: number;
+  oz: number;
+  gy: number;
+  effectsApplied: boolean;
+}
 
 // The persistent world change each puzzle makes on success, and what it
 // reverts to when the lesson is reset — data-driven so both applying and
@@ -379,20 +434,39 @@ function buildMillWheel(): THREE.Group {
 // one-time rewards, and the ability to reset a solved lesson so it can be
 // replayed. The Tabla de Blocuri UI drives it via beginRun/performStep/finish.
 export class VatraModule {
-  private readonly ox = VATRA_ORIGIN.x;
-  private readonly oz = VATRA_ORIGIN.z;
+  private readonly zones = new Map<string, ZoneRuntime>();
+  private readonly zoneOfPuzzle = new Map<string, string>();
+  // Shorthands for the three original zones' origins, read from ZONE_DEFS —
+  // the older animation code addresses blocks as ox + dx and friends
+  private readonly ox: number;
+  private readonly oz: number;
   private readonly groundY: number;
-  private readonly lox = LUNCA_ORIGIN.x;
-  private readonly loz = LUNCA_ORIGIN.z;
+  private readonly lox: number;
+  private readonly loz: number;
   private readonly lunGroundY: number;
-  private readonly pox = PADUREA_ORIGIN.x;
-  private readonly poz = PADUREA_ORIGIN.z;
+  private readonly pox: number;
+  private readonly poz: number;
   private readonly paduGroundY: number;
 
   private done = new Set<string>();
-  private effectsApplied = false;
-  private lunEffectsApplied = false;
-  private padEffectsApplied = false;
+
+  // Each lesson's step animation, by lesson id (see performStep)
+  private readonly stepHandlers: Record<string, (blockId: string, arg?: number) => void> = {
+    fantana: this.stepFantana,
+    cuptor: this.stepCuptor,
+    ulita: this.stepUlita,
+    fierarie: this.stepFierarie,
+    grajd: this.stepGrajd,
+    spalatorie: this.stepSpalatorie,
+    gard: this.stepGard,
+    camp_grau: this.stepCampGrau,
+    moara: this.stepMoara,
+    livada: this.stepLivada,
+    capite: this.stepCapite,
+    poteca: this.stepPoteca,
+    pod: this.stepPod,
+    capcana: this.stepCapcana,
+  };
 
   // Animation state
   private bucket: THREE.Group;
@@ -418,6 +492,7 @@ export class VatraModule {
   private flyings: Flying[] = [];
   private smokes: Smoke[] = [];
   private litCount = 0;
+  private vatraMigrated = false;
   private revertTimer = 0;
   private revertPuzzleId: string | null = null;
 
@@ -439,9 +514,17 @@ export class VatraModule {
     private inventory: Inventory,
     private setBlock: (x: number, y: number, z: number, id: number) => void,
   ) {
-    this.groundY = world.generator.heightAt(this.ox, this.oz);
-    this.lunGroundY = world.generator.heightAt(this.lox, this.loz);
-    this.paduGroundY = world.generator.heightAt(this.pox, this.poz);
+    for (const def of ZONE_DEFS) {
+      const gy = world.generator.heightAt(def.origin.x, def.origin.z);
+      this.zones.set(def.id, { def, ox: def.origin.x, oz: def.origin.z, gy, effectsApplied: false });
+      for (const puzzleId of def.puzzles) this.zoneOfPuzzle.set(puzzleId, def.id);
+    }
+    const vatra = this.zones.get('vatra')!;
+    const lunca = this.zones.get('lunca')!;
+    const padurea = this.zones.get('padurea')!;
+    [this.ox, this.oz, this.groundY] = [vatra.ox, vatra.oz, vatra.gy];
+    [this.lox, this.loz, this.lunGroundY] = [lunca.ox, lunca.oz, lunca.gy];
+    [this.pox, this.poz, this.paduGroundY] = [padurea.ox, padurea.oz, padurea.gy];
     this.load();
 
     // The well bucket, hanging under the roof
@@ -591,67 +674,34 @@ export class VatraModule {
 
   // Which puzzle (if any) the targeted block belongs to — drives right-click
   puzzleAt(bx: number, by: number, bz: number): string | null {
-    const dx = bx - this.ox;
-    const dy = by - this.groundY;
-    const dz = bz - this.oz;
-    if (dy >= 0 && dy <= 5) {
-      if (dx >= -1 && dx <= 1 && dz >= -1 && dz <= 4) return 'fantana';
-      if (dx >= -8 && dx <= -4 && dz >= -2 && dz <= 1) return 'cuptor';
-      if (dx >= 3 && dx <= 13 && dz >= -1 && dz <= 1) return 'ulita';
-      if (dx >= -9 && dx <= -5 && dz >= -8 && dz <= -6) return 'fierarie';
-      if (dx >= -3 && dx <= 3 && dz >= -8 && dz <= -5) return 'grajd';
-      if (dx >= 5 && dx <= 10 && dz >= -8 && dz <= -5) return 'spalatorie';
-    }
-
-    const lx = bx - this.lox;
-    const ly = by - this.lunGroundY;
-    const lz = bz - this.loz;
-    if (ly >= 0 && ly <= 5) {
-      if (lx >= -15 && lx <= 16 && lz >= -6 && lz <= -6) return 'gard';
-      if (lx >= 20 && lx <= 25 && lz >= -2 && lz <= 1) return 'camp_grau';
-      if (lx >= 19 && lx <= 24 && lz >= 6 && lz <= 10) return 'moara';
-      if (lx >= -16 && lx <= -3 && lz >= 2 && lz <= 4) return 'livada';
-      if (lx >= -15 && lx <= -5 && lz >= 7 && lz <= 9) return 'capite';
-    }
-
-    const px = bx - this.pox;
-    const py = by - this.paduGroundY;
-    const pz = bz - this.poz;
-    if (py >= 0 && py <= 5) {
-      if (px >= -8 && px <= 8 && pz >= -8 && pz <= -5) return 'poteca';
-      if (px >= -3 && px <= 3 && pz >= 0 && pz <= 6) return 'pod';
-      if (px >= 10 && px <= 16 && pz >= -8 && pz <= -2) return 'capcana';
+    for (const zone of this.zones.values()) {
+      const dy = by - zone.gy;
+      if (dy < 0 || dy > 5) continue;
+      const dx = bx - zone.ox;
+      const dz = bz - zone.oz;
+      for (const puzzleId of zone.def.puzzles) {
+        const r = CLICK_REGIONS[puzzleId];
+        if (r && dx >= r[0] && dx <= r[1] && dz >= r[2] && dz <= r[3]) return puzzleId;
+      }
     }
     return null;
   }
 
-  // The whole square is protected from mining so the puzzles stay intact
+  // The whole of every zone is protected from mining and building so the
+  // puzzles stay intact
   isProtected(bx: number, by: number, bz: number): boolean {
-    const dx = bx - this.ox;
-    const dy = by - this.groundY;
-    const dz = bz - this.oz;
-    if (dx >= -10 && dx <= 16 && dz >= -9 && dz <= 7 && dy >= 0 && dy <= 8) return true;
-
-    const lx = bx - this.lox;
-    const ly = by - this.lunGroundY;
-    const lz = bz - this.loz;
-    if (lx >= -16 && lx <= 26 && lz >= -7 && lz <= 11 && ly >= 0 && ly <= 6) return true;
-
-    const px = bx - this.pox;
-    const py = by - this.paduGroundY;
-    const pz = bz - this.poz;
-    return px >= -9 && px <= 17 && pz >= -9 && pz <= 7 && py >= 0 && py <= 6;
+    for (const zone of this.zones.values()) {
+      const [x0, x1, z0, z1, y0, y1] = zone.def.protect;
+      const dx = bx - zone.ox;
+      const dy = by - zone.gy;
+      const dz = bz - zone.oz;
+      if (dx >= x0 && dx <= x1 && dz >= z0 && dz <= z1 && dy >= y0 && dy <= y1) return true;
+    }
+    return false;
   }
 
   isDone(puzzleId: string): boolean {
     return this.done.has(puzzleId);
-  }
-
-  // Zona 3 (Pădurea) is built and playable in code, but not yet opened to
-  // players — Game.ts shows a "coming soon" toast for it instead of opening
-  // the tabla. Zona 1 (Vatra) and Zona 2 (Lunca) are live.
-  isComingSoon(puzzleId: string): boolean {
-    return PADUREA_PUZZLES.has(puzzleId);
   }
 
   beginRun(puzzleId: string): void {
@@ -687,251 +737,282 @@ export class VatraModule {
     this.sound.clink();
   }
 
-  // One program block executes: animate the matching mechanism
-  performStep(puzzleId: string, blockId: string, _arg?: number): void {
-    if (puzzleId === 'fantana') {
-      if (blockId === 'coboara') {
-        this.bucketTargetY = this.groundY + BUCKET_LOW;
-        this.sound.stepTick();
-      } else if (blockId === 'umple') {
-        // Only actually fills if the bucket is down the (dry-ish) well
-        if (this.bucket.position.y < this.groundY + BUCKET_LOW + 0.4) {
-          this.bucketWater.visible = true;
-          this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 3);
-          this.sound.splash();
-        } else {
-          this.sound.stepTick();
-        }
-      } else if (blockId === 'urca') {
-        this.bucketTargetY = this.groundY + BUCKET_HIGH;
-        this.sound.stepTick();
-      } else if (blockId === 'varsa') {
-        if (this.bucketWater.visible) {
-          this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 4);
-        }
-        this.bucketWater.visible = false;
-        this.sound.stepTick();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'cuptor') {
-      if (blockId === 'aprinde') {
-        this.ovenLight.intensity = 3;
-        this.ovenLitThisRun = true;
-        this.sound.fireballCast();
-      } else if (blockId === 'baga') {
-        // The dough goes pale into the oven — golden only if the fire was
-        // lit earlier this run, so a wrong-order run visibly never actually bakes
-        this.setDough(true, this.ovenLitThisRun ? 0xd9a24a : 0xe8d8a8);
-        this.sound.place();
-      } else if (blockId === 'scoate') {
-        const baked = this.doughMesh !== null && (this.doughMesh.material as THREE.MeshLambertMaterial).color.getHex() === 0xd9a24a;
-        this.setDough(false);
-        if (baked) this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.6, this.oz + 0.5, 0xd9a24a, 2);
-        this.sound.stepTick();
-      } else {
-        this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 4.6, this.oz - 1 + 0.5, 0x9a9a9a, 0.18);
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'ulita') {
-      if (blockId === 'aprinde_felinar' && this.litCount < LANTERNS.length) {
-        const [lx, dy, lz] = LANTERNS[this.litCount];
-        if (this.world.getBlock(this.ox + lx, this.groundY + dy, this.oz + lz) === BlockType.Glass) {
-          this.setBlock(this.ox + lx, this.groundY + dy, this.oz + lz, BlockType.Lamp);
-          this.spawnFlyingBits(this.ox + lx + 0.5, this.groundY + dy + 0.5, this.oz + lz + 0.5, 0xffe14d, 1);
-        }
-        this.litCount++;
-        this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'fierarie') {
-      if (blockId === 'aprinde_forja') {
-        this.forgeLight.intensity = 3;
-        this.sound.fireballCast();
-      } else if (blockId === 'loveste') {
-        this.spawnSmoke(this.ox - 5 + 0.5, this.groundY + 2.3, this.oz - 5 + 0.5, 0xffb04a, 0.14);
-        this.sound.clink();
-      } else if (blockId === 'caleste') {
-        this.sound.splash();
-      } else if (blockId === 'pune_fier') {
-        this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'grajd') {
-      if (blockId === 'toarna_apa' || blockId === 'adu_apa') {
-        this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0x3a78d8, 2);
-        this.sound.splash();
-      } else if (blockId === 'deschide_poarta') {
-        this.sound.doorToggle();
-      } else if (blockId === 'pune_in_iesle') {
-        this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0xd9c27a, 2);
-        this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'spalatorie') {
-      if (blockId === 'inmoaie' || blockId === 'clateste') {
-        this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0x3a78d8, 2);
-        this.sound.splash();
-      } else if (blockId === 'intinde') {
-        this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
-        this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'gard') {
-      if (blockId === 'pune_stalp') {
-        const dx = fencePostPos(this.gardIndex);
-        this.placeTemp(this.lox + dx, this.lunGroundY + 1, this.loz - 6, BlockType.Log, BlockType.Air);
-        this.gardIndex++;
-        if (this.gardIndex % 5 === 0) this.sound.place();
-      } else if (blockId === 'prinde_capatul') {
-        this.spawnFlyingBits(this.lox + 16 + 0.5, this.lunGroundY + 2, this.loz - 6 + 0.5, 0x8a6a3a, 2, this.lunGroundY);
-        this.sound.clink();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'camp_grau') {
-      if (blockId === 'planteaza_spic') {
-        if (this.campIndex < FIELD_POS.length) {
-          const [dx, dy, dz] = FIELD_POS[this.campIndex];
-          this.placeTemp(this.lox + dx, this.lunGroundY + dy, this.loz + dz, BlockType.Wheat, BlockType.Dirt);
-        }
-        this.campIndex++;
-        if (this.campIndex % 4 === 0) this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'moara') {
-      if (blockId === 'porneste_apa') {
-        this.sound.splash();
-      } else if (blockId === 'macina') {
-        this.placeTemp(
-          this.lox + MILL_FLOUR[0],
-          this.lunGroundY + MILL_FLOUR[1],
-          this.loz + MILL_FLOUR[2],
-          BlockType.Flour,
-          BlockType.Air,
-        );
-        this.spawnSmoke(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 0.2);
-        this.sound.place();
-      } else if (blockId === 'opreste_apa') {
+  // One program block executes: animate the matching mechanism. Each lesson
+  // has its own handler in STEP_HANDLERS; a lesson without one just ticks.
+  performStep(puzzleId: string, blockId: string, arg?: number): void {
+    const handler = this.stepHandlers[puzzleId];
+    if (handler) handler.call(this, blockId, arg);
+    else this.sound.stepTick();
+  }
+
+  private stepFantana(blockId: string, _arg?: number): void {
+    if (blockId === 'coboara') {
+      this.bucketTargetY = this.groundY + BUCKET_LOW;
+      this.sound.stepTick();
+    } else if (blockId === 'umple') {
+      // Only actually fills if the bucket is down the (dry-ish) well
+      if (this.bucket.position.y < this.groundY + BUCKET_LOW + 0.4) {
+        this.bucketWater.visible = true;
+        this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 3);
         this.sound.splash();
       } else {
         this.sound.stepTick();
       }
-    } else if (puzzleId === 'livada') {
-      const spot = ORCHARD_DX[Math.min(this.livadaIndex, ORCHARD_DX.length - 1)];
-      const tree = orchardTree(spot);
-      if (blockId === 'sapa_groapa') {
-        this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a4a, 3, this.lunGroundY);
-        this.sound.stepTick();
-      } else if (blockId === 'pune_puietul') {
-        if (this.livadaIndex < ORCHARD_DX.length) {
-          for (const [x, y, z] of tree.trunk) {
-            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, y === 1 ? BlockType.Dirt : BlockType.Air);
-          }
-        }
-        this.sound.place();
-      } else if (blockId === 'uda_puietul') {
-        if (this.livadaIndex < ORCHARD_DX.length) {
-          for (const [x, y, z] of tree.canopy) {
-            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Leaves, BlockType.Air);
-          }
-        }
-        this.livadaIndex++; // the tree is finished; the next pass digs the next hole
-        this.sound.splash();
-      } else if (blockId === 'ingradeste_livada') {
-        this.spawnFlyingBits(this.lox - 9 + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a3a, 3, this.lunGroundY);
-        this.sound.clink();
-      } else {
-        this.sound.stepTick();
+    } else if (blockId === 'urca') {
+      this.bucketTargetY = this.groundY + BUCKET_HIGH;
+      this.sound.stepTick();
+    } else if (blockId === 'varsa') {
+      if (this.bucketWater.visible) {
+        this.spawnFlyingBits(this.bucket.position.x, this.bucket.position.y, this.bucket.position.z, 0x3a78d8, 4);
       }
-    } else if (puzzleId === 'capite') {
-      const spot = HAYSTACK_DX[Math.min(this.capitaIndex, HAYSTACK_DX.length - 1)];
-      const stack = haystack(spot);
-      const inRange = this.capitaIndex < HAYSTACK_DX.length;
-      if (blockId === 'coseste_iarba') {
-        this.spawnFlyingBits(this.lox - 10 + 0.5, this.lunGroundY + 1.3, this.loz + HAYSTACK_DZ + 0.5, 0x8fb54a, 3, this.lunGroundY);
-        this.sound.stepTick();
-      } else if (blockId === 'infige_parul') {
-        if (inRange) {
-          for (const [x, y, z] of stack.pole) {
-            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, BlockType.Air);
-          }
+      this.bucketWater.visible = false;
+      this.sound.stepTick();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepCuptor(blockId: string, _arg?: number): void {
+    if (blockId === 'aprinde') {
+      this.ovenLight.intensity = 3;
+      this.ovenLitThisRun = true;
+      this.sound.fireballCast();
+    } else if (blockId === 'baga') {
+      // The dough goes pale into the oven — golden only if the fire was
+      // lit earlier this run, so a wrong-order run visibly never actually bakes
+      this.setDough(true, this.ovenLitThisRun ? 0xd9a24a : 0xe8d8a8);
+      this.sound.place();
+    } else if (blockId === 'scoate') {
+      const baked = this.doughMesh !== null && (this.doughMesh.material as THREE.MeshLambertMaterial).color.getHex() === 0xd9a24a;
+      this.setDough(false);
+      if (baked) this.spawnFlyingBits(this.ox - 6 + 0.5, this.groundY + 2.6, this.oz + 0.5, 0xd9a24a, 2);
+      this.sound.stepTick();
+    } else {
+      this.spawnSmoke(this.ox - 6 + 0.5, this.groundY + 4.6, this.oz - 1 + 0.5, 0x9a9a9a, 0.18);
+      this.sound.stepTick();
+    }
+  }
+
+  private stepUlita(blockId: string, _arg?: number): void {
+    if (blockId === 'aprinde_felinar' && this.litCount < LANTERNS.length) {
+      const [lx, dy, lz] = LANTERNS[this.litCount];
+      if (this.world.getBlock(this.ox + lx, this.groundY + dy, this.oz + lz) === BlockType.Glass) {
+        this.setBlock(this.ox + lx, this.groundY + dy, this.oz + lz, BlockType.Lamp);
+        this.spawnFlyingBits(this.ox + lx + 0.5, this.groundY + dy + 0.5, this.oz + lz + 0.5, 0xffe14d, 1);
+      }
+      this.litCount++;
+      this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepFierarie(blockId: string, _arg?: number): void {
+    if (blockId === 'aprinde_forja') {
+      this.forgeLight.intensity = 3;
+      this.sound.fireballCast();
+    } else if (blockId === 'loveste') {
+      this.spawnSmoke(this.ox - 5 + 0.5, this.groundY + 2.3, this.oz - 5 + 0.5, 0xffb04a, 0.14);
+      this.sound.clink();
+    } else if (blockId === 'caleste') {
+      this.sound.splash();
+    } else if (blockId === 'pune_fier') {
+      this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepGrajd(blockId: string, _arg?: number): void {
+    if (blockId === 'toarna_apa' || blockId === 'adu_apa') {
+      this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0x3a78d8, 2);
+      this.sound.splash();
+    } else if (blockId === 'deschide_poarta') {
+      this.sound.doorToggle();
+    } else if (blockId === 'pune_in_iesle') {
+      this.spawnFlyingBits(this.ox + 0.5, this.groundY + 1.4, this.oz - 6 + 0.5, 0xd9c27a, 2);
+      this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepSpalatorie(blockId: string, _arg?: number): void {
+    if (blockId === 'inmoaie' || blockId === 'clateste') {
+      this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0x3a78d8, 2);
+      this.sound.splash();
+    } else if (blockId === 'intinde') {
+      this.spawnFlyingBits(this.ox + 6 + 0.5, this.groundY + 2.3, this.oz - 7 + 0.5, 0xe8e8e8, 2);
+      this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepGard(blockId: string, _arg?: number): void {
+    if (blockId === 'pune_stalp') {
+      const dx = fencePostPos(this.gardIndex);
+      this.placeTemp(this.lox + dx, this.lunGroundY + 1, this.loz - 6, BlockType.Log, BlockType.Air);
+      this.gardIndex++;
+      if (this.gardIndex % 5 === 0) this.sound.place();
+    } else if (blockId === 'prinde_capatul') {
+      this.spawnFlyingBits(this.lox + 16 + 0.5, this.lunGroundY + 2, this.loz - 6 + 0.5, 0x8a6a3a, 2, this.lunGroundY);
+      this.sound.clink();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepCampGrau(blockId: string, _arg?: number): void {
+    if (blockId === 'planteaza_spic') {
+      if (this.campIndex < FIELD_POS.length) {
+        const [dx, dy, dz] = FIELD_POS[this.campIndex];
+        this.placeTemp(this.lox + dx, this.lunGroundY + dy, this.loz + dz, BlockType.Wheat, BlockType.Dirt);
+      }
+      this.campIndex++;
+      if (this.campIndex % 4 === 0) this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepMoara(blockId: string, _arg?: number): void {
+    if (blockId === 'porneste_apa') {
+      this.sound.splash();
+    } else if (blockId === 'macina') {
+      this.placeTemp(
+        this.lox + MILL_FLOUR[0],
+        this.lunGroundY + MILL_FLOUR[1],
+        this.loz + MILL_FLOUR[2],
+        BlockType.Flour,
+        BlockType.Air,
+      );
+      this.spawnSmoke(this.lox + 22 + 0.5, this.lunGroundY + 2, this.loz + 8 + 0.5, 0xe8e0d0, 0.2);
+      this.sound.place();
+    } else if (blockId === 'opreste_apa') {
+      this.sound.splash();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepLivada(blockId: string, _arg?: number): void {
+    const spot = ORCHARD_DX[Math.min(this.livadaIndex, ORCHARD_DX.length - 1)];
+    const tree = orchardTree(spot);
+    if (blockId === 'sapa_groapa') {
+      this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a4a, 3, this.lunGroundY);
+      this.sound.stepTick();
+    } else if (blockId === 'pune_puietul') {
+      if (this.livadaIndex < ORCHARD_DX.length) {
+        for (const [x, y, z] of tree.trunk) {
+          this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, y === 1 ? BlockType.Dirt : BlockType.Air);
         }
-        this.forkIndex = 0;
-        this.sound.place();
-      } else if (blockId === 'arunca_fanul') {
-        if (inRange && this.forkIndex < stack.forkfuls.length) {
-          for (const [x, y, z] of stack.forkfuls[this.forkIndex]) {
-            this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Hay, BlockType.Air);
-          }
+      }
+      this.sound.place();
+    } else if (blockId === 'uda_puietul') {
+      if (this.livadaIndex < ORCHARD_DX.length) {
+        for (const [x, y, z] of tree.canopy) {
+          this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Leaves, BlockType.Air);
         }
-        this.forkIndex++;
-        this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 2.2, this.loz + HAYSTACK_DZ + 0.5, 0xd9c27a, 2, this.lunGroundY);
-        this.sound.place();
-      } else if (blockId === 'leaga_capita') {
-        if (inRange) {
-          const [x, y, z] = stack.cap;
+      }
+      this.livadaIndex++; // the tree is finished; the next pass digs the next hole
+      this.sound.splash();
+    } else if (blockId === 'ingradeste_livada') {
+      this.spawnFlyingBits(this.lox - 9 + 0.5, this.lunGroundY + 1.6, this.loz + ORCHARD_DZ + 0.5, 0x8a6a3a, 3, this.lunGroundY);
+      this.sound.clink();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepCapite(blockId: string, _arg?: number): void {
+    const spot = HAYSTACK_DX[Math.min(this.capitaIndex, HAYSTACK_DX.length - 1)];
+    const stack = haystack(spot);
+    const inRange = this.capitaIndex < HAYSTACK_DX.length;
+    if (blockId === 'coseste_iarba') {
+      this.spawnFlyingBits(this.lox - 10 + 0.5, this.lunGroundY + 1.3, this.loz + HAYSTACK_DZ + 0.5, 0x8fb54a, 3, this.lunGroundY);
+      this.sound.stepTick();
+    } else if (blockId === 'infige_parul') {
+      if (inRange) {
+        for (const [x, y, z] of stack.pole) {
+          this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Log, BlockType.Air);
+        }
+      }
+      this.forkIndex = 0;
+      this.sound.place();
+    } else if (blockId === 'arunca_fanul') {
+      if (inRange && this.forkIndex < stack.forkfuls.length) {
+        for (const [x, y, z] of stack.forkfuls[this.forkIndex]) {
           this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Hay, BlockType.Air);
         }
-        this.capitaIndex++; // on to the next haystack
-        this.forkIndex = 0;
-        this.sound.clink();
-      } else {
-        this.sound.stepTick();
       }
-    } else if (puzzleId === 'poteca') {
-      if (blockId === 'aprinde') {
-        this.placeTemp(
-          this.pox + LANTERN_POTECA[0],
-          this.paduGroundY + LANTERN_POTECA[1],
-          this.poz + LANTERN_POTECA[2],
-          BlockType.Lamp,
-          BlockType.Glass,
-        );
-        this.sound.place();
-      } else if (blockId === 'stinge') {
-        this.placeTemp(
-          this.pox + LANTERN_POTECA[0],
-          this.paduGroundY + LANTERN_POTECA[1],
-          this.poz + LANTERN_POTECA[2],
-          BlockType.Glass,
-          BlockType.Glass,
-        );
-        this.sound.stepTick();
-      } else {
-        this.sound.stepTick();
+      this.forkIndex++;
+      this.spawnFlyingBits(this.lox + spot + 0.5, this.lunGroundY + 2.2, this.loz + HAYSTACK_DZ + 0.5, 0xd9c27a, 2, this.lunGroundY);
+      this.sound.place();
+    } else if (blockId === 'leaga_capita') {
+      if (inRange) {
+        const [x, y, z] = stack.cap;
+        this.placeTemp(this.lox + x, this.lunGroundY + y, this.loz + z, BlockType.Hay, BlockType.Air);
       }
-    } else if (puzzleId === 'pod') {
-      if (blockId === 'ridica') {
-        this.placeTemp(
-          this.pox + BRIDGE_RAIL[0],
-          this.paduGroundY + BRIDGE_RAIL[1],
-          this.poz + BRIDGE_RAIL[2],
-          BlockType.Log,
-          BlockType.Air,
-        );
-        this.sound.place();
-      } else {
-        this.sound.stepTick();
-      }
-    } else if (puzzleId === 'capcana') {
-      if (blockId === 'declanseaza') {
-        this.placeTemp(
-          this.pox + TRAP_CENTER[0],
-          this.paduGroundY + TRAP_CENTER[1],
-          this.poz + TRAP_CENTER[2],
-          BlockType.Hay,
-          BlockType.Plank,
-        );
-        this.sound.clink();
-      } else {
-        this.sound.stepTick();
-      }
+      this.capitaIndex++; // on to the next haystack
+      this.forkIndex = 0;
+      this.sound.clink();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepPoteca(blockId: string, _arg?: number): void {
+    if (blockId === 'aprinde') {
+      this.placeTemp(
+        this.pox + LANTERN_POTECA[0],
+        this.paduGroundY + LANTERN_POTECA[1],
+        this.poz + LANTERN_POTECA[2],
+        BlockType.Lamp,
+        BlockType.Glass,
+      );
+      this.sound.place();
+    } else if (blockId === 'stinge') {
+      this.placeTemp(
+        this.pox + LANTERN_POTECA[0],
+        this.paduGroundY + LANTERN_POTECA[1],
+        this.poz + LANTERN_POTECA[2],
+        BlockType.Glass,
+        BlockType.Glass,
+      );
+      this.sound.stepTick();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepPod(blockId: string, _arg?: number): void {
+    if (blockId === 'ridica') {
+      this.placeTemp(
+        this.pox + BRIDGE_RAIL[0],
+        this.paduGroundY + BRIDGE_RAIL[1],
+        this.poz + BRIDGE_RAIL[2],
+        BlockType.Log,
+        BlockType.Air,
+      );
+      this.sound.place();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  private stepCapcana(blockId: string, _arg?: number): void {
+    if (blockId === 'declanseaza') {
+      this.placeTemp(
+        this.pox + TRAP_CENTER[0],
+        this.paduGroundY + TRAP_CENTER[1],
+        this.poz + TRAP_CENTER[2],
+        BlockType.Hay,
+        BlockType.Plank,
+      );
+      this.sound.clink();
+    } else {
+      this.sound.stepTick();
     }
   }
 
@@ -1065,17 +1146,13 @@ export class VatraModule {
 
   // Which zone a lesson belongs to
   zoneOf(puzzleId: string): string {
-    if (LUNCA_PUZZLES.has(puzzleId)) return 'lunca';
-    if (PADUREA_PUZZLES.has(puzzleId)) return 'padurea';
-    return 'vatra';
+    return this.zoneOfPuzzle.get(puzzleId) ?? 'vatra';
   }
 
-  // Zona 1 (Vatra), Zona 2 (Lunca) and Zona 3 (Pădurea) puzzles each use a
-  // different world origin
+  // A lesson's world origin and ground height: [x, groundY, z]
   originFor(puzzleId: string): [number, number, number] {
-    if (LUNCA_PUZZLES.has(puzzleId)) return [this.lox, this.lunGroundY, this.loz];
-    if (PADUREA_PUZZLES.has(puzzleId)) return [this.pox, this.paduGroundY, this.poz];
-    return [this.ox, this.groundY, this.oz];
+    const zone = this.zones.get(this.zoneOf(puzzleId))!;
+    return [zone.ox, zone.gy, zone.oz];
   }
 
   private applyEffects(puzzleId: string): void {
@@ -1413,15 +1490,17 @@ export class VatraModule {
       }
     }
 
-    // Once the vatra chunk is loaded, re-apply the persistent state of any
+    // Once a zone's chunk is loaded, re-apply the persistent state of its
     // already-solved puzzles (water in the trough, lit lanterns, embers…)
-    if (!this.effectsApplied && this.world.getBlock(this.ox, this.groundY, this.oz) !== BlockType.Air) {
-      this.effectsApplied = true;
-      for (const puzzleId of Object.keys(PUZZLE_EFFECTS)) {
-        if (!LUNCA_PUZZLES.has(puzzleId) && !PADUREA_PUZZLES.has(puzzleId) && this.done.has(puzzleId)) {
-          this.applyEffects(puzzleId);
-        }
+    for (const zone of this.zones.values()) {
+      if (zone.effectsApplied || this.world.getBlock(zone.ox, zone.gy, zone.oz) === BlockType.Air) continue;
+      zone.effectsApplied = true;
+      for (const puzzleId of zone.def.puzzles) {
+        if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
       }
+    }
+    if (!this.vatraMigrated && this.zones.get('vatra')!.effectsApplied) {
+      this.vatraMigrated = true;
       // One-time migration: cuptor used to place a Lamp block in the oven
       // cavity on success — replaced by a permanent fire (see applySuccess).
       // A world saved under the old code still has that leftover Lamp block,
@@ -1443,20 +1522,6 @@ export class VatraModule {
         }
         this.forgeLight.intensity = 1.8;
         this.setPickaxeProp(true);
-      }
-    }
-    // Same, once the Lunca chunk is loaded, for its own puzzles
-    if (!this.lunEffectsApplied && this.world.getBlock(this.lox, this.lunGroundY, this.loz) !== BlockType.Air) {
-      this.lunEffectsApplied = true;
-      for (const puzzleId of LUNCA_PUZZLES) {
-        if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
-      }
-    }
-    // Same, once the Pădurea chunk is loaded, for its own puzzles
-    if (!this.padEffectsApplied && this.world.getBlock(this.pox, this.paduGroundY, this.poz) !== BlockType.Air) {
-      this.padEffectsApplied = true;
-      for (const puzzleId of PADUREA_PUZZLES) {
-        if (this.done.has(puzzleId)) this.applyEffects(puzzleId);
       }
     }
   }

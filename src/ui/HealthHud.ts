@@ -1,9 +1,10 @@
-import { MAX_HP, MAX_OXYGEN_SECONDS } from '../config';
+import { MAX_OXYGEN_SECONDS } from '../config';
 import type { Health } from '../player/Health';
 
 // Hearts + oxygen bubbles above the hotbar, red damage flash, death screen.
 export class HealthHud {
   private hearts: HTMLElement[] = [];
+  private heartRow: HTMLElement;
   private bubbles: HTMLElement[] = [];
   private bubbleRow: HTMLElement;
   private flashEl: HTMLElement;
@@ -22,15 +23,10 @@ export class HealthHud {
     }
     status.appendChild(this.bubbleRow);
 
-    const heartRow = document.createElement('div');
-    heartRow.className = 'heart-row';
-    for (let i = 0; i < MAX_HP / 2; i++) {
-      const h = document.createElement('span');
-      h.textContent = '♥';
-      heartRow.appendChild(h);
-      this.hearts.push(h);
-    }
-    status.appendChild(heartRow);
+    this.heartRow = document.createElement('div');
+    this.heartRow.className = 'heart-row';
+    status.appendChild(this.heartRow);
+    this.buildHearts(health.maxHp);
 
     this.flashEl = document.getElementById('damage-flash')!;
     this.deathEl = document.getElementById('death')!;
@@ -41,7 +37,20 @@ export class HealthHud {
     this.render(health);
   }
 
+  // One heart per two hp; rebuilt when the maximum grows (Mărul de aur)
+  private buildHearts(maxHp: number): void {
+    this.heartRow.innerHTML = '';
+    this.hearts = [];
+    for (let i = 0; i < maxHp / 2; i++) {
+      const h = document.createElement('span');
+      h.textContent = '♥';
+      this.heartRow.appendChild(h);
+      this.hearts.push(h);
+    }
+  }
+
   private render(health: Health): void {
+    if (this.hearts.length !== Math.ceil(health.maxHp / 2)) this.buildHearts(health.maxHp);
     this.hearts.forEach((el, i) => {
       const filled = health.hp - i * 2;
       el.className = filled >= 2 ? 'full' : filled === 1 ? 'half' : 'empty';

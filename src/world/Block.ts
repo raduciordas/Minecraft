@@ -41,6 +41,12 @@ export const enum BlockType {
   Flour = 37,
   Mushroom = 38,
   Paine = 39,
+  Torch = 40, // lesson reward (Ulița): cheap placeable light, and lights your way when held
+  Rope = 41, // lesson reward (Spălătoria): climbable
+  Scarecrow = 42, // lesson reward (Câmpul de grâu): monsters nearby lose interest in you
+  StrawMattress = 43, // lesson reward (Căpițele): a soft landing that bounces you back up
+  WolfTrap = 44, // lesson reward (Capcana): the monster that steps on it is hurt and slowed
+  MushroomViolet = 45, // the poisonous ones in Muma Pădurii's glade — decor, never in a pack
 }
 
 // Atlas tile indices (see TextureAtlas.ts for what gets drawn where)
@@ -81,6 +87,12 @@ export const enum Tile {
   Flour = 34,
   Mushroom = 35,
   Paine = 36,
+  Torch = 37,
+  Rope = 38,
+  Scarecrow = 39,
+  StrawMattress = 40,
+  WolfTrap = 41,
+  MushroomViolet = 42,
 }
 
 export interface BlockDef {
@@ -90,6 +102,8 @@ export interface BlockDef {
   textures: { top: Tile; side: Tile; bottom: Tile };
   requiresPickaxe?: boolean; // breakBlock() refuses without the Târnăcop tool selected
   notStarterStock?: boolean; // not handed out free at session start; must be mined, crafted or earned
+  customMesh?: boolean; // drawn by LightManager as its own shape, never as a cube (lamp post, torch)
+  climbable?: boolean; // not solid, but a body inside it can hold on and climb (rope, ladder)
 }
 
 const T = (top: Tile, side: Tile, bottom: Tile) => ({ top, side, bottom });
@@ -121,7 +135,7 @@ export const BLOCKS: Record<number, BlockDef> = {
   // Not opaque: rendered as a narrow lamp-post shape (LightManager), not a
   // cube, so neighboring block faces must still draw right up against it.
   // notStarterStock: not part of the starter stock — earned only via Ulița.
-  [BlockType.Lamp]: { name: 'Lampă', solid: true, opaque: false, textures: T(Tile.Lamp, Tile.Lamp, Tile.Lamp), notStarterStock: true },
+  [BlockType.Lamp]: { name: 'Lampă', solid: true, opaque: false, textures: T(Tile.Lamp, Tile.Lamp, Tile.Lamp), notStarterStock: true, customMesh: true },
   // The hotbar/inventory item; placeBlock() converts it to an oriented
   // DoorClosedX/Z below and never writes BlockType.Door into the world.
   [BlockType.Door]: { name: 'Ușă', solid: true, opaque: true, textures: T(Tile.Plank, Tile.DoorClosed, Tile.Plank) },
@@ -154,7 +168,27 @@ export const BLOCKS: Record<number, BlockDef> = {
   // inventory/hotbar can show its icon and stock like any other item.
   // notStarterStock: not part of the starter stock — earned only via Cuptor.
   [BlockType.Paine]: C('Pâine', Tile.Paine),
+  // Drawn as a stick with a flame (LightManager), not a cube — earned at Ulița
+  [BlockType.Torch]: { name: 'Torță', solid: true, opaque: false, textures: T(Tile.Torch, Tile.Torch, Tile.Torch), notStarterStock: true, customMesh: true },
+  // Pass-through, but you can hang on to it and climb — earned at Spălătoria
+  [BlockType.Rope]: { name: 'Frânghie', solid: false, opaque: false, textures: T(Tile.Rope, Tile.Rope, Tile.Rope), notStarterStock: true, climbable: true },
+  [BlockType.Scarecrow]: { name: 'Sperietoare de ciori', solid: true, opaque: false, textures: T(Tile.Scarecrow, Tile.Scarecrow, Tile.Scarecrow), notStarterStock: true },
+  [BlockType.StrawMattress]: C('Saltea de paie', Tile.StrawMattress),
+  [BlockType.WolfTrap]: C('Capcană de lup', Tile.WolfTrap),
+  // Decor only (the poisonous mushrooms of the glade); lives in a protected
+  // zone, so it can never be mined into a pack
+  [BlockType.MushroomViolet]: SN('Ciupercă otrăvitoare', Tile.MushroomViolet),
 };
+
+// Blocks a body can climb when inside them (see Player.update)
+export function isClimbable(id: number): boolean {
+  return BLOCKS[id]?.climbable ?? false;
+}
+
+// Blocks drawn as their own shape by LightManager rather than as a cube
+export function hasCustomMesh(id: number): boolean {
+  return BLOCKS[id]?.customMesh ?? false;
+}
 
 export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Grass,
@@ -190,6 +224,11 @@ export const PLACEABLE_BLOCKS: BlockType[] = [
   BlockType.Flour,
   BlockType.Mushroom,
   BlockType.Paine,
+  BlockType.Torch,
+  BlockType.Rope,
+  BlockType.Scarecrow,
+  BlockType.StrawMattress,
+  BlockType.WolfTrap,
 ];
 
 // Collision / crosshair targeting: water and air are pass-through

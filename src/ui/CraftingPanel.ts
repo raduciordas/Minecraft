@@ -1,16 +1,7 @@
-import { BLOCKS, type BlockType } from '../world/Block';
-import { TOOLS, isTool, makeToolIcon, type ToolId } from '../items/Tool';
 import { RECIPES } from '../items/Recipes';
+import { itemName, makeItemIcon as itemIcon } from '../items/Items';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 import type { Inventory } from '../player/Inventory';
-
-function itemIcon(id: number, atlas: TextureAtlas): HTMLCanvasElement {
-  return isTool(id) ? makeToolIcon(id as ToolId) : atlas.makeTileIcon(BLOCKS[id].textures.side);
-}
-
-function itemName(id: number): string {
-  return isTool(id) ? TOOLS[id].name : BLOCKS[id].name;
-}
 
 // Full-screen crafting overlay, opened by right-clicking a placed Masă de
 // Cioplit (Crafting Table). Lists every recipe with its ingredient stock;
@@ -66,7 +57,7 @@ export class CraftingPanel {
       for (const ing of recipe.ingredients) {
         const span = document.createElement('span');
         span.className = 'craft-ingredient';
-        span.appendChild(atlas.makeTileIcon(BLOCKS[ing.id].textures.side));
+        span.appendChild(itemIcon(ing.id, atlas));
         const label = document.createElement('span');
         span.appendChild(label);
         ingredientsEl.appendChild(span);
@@ -101,17 +92,17 @@ export class CraftingPanel {
   }
 
   private craft(recipe: (typeof RECIPES)[number]): void {
-    const hasAll = recipe.ingredients.every((ing) => this.inventory.count(ing.id as BlockType) >= ing.count);
+    const hasAll = recipe.ingredients.every((ing) => this.inventory.count(ing.id) >= ing.count);
     if (!hasAll) return;
-    for (const ing of recipe.ingredients) this.inventory.remove(ing.id as BlockType, ing.count);
-    this.inventory.add(recipe.output as BlockType, recipe.outputCount);
+    for (const ing of recipe.ingredients) this.inventory.remove(ing.id, ing.count);
+    this.inventory.add(recipe.output, recipe.outputCount);
   }
 
   private refresh(): void {
     this.rows.forEach((row) => {
       let hasAll = true;
       row.ingredientEls.forEach(({ id, count, el }) => {
-        const have = this.inventory.count(id as BlockType);
+        const have = this.inventory.count(id);
         const short = have < count;
         if (short) hasAll = false;
         el.textContent = `${itemName(id)} ${have}/${count}`;

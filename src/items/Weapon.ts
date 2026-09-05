@@ -6,6 +6,8 @@ export const enum WeaponId {
   CrystalSword = 101,
   MagmaHammer = 102,
   IceSpear = 103,
+  BataCiobanului = 104, // the shepherd's staff: modest bite, long reach, big shove
+  Arc = 105, // bow: fires an arrow (see Projectile.ts) — the answer to the Zmeu
 }
 
 export interface WeaponDef {
@@ -15,7 +17,9 @@ export interface WeaponDef {
   cooldown: number;
   knockback: number;
   slowSeconds?: number; // ice spear chills its target
+  ranged?: boolean; // shoots an arrow instead of swinging
   notStarterStock?: boolean; // must be earned; without one in the pack you swing bare-handed
+  shape?: 'sword' | 'hammer' | 'spear' | 'club' | 'bow';
   colors: { blade: number; accent: number; handle: number };
 }
 
@@ -56,6 +60,27 @@ export const WEAPONS: Record<number, WeaponDef> = {
     slowSeconds: 2,
     colors: { blade: 0xd9d9d9, accent: 0x5aa7e8, handle: 0x8a6a48 },
   },
+  [WeaponId.BataCiobanului]: {
+    notStarterStock: true, // the Gardul Luncii reward
+    name: 'Bâta ciobanului',
+    damage: 3,
+    range: 4.5,
+    cooldown: 0.5,
+    knockback: 14,
+    shape: 'club',
+    colors: { blade: 0x8a6a3a, accent: 0x5a3a1a, handle: 0x8a6a3a },
+  },
+  [WeaponId.Arc]: {
+    notStarterStock: true, // the Culesul de ciuperci reward
+    name: 'Arc cu săgeți',
+    damage: 4,
+    range: 30,
+    cooldown: 0.7,
+    knockback: 4,
+    ranged: true,
+    shape: 'bow',
+    colors: { blade: 0xa07a48, accent: 0xe8e0d0, handle: 0x5a3a1a },
+  },
 };
 
 export const WEAPON_IDS: WeaponId[] = [
@@ -63,6 +88,8 @@ export const WEAPON_IDS: WeaponId[] = [
   WeaponId.CrystalSword,
   WeaponId.MagmaHammer,
   WeaponId.IceSpear,
+  WeaponId.BataCiobanului,
+  WeaponId.Arc,
 ];
 
 // Weapon ids occupy [100, 200); throwables (see Throwable.ts) start at 200
@@ -84,6 +111,7 @@ export function makeWeaponIcon(id: WeaponId): HTMLCanvasElement {
     ctx.fillRect(x, y, 1, 1);
   };
 
+  const shape = WEAPONS[id].shape;
   if (id === WeaponId.MagmaHammer) {
     for (let y = 6; y <= 15; y++) {
       px(7, y, handle);
@@ -94,6 +122,23 @@ export function makeWeaponIcon(id: WeaponId): HTMLCanvasElement {
       px(x, 1, accent);
       px(x, 5, accent);
     }
+  } else if (shape === 'club') {
+    // A shepherd's crook: long diagonal staff with a hooked head
+    for (let i = 0; i <= 11; i++) px(2 + i, 14 - i, handle);
+    px(13, 2, blade);
+    px(12, 1, blade);
+    px(11, 1, blade);
+    px(10, 2, accent);
+    px(13, 3, accent);
+  } else if (shape === 'bow') {
+    // A curved bow with its string, an arrow nocked across it
+    for (let y = 2; y <= 13; y++) px(y < 5 || y > 10 ? 6 : 4, y, blade);
+    px(5, 5, blade);
+    px(5, 10, blade);
+    for (let y = 2; y <= 13; y++) px(9, y, accent);
+    for (let x = 4; x <= 13; x++) px(x, 8, handle);
+    px(13, 7, 0x9a9a9a);
+    px(13, 9, 0x9a9a9a);
   } else if (id === WeaponId.IceSpear) {
     for (let i = 0; i <= 10; i++) px(2 + i, 13 - i, handle);
     px(13, 2, blade);
@@ -130,10 +175,21 @@ export function buildWeaponModel(id: WeaponId): THREE.Group {
   const group = new THREE.Group();
   const { blade, accent, handle } = WEAPONS[id].colors;
 
+  const shape = WEAPONS[id].shape;
   if (id === WeaponId.MagmaHammer) {
     box(group, 0.055, 0.6, 0.055, handle, 0, 0.15, 0);
     box(group, 0.3, 0.17, 0.17, blade, 0, 0.48, 0);
     box(group, 0.31, 0.04, 0.18, accent, 0, 0.55, 0);
+  } else if (shape === 'club') {
+    box(group, 0.045, 0.85, 0.045, handle, 0, 0.22, 0);
+    box(group, 0.12, 0.045, 0.045, blade, 0.04, 0.66, 0);
+    box(group, 0.045, 0.08, 0.045, accent, 0.08, 0.6, 0);
+  } else if (shape === 'bow') {
+    box(group, 0.035, 0.7, 0.035, blade, 0, 0.3, 0);
+    box(group, 0.08, 0.035, 0.035, blade, -0.03, 0.64, 0);
+    box(group, 0.08, 0.035, 0.035, blade, -0.03, -0.04, 0);
+    box(group, 0.006, 0.68, 0.006, accent, -0.07, 0.3, 0);
+    box(group, 0.3, 0.012, 0.012, handle, 0.06, 0.3, 0);
   } else if (id === WeaponId.IceSpear) {
     box(group, 0.04, 0.85, 0.04, handle, 0, 0.22, 0);
     box(group, 0.07, 0.16, 0.07, blade, 0, 0.7, 0);

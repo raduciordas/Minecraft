@@ -5,6 +5,7 @@ export interface SaveData {
   seed: number;
   time?: number; // day/night cycle position
   hp?: number;
+  maxHp?: number; // raised permanently by the Mărul de aur
   player: { x: number; y: number; z: number; yaw: number; pitch: number };
   inventory: Record<number, number>;
   selectedSlot: number;

@@ -9,8 +9,10 @@ export const enum ThrowableId {
 
 export interface ThrowableDef {
   name: string;
-  blastRadius: number; // mobs within this radius of the impact point die
-  shape: 'bottle' | 'gum';
+  blastRadius: number; // mobs within this radius of the impact point are hit
+  damage?: number; // absent: outright kill (the bottles); set: that many hp (a sling stone)
+  burns?: boolean; // mobs caught in the blast catch fire
+  shape: 'bottle' | 'gum' | 'stone' | 'jar';
   colors: { primary: number; secondary: number; accent: number };
   notStarterStock?: boolean; // not handed out free at session start; must be earned
 }

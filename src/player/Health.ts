@@ -7,11 +7,15 @@ import {
 } from '../config';
 
 const INVULN_SECONDS = 0.5;
+export const MAX_MAX_HP = 30; // the Golden Apple can raise a life this far
 
 export class Health {
   hp = MAX_HP;
+  maxHp = MAX_HP; // grows with the Mărul de aur, saved with the world
   oxygen = MAX_OXYGEN_SECONDS;
   dead = false;
+  // Food can speed regeneration up for a while (see StatusEffects)
+  regenMul = 1;
 
   private invulnTimer = 0;
   private sinceDamage = Infinity;
@@ -60,11 +64,11 @@ export class Health {
     }
 
     // Slow regeneration a while after the last hit
-    if (this.hp < MAX_HP && this.sinceDamage > REGEN_DELAY_SECONDS) {
-      this.regenTimer += dt;
+    if (this.hp < this.maxHp && this.sinceDamage > REGEN_DELAY_SECONDS / this.regenMul) {
+      this.regenTimer += dt * this.regenMul;
       if (this.regenTimer >= REGEN_INTERVAL_SECONDS) {
         this.regenTimer = 0;
-        this.hp = Math.min(MAX_HP, this.hp + 1);
+        this.hp = Math.min(this.maxHp, this.hp + 1);
         this.emitChange();
       }
     } else {
@@ -75,13 +79,22 @@ export class Health {
   // Eating food restores hp, capped at the max — unlike damage(), this
   // works even during the post-hit invulnerability window
   heal(amount: number): void {
-    if (this.dead || amount <= 0 || this.hp >= MAX_HP) return;
-    this.hp = Math.min(MAX_HP, this.hp + amount);
+    if (this.dead || amount <= 0 || this.hp >= this.maxHp) return;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    this.emitChange();
+  }
+
+  // A permanent extra heart (or more); the new capacity comes filled
+  raiseMaxHp(by: number): void {
+    const next = Math.min(MAX_MAX_HP, this.maxHp + by);
+    if (next === this.maxHp) return;
+    this.hp += next - this.maxHp;
+    this.maxHp = next;
     this.emitChange();
   }
 
   respawn(): void {
-    this.hp = MAX_HP;
+    this.hp = this.maxHp;
     this.oxygen = MAX_OXYGEN_SECONDS;
     this.dead = false;
     this.invulnTimer = 0;
@@ -90,7 +103,13 @@ export class Health {
   }
 
   setHp(hp: number): void {
-    this.hp = Math.max(1, Math.min(MAX_HP, hp));
+    this.hp = Math.max(1, Math.min(this.maxHp, hp));
+    this.emitChange();
+  }
+
+  setMaxHp(maxHp: number): void {
+    this.maxHp = Math.max(MAX_HP, Math.min(MAX_MAX_HP, Math.floor(maxHp)));
+    this.hp = Math.min(this.hp, this.maxHp);
     this.emitChange();
   }
 

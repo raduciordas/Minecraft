@@ -10,6 +10,11 @@ export interface MobContext {
   player: Body;
   isNight: boolean;
   playerDead: boolean;
+  // How far monsters notice the player from, as a fraction of their usual
+  // range (the garlic amulet halves it)
+  chaseMul: number;
+  // A scarecrow standing near a monster keeps it from giving chase
+  isScaredAt: (x: number, z: number) => boolean;
   onMobAttack: (mob: Mob) => void;
   onRangedAttack: (mob: Mob) => void;
   onMobSound: (kind: MobKind) => void;
@@ -360,7 +365,7 @@ export class Mob {
       const dx = ctx.player.x - this.body.x;
       const dz = ctx.player.z - this.body.z;
       distToPlayer = Math.hypot(dx, dz);
-      if (distToPlayer < this.spec.chaseRange) {
+      if (distToPlayer < this.spec.chaseRange * ctx.chaseMul && !ctx.isScaredAt(this.body.x, this.body.z)) {
         chasing = true;
         this.walking = true;
         this.targetYaw = Math.atan2(-dx, -dz);

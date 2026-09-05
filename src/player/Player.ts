@@ -12,23 +12,37 @@ import {
   SWIM_UP_SPEED,
   WATER_MAX_SINK_SPEED,
 } from '../config';
-import { isWater } from '../world/Block';
+import { isWater, isClimbable } from '../world/Block';
 import type { World } from '../world/World';
 import type { InputController } from './InputController';
 import { stepBody, makeBody, type Body } from './Physics';
 import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../config';
 
+const CLIMB_SPEED = 3.2;
+const CLIMB_SLIDE_SPEED = -1.2; // holding on without pressing anything: a slow slide down
+
 export class Player {
   body: Body = makeBody(PLAYER_WIDTH / 2, PLAYER_HEIGHT);
   flying = false;
+  // Walking speed multiplier from gear and food (Opinci, Brânză de burduf)
+  speedMul = 1;
+  // Flight is earned (Aripile Zmeului): the F key asks here first. Code can
+  // still set `flying` directly — the test harness does.
+  canFly: () => boolean = () => true;
+  onFlyDenied?: () => void;
   // Called with the impact speed when landing from a real fall
   onLand?: (impactSpeed: number) => void;
+  climbing = false;
 
   constructor(private input: InputController) {
     this.body.x = 0.5;
     this.body.y = 40;
     this.body.z = 0.5;
     input.onFlyToggle(() => {
+      if (!this.flying && !this.canFly()) {
+        this.onFlyDenied?.();
+        return;
+      }
       this.flying = !this.flying;
       this.body.vy = 0;
     });
@@ -76,10 +90,14 @@ export class Player {
     const inWater =
       isWater(world.getBlock(bx, Math.floor(this.body.y + 0.3), bz)) ||
       isWater(world.getBlock(bx, Math.floor(this.body.y + 1.4), bz));
+    // A rope or ladder anywhere along the body can be held on to
+    this.climbing =
+      isClimbable(world.getBlock(bx, Math.floor(this.body.y + 0.3), bz)) ||
+      isClimbable(world.getBlock(bx, Math.floor(this.body.y + 1.4), bz));
 
     // Horizontal: accelerate toward wish velocity, friction on ground
     const accel = this.body.onGround ? GROUND_ACCEL : AIR_ACCEL;
-    const speed = inWater ? WALK_SPEED * WATER_SPEED_FACTOR : WALK_SPEED;
+    const speed = (inWater ? WALK_SPEED * WATER_SPEED_FACTOR : WALK_SPEED) * this.speedMul;
     const targetVx = wishX * speed;
     const targetVz = wishZ * speed;
     this.body.vx += (targetVx - this.body.vx) * Math.min(1, accel * dt / WALK_SPEED);
@@ -90,7 +108,13 @@ export class Player {
       this.body.vz *= damp;
     }
 
-    if (inWater) {
+    if (this.climbing) {
+      // Jump climbs, crouch descends, otherwise you slide down slowly; walking
+      // forward into the rope also climbs, so a child who just pushes W gets up
+      if (move.jump || move.z > 0) this.body.vy = CLIMB_SPEED;
+      else if (move.down) this.body.vy = -CLIMB_SPEED;
+      else this.body.vy = CLIMB_SLIDE_SPEED;
+    } else if (inWater) {
       if (move.jump) {
         this.body.vy += (SWIM_UP_SPEED - this.body.vy) * Math.min(1, 8 * dt);
       }

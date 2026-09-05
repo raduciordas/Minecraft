@@ -1,7 +1,4 @@
-import { BLOCKS } from '../world/Block';
-import { isWeapon, makeWeaponIcon, type WeaponId } from '../items/Weapon';
-import { isTool, makeToolIcon, type ToolId } from '../items/Tool';
-import { isThrowable, makeThrowableIcon, type ThrowableId } from '../items/Throwable';
+import { isKnownItem, makeItemIcon } from '../items/Items';
 import { buildHelpSections, type HelpItem } from './HelpData';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
 
@@ -25,11 +22,7 @@ export class HelpPanel {
   }
 
   private icon(id: number): HTMLCanvasElement | null {
-    if (isTool(id)) return makeToolIcon(id as ToolId);
-    if (isWeapon(id)) return makeWeaponIcon(id as WeaponId);
-    if (isThrowable(id)) return makeThrowableIcon(id as ThrowableId);
-    if (BLOCKS[id]) return this.atlas.makeTileIcon(BLOCKS[id].textures.side);
-    return null;
+    return isKnownItem(id) ? makeItemIcon(id, this.atlas) : null;
   }
 
   private renderItem(item: HelpItem): HTMLElement {

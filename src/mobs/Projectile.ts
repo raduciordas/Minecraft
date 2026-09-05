@@ -66,7 +66,7 @@ export class Fireball {
   }
 }
 
-export type ThrowableShape = 'bottle' | 'gum';
+export type ThrowableShape = 'bottle' | 'gum' | 'stone' | 'jar';
 
 // A thrown bottle (or gum piece): lobbed like a potion, arcs under gravity,
 // and shatters (or pops) on the first mob or solid block it touches.
@@ -74,15 +74,23 @@ class Bottle {
   readonly mesh: THREE.Group;
   readonly shape: ThrowableShape;
   readonly blastRadius: number;
+  readonly damage?: number;
+  readonly burns?: boolean;
   removeMe = false;
   private vx: number;
   private vy: number;
   private vz: number;
   private life = 0;
 
-  constructor(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, shape: ThrowableShape, blastRadius: number) {
+  constructor(
+    x: number, y: number, z: number,
+    dirX: number, dirY: number, dirZ: number,
+    shape: ThrowableShape, blastRadius: number, damage?: number, burns?: boolean,
+  ) {
     this.shape = shape;
     this.blastRadius = blastRadius;
+    this.damage = damage;
+    this.burns = burns;
     const len = Math.hypot(dirX, dirY, dirZ) || 1;
     this.vx = (dirX / len) * BOTTLE_SPEED;
     this.vy = (dirY / len) * BOTTLE_SPEED;
@@ -95,6 +103,13 @@ class Bottle {
         new THREE.MeshLambertMaterial({ color: 0xff6fa8 }),
       );
       this.mesh.add(gum);
+    } else if (shape === 'stone') {
+      this.mesh.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.16), new THREE.MeshLambertMaterial({ color: 0x8a8a88 })));
+    } else if (shape === 'jar') {
+      const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.22, 8), new THREE.MeshLambertMaterial({ color: 0xa0522d }));
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff8a2a }));
+      glow.position.y = 0.14;
+      this.mesh.add(jar, glow);
     } else {
       const body = new THREE.Mesh(
         new THREE.SphereGeometry(0.13, 8, 6),
@@ -130,6 +145,67 @@ class Bottle {
     }
     this.mesh.position.set(nx, ny, nz);
     this.mesh.rotation.x += dt * 14;
+  }
+}
+
+// The player's arrow (Arc cu săgeți): flies straight and fast, drops a
+// little, and hurts the first mob it meets
+const ARROW_SPEED = 30;
+const ARROW_GRAVITY = -6;
+const ARROW_MOB_RADIUS = 0.9;
+
+class Arrow {
+  readonly mesh: THREE.Group;
+  readonly damage: number;
+  removeMe = false;
+  private vx: number;
+  private vy: number;
+  private vz: number;
+  private life = 0;
+
+  constructor(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, damage: number) {
+    this.damage = damage;
+    const len = Math.hypot(dirX, dirY, dirZ) || 1;
+    this.vx = (dirX / len) * ARROW_SPEED;
+    this.vy = (dirY / len) * ARROW_SPEED;
+    this.vz = (dirZ / len) * ARROW_SPEED;
+    this.mesh = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.6), new THREE.MeshLambertMaterial({ color: 0xa07a48 }));
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.08), new THREE.MeshLambertMaterial({ color: 0x9a9a9a }));
+    tip.position.z = -0.32;
+    const fletch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.1), new THREE.MeshLambertMaterial({ color: 0xe8e0d0 }));
+    fletch.position.z = 0.26;
+    this.mesh.add(shaft, tip, fletch);
+    this.mesh.position.set(x, y, z);
+    this.orient();
+  }
+
+  get x(): number { return this.mesh.position.x; }
+  get y(): number { return this.mesh.position.y; }
+  get z(): number { return this.mesh.position.z; }
+
+  private orient(): void {
+    const target = new THREE.Vector3(this.x + this.vx, this.y + this.vy, this.z + this.vz);
+    this.mesh.lookAt(target);
+    this.mesh.rotateY(Math.PI); // the model's tip points down -Z
+  }
+
+  update(dt: number, world: World): void {
+    this.life += dt;
+    if (this.life > 3) {
+      this.removeMe = true;
+      return;
+    }
+    this.vy += ARROW_GRAVITY * dt;
+    const nx = this.mesh.position.x + this.vx * dt;
+    const ny = this.mesh.position.y + this.vy * dt;
+    const nz = this.mesh.position.z + this.vz * dt;
+    if (isSolid(world.getBlock(Math.floor(nx), Math.floor(ny), Math.floor(nz)))) {
+      this.removeMe = true;
+      return;
+    }
+    this.mesh.position.set(nx, ny, nz);
+    this.orient();
   }
 }
 
@@ -169,6 +245,7 @@ class Explosion {
 export class ProjectileManager {
   private fireballs: Fireball[] = [];
   private bottles: Bottle[] = [];
+  private arrows: Arrow[] = [];
   private explosions: Explosion[] = [];
 
   constructor(private scene: THREE.Scene) {}
@@ -177,14 +254,59 @@ export class ProjectileManager {
     return this.fireballs.length;
   }
 
+  get arrowCount(): number {
+    return this.arrows.length;
+  }
+
+  spawnArrow(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, damage: number): void {
+    const arrow = new Arrow(x, y, z, dirX, dirY, dirZ, damage);
+    this.arrows.push(arrow);
+    this.scene.add(arrow.mesh);
+  }
+
+  // Flies every arrow, striking the first mob in its way
+  updateArrows(dt: number, world: World, mobs: readonly Mob[], onHit: (mob: Mob, damage: number, dirX: number, dirZ: number) => void): void {
+    for (let i = this.arrows.length - 1; i >= 0; i--) {
+      const arrow = this.arrows[i];
+      const px = arrow.x;
+      const pz = arrow.z;
+      arrow.update(dt, world);
+      if (!arrow.removeMe) {
+        for (const mob of mobs) {
+          if (mob.dying) continue;
+          const d = Math.hypot(arrow.x - mob.body.x, arrow.y - (mob.body.y + mob.body.height * 0.5), arrow.z - mob.body.z);
+          if (d < ARROW_MOB_RADIUS + mob.body.halfWidth * 0.5) {
+            onHit(mob, arrow.damage, arrow.x - px, arrow.z - pz);
+            arrow.removeMe = true;
+            break;
+          }
+        }
+      }
+      if (arrow.removeMe) {
+        this.scene.remove(arrow.mesh);
+        arrow.mesh.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose();
+            (obj.material as THREE.Material).dispose();
+          }
+        });
+        this.arrows.splice(i, 1);
+      }
+    }
+  }
+
   spawnFireball(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, damage: number): void {
     const fb = new Fireball(x, y, z, dirX, dirY, dirZ, damage);
     this.fireballs.push(fb);
     this.scene.add(fb.mesh);
   }
 
-  spawnBottle(x: number, y: number, z: number, dirX: number, dirY: number, dirZ: number, shape: ThrowableShape, blastRadius: number): void {
-    const bottle = new Bottle(x, y, z, dirX, dirY, dirZ, shape, blastRadius);
+  spawnBottle(
+    x: number, y: number, z: number,
+    dirX: number, dirY: number, dirZ: number,
+    shape: ThrowableShape, blastRadius: number, damage?: number, burns?: boolean,
+  ): void {
+    const bottle = new Bottle(x, y, z, dirX, dirY, dirZ, shape, blastRadius, damage, burns);
     this.bottles.push(bottle);
     this.scene.add(bottle.mesh);
   }
@@ -212,7 +334,12 @@ export class ProjectileManager {
 
   // Flies every thrown bottle forward, shattering (and calling onExplode) on
   // the first mob or solid block it touches.
-  updateBottles(dt: number, world: World, mobs: readonly Mob[], onExplode: (x: number, y: number, z: number, blastRadius: number) => void): void {
+  updateBottles(
+    dt: number,
+    world: World,
+    mobs: readonly Mob[],
+    onExplode: (x: number, y: number, z: number, blastRadius: number, damage?: number, burns?: boolean) => void,
+  ): void {
     for (let i = this.bottles.length - 1; i >= 0; i--) {
       const bottle = this.bottles[i];
       bottle.update(dt, world);
@@ -227,7 +354,7 @@ export class ProjectileManager {
         }
       }
       if (bottle.removeMe) {
-        onExplode(bottle.x, bottle.y, bottle.z, bottle.blastRadius);
+        onExplode(bottle.x, bottle.y, bottle.z, bottle.blastRadius, bottle.damage, bottle.burns);
         this.spawnExplosion(bottle.x, bottle.y, bottle.z, bottle.shape);
         this.scene.remove(bottle.mesh);
         bottle.mesh.traverse((obj) => {

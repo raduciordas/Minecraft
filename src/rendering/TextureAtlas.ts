@@ -457,6 +457,91 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
+  [Tile.Torch]: {
+    // Icon only — the world shows LightManager's stick-and-flame mesh
+    base: [40, 30, 20],
+    variation: 0.05,
+    transparentBase: true,
+    draw: (px) => {
+      for (let y = 6; y < TILE_PX; y++) {
+        px(7, y, 120, 84, 44);
+        px(8, y, 100, 70, 36);
+      }
+      for (let y = 1; y <= 6; y++) {
+        for (let x = 6; x <= 9; x++) px(x, y, 255, 170, 40);
+      }
+      px(7, 0, 255, 230, 120);
+      px(8, 0, 255, 230, 120);
+      px(7, 3, 255, 240, 160);
+      px(8, 4, 255, 240, 160);
+    },
+  },
+  [Tile.Rope]: {
+    base: [0, 0, 0],
+    variation: 0,
+    transparentBase: true,
+    draw: (px, rand) => {
+      // A twisted hemp rope hanging down the middle
+      for (let y = 0; y < TILE_PX; y++) {
+        const twist = y % 4 < 2 ? 0 : 1;
+        px(6 + twist, y, 170, 132, 78);
+        px(7 + twist, y, 196, 156, 92);
+        px(8 + twist, y, 150, 114, 64);
+        if (rand() < 0.2) px(9 + twist, y, 196, 156, 92);
+      }
+    },
+  },
+  [Tile.Scarecrow]: {
+    base: [214, 178, 74],
+    variation: 0.12,
+    draw: (px) => {
+      // Straw body, a plank cross and a sackcloth head
+      for (let y = 0; y < TILE_PX; y++) px(7, y, 110, 82, 46), px(8, y, 110, 82, 46);
+      for (let x = 1; x < TILE_PX - 1; x++) px(x, 6, 110, 82, 46);
+      for (let x = 5; x <= 10; x++) for (let y = 0; y <= 4; y++) px(x, y, 190, 150, 96);
+      px(6, 2, 40, 30, 20);
+      px(9, 2, 40, 30, 20);
+      for (let x = 6; x <= 9; x++) px(x, 4, 120, 40, 30);
+    },
+  },
+  [Tile.StrawMattress]: {
+    base: [222, 196, 110],
+    variation: 0.1,
+    draw: (px, rand) => {
+      // Quilted straw with a linen band round the middle
+      for (let x = 0; x < TILE_PX; x++) for (let y = 0; y < TILE_PX; y++) if (rand() < 0.15) px(x, y, 190, 160, 80);
+      for (let x = 0; x < TILE_PX; x++) {
+        px(x, 7, 240, 232, 210);
+        px(x, 8, 232, 224, 200);
+      }
+      for (const [x, y] of [[3, 3], [11, 3], [3, 12], [11, 12]] as const) px(x, y, 150, 120, 60);
+    },
+  },
+  [Tile.WolfTrap]: {
+    base: [92, 92, 96],
+    variation: 0.1,
+    draw: (px) => {
+      // Two iron jaws of teeth round a pressure plate
+      for (let x = 1; x < TILE_PX - 1; x += 2) {
+        px(x, 2, 200, 200, 205);
+        px(x, 3, 170, 170, 175);
+        px(x, 12, 200, 200, 205);
+        px(x, 13, 170, 170, 175);
+      }
+      for (let x = 5; x <= 10; x++) for (let y = 6; y <= 9; y++) px(x, y, 150, 110, 60);
+      px(7, 7, 190, 40, 30);
+      px(8, 8, 190, 40, 30);
+    },
+  },
+  [Tile.MushroomViolet]: {
+    base: [110, 60, 150],
+    variation: 0.08,
+    draw: (px, rand) => {
+      // The poisonous cousin: violet cap with sickly green spots
+      for (let y = 0; y < 10; y++) for (let x = 0; x < TILE_PX; x++) if (rand() < 0.12) px(x, y, 170, 230, 120);
+      for (let y = 10; y < TILE_PX; y++) for (let x = 0; x < TILE_PX; x++) px(x, y, 200, 190, 210);
+    },
+  },
 };
 
 export class TextureAtlas {
