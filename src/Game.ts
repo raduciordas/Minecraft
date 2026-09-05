@@ -40,7 +40,15 @@ import { CraftingPanel } from './ui/CraftingPanel';
 import { LessonInfoPanel } from './ui/LessonInfoPanel';
 import { HelpPanel } from './ui/HelpPanel';
 import { VatraModule } from './vatra/VatraModule';
-import { VATRA_PUZZLES, PUZZLE_HELPERS, type ProgramNode } from './vatra/VatraPuzzles';
+import { VATRA_PUZZLES, PUZZLE_HELPERS, programEquivalent, normalise, gradesByTrace, type ProgramNode } from './vatra/VatraPuzzles';
+import { evaluate, tracesEqual } from './vatra/Interpreter';
+import { ZONE_DEFS } from './vatra/VatraModule';
+import { ZONES } from './ui/LessonInfoPanel';
+import { isEarned, isKnownItem, itemName } from './items/Items';
+
+// Everything the lesson-data sanity check (scratch test check_puzzles.js)
+// needs from inside the page
+const PUZZLE_CHECK = { evaluate, tracesEqual, programEquivalent, normalise, gradesByTrace, ZONE_DEFS, ZONES, isEarned, isKnownItem, itemName };
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
@@ -420,6 +428,7 @@ export class Game {
     (window as unknown as { __game: Game }).__game = this;
     (window as unknown as { __puzzles: typeof VATRA_PUZZLES }).__puzzles = VATRA_PUZZLES;
     (window as unknown as { __puzzleHelpers: typeof PUZZLE_HELPERS }).__puzzleHelpers = PUZZLE_HELPERS;
+    (window as unknown as { __puzzleCheck: typeof PUZZLE_CHECK }).__puzzleCheck = PUZZLE_CHECK;
 
     void this.connectMultiplayer();
   }

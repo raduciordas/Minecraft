@@ -26,6 +26,15 @@ export const ZONES: Record<string, ZoneInfo> = {
       'la fiecare rotire a celei din afară — așa plantezi un câmp întreg, rând cu rând.',
     lessons: ['gard', 'camp_grau', 'moara', 'livada', 'capite'],
   },
+  padurea: {
+    guide: '🌲 Muma Pădurii',
+    concept:
+      '<b>Ce-s condițiile?</b> Hâhâhî! În pădurea mea nimic nu-i sigur: ba-i noapte, ba-i zi, ba vine lupul, ' +
+      'ba nu. O condiție e o întrebare cu răspuns DA sau NU — „e noapte?" — iar blocul «dacă / altfel» face ' +
+      'una când răspunsul e DA și alta când e NU. Poți lega întrebările cu ȘI, SAU și NU. Tăblița îți ' +
+      'încearcă programul în mai multe nopți și zile — să meargă în toate, altfel te-ncurc în potecă!',
+    lessons: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
+  },
 };
 
 export interface LessonInfoCallbacks {

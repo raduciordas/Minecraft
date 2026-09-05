@@ -9,6 +9,13 @@ import {
   ORCHARD_DZ,
   HAYSTACK_DX,
   HAYSTACK_DZ,
+  GLADE_DX,
+  GLADE_DZ,
+  GLADE_POISON,
+  GLADE_BASKET,
+  CROSS_X,
+  CROSS_Z,
+  TORCH_POST,
 } from '../world/Structures';
 import { VATRA_PUZZLES, programEquivalent, gradesByTrace, type ProgramNode } from './VatraPuzzles';
 import { evaluate, tracesEqual } from './Interpreter';
@@ -137,6 +144,8 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   poteca: { dx: 0, dz: -3, label: 'Poteca Mumei Pădurii' },
   pod: { dx: 0, dz: 2, label: 'Podul mișcător' },
   capcana: { dx: 13, dz: -1, label: 'Capcana de lup' },
+  ciuperci: { dx: -6.5, dz: 2, label: 'Culesul de ciuperci' },
+  rascruce: { dx: 8, dz: 6.5, label: 'Răscrucea' },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -243,8 +252,8 @@ export const ZONE_DEFS: ZoneDef[] = [
   {
     id: 'padurea',
     origin: PADUREA_ORIGIN,
-    puzzles: ['poteca', 'pod', 'capcana'],
-    protect: [-9, 17, -9, 7, 0, 6],
+    puzzles: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
+    protect: [-11, 17, -9, 8, 0, 8],
   },
 ];
 
@@ -265,6 +274,8 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   poteca: [-8, 8, -8, -5],
   pod: [-3, 3, 0, 6],
   capcana: [10, 16, -8, -2],
+  ciuperci: [-11, -3, -2, 1],
+  rascruce: [5, 17, 0, 7],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -320,6 +331,17 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
   poteca: [{ pos: LANTERN_POTECA, solved: BlockType.Lamp, unsolved: BlockType.Glass }],
   pod: [{ pos: BRIDGE_RAIL, solved: BlockType.Log, unsolved: BlockType.Air }],
   capcana: [{ pos: TRAP_CENTER, solved: BlockType.Hay, unsolved: BlockType.Plank }],
+  // The good mushrooms are picked (the violet ones stay, untouched) and the
+  // full basket sits at the glade's edge
+  ciuperci: [
+    ...GLADE_DX.filter((_, i) => !GLADE_POISON[i]).map((x) => ({
+      pos: [x, 1, GLADE_DZ] as [number, number, number],
+      solved: BlockType.Air,
+      unsolved: BlockType.Mushroom,
+    })),
+    { pos: GLADE_BASKET, solved: BlockType.Hay, unsolved: BlockType.Air },
+  ],
+  rascruce: [{ pos: TORCH_POST, solved: BlockType.Torch, unsolved: BlockType.Glass }],
 };
 
 interface Flying {
@@ -466,6 +488,8 @@ export class VatraModule {
     poteca: this.stepPoteca,
     pod: this.stepPod,
     capcana: this.stepCapcana,
+    ciuperci: this.stepCiuperci,
+    rascruce: this.stepRascruce,
   };
 
   // Animation state
@@ -506,6 +530,7 @@ export class VatraModule {
   private livadaIndex = 0; // which orchard spot the loop body is working on
   private capitaIndex = 0; // which haystack the outer loop is on
   private forkIndex = 0; // which forkful of hay within that haystack
+  private gladeIndex = 0; // which mushroom the picking loop is looking at
 
   constructor(
     private scene: THREE.Scene,
@@ -591,18 +616,31 @@ export class VatraModule {
     this.scene.add(nameSign);
   }
 
-  // Muma Pădurii: a gaunt forest-witch figure watching over her threshold
+  // Muma Pădurii: a gaunt forest-witch figure standing between her hut and
+  // the mushroom glade, watching the lantern path. Clickable, like the
+  // other guides — she teaches conditions.
   private buildMumaPadurii(): void {
     const npc = new THREE.Group();
     box(npc, 0.46, 0.85, 0.34, 0x2e3a24, 0, 1.1, 0); // dark mossy robe
     const head = box(npc, 0.34, 0.34, 0.34, 0xb8a888, 0, 1.86, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.07, 0.07, 0.04, 0xd8f070, side * 0.09, 0.04, -0.17); // glinting green eyes
+    }
+    box(head, 0.12, 0.08, 0.06, 0x8a7a60, 0, -0.06, -0.19); // hooked nose
     box(head, 0.4, 0.12, 0.4, 0x3a2e1a, 0, 0.2, 0); // twiggy hood band
+    box(head, 0.5, 0.06, 0.5, 0x2a2214, 0, 0.28, 0); // ragged brim
     for (const side of [-1, 1]) {
       box(npc, 0.1, 0.5, 0.1, 0x4a3a24, side * 0.3, 0.6, -0.1); // gnarled arms
     }
-    npc.position.set(this.pox - 6 + 0.5, this.paduGroundY + 1, this.poz - 6 + 0.5);
-    npc.rotation.y = Math.PI / 3; // facing the lantern
+    box(npc, 0.08, 1.9, 0.08, 0x5a4a2a, -0.42, 0.95, 0.1); // crooked staff
+    npc.position.set(this.pox - 3 + 0.5, this.paduGroundY + 1, this.poz - 4 + 0.5);
+    npc.rotation.y = Math.PI * 0.8; // facing the path in from the south
     this.scene.add(npc);
+    this.registerGuide('padurea', npc.position.x, this.paduGroundY + 1.9, npc.position.z);
+
+    const nameSign = makeSign('Muma Pădurii', 1.6);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.5, npc.position.z);
+    this.scene.add(nameSign);
   }
 
   // Bunicul Fierar: a static villager figure watching over the square
@@ -728,6 +766,7 @@ export class VatraModule {
       this.capitaIndex = 0;
       this.forkIndex = 0;
     }
+    if (puzzleId === 'ciuperci') this.gladeIndex = 0;
   }
 
   // Something happened in the lesson's world (an event a "când" block may be
@@ -1016,6 +1055,65 @@ export class VatraModule {
     }
   }
 
+  // The glade: the loop walks the six mushrooms in order; 'culege' takes
+  // whichever one is current (a violet one too, if the program says so —
+  // the soup will tell), 'ocoleste' steps past it
+  private stepCiuperci(blockId: string, _arg?: number): void {
+    const i = Math.min(this.gladeIndex, GLADE_DX.length - 1);
+    const mx = this.pox + GLADE_DX[i];
+    const my = this.paduGroundY + 1;
+    const mz = this.poz + GLADE_DZ;
+    if (blockId === 'ia_cosul') {
+      this.placeTemp(this.pox + GLADE_BASKET[0], this.paduGroundY + GLADE_BASKET[1], this.poz + GLADE_BASKET[2], BlockType.Hay, BlockType.Air);
+      this.sound.place();
+    } else if (blockId === 'priveste_ciuperca') {
+      this.spawnFlyingBits(mx + 0.5, my + 0.9, mz + 0.5, 0xfff0a0, 1, this.paduGroundY);
+      this.sound.stepTick();
+    } else if (blockId === 'culege') {
+      if (this.gladeIndex < GLADE_DX.length) {
+        const was = GLADE_POISON[i] ? BlockType.MushroomViolet : BlockType.Mushroom;
+        this.placeTemp(mx, my, mz, BlockType.Air, was);
+        this.spawnFlyingBits(mx + 0.5, my + 0.6, mz + 0.5, GLADE_POISON[i] ? 0x8a3ab8 : 0xa64a36, 2, this.paduGroundY);
+      }
+      this.gladeIndex++;
+      this.sound.place();
+    } else if (blockId === 'ocoleste') {
+      this.gladeIndex++;
+      this.sound.stepTick();
+    } else if (blockId === 'gusta_ciuperca') {
+      this.spawnSmoke(mx + 0.5, my + 1, mz + 0.5, 0x7ad070, 0.3);
+      this.sound.eat();
+    } else if (blockId === 'du_cosul_acasa') {
+      this.spawnFlyingBits(this.pox - 4 + 0.5, this.paduGroundY + 2, this.poz - 5 + 0.5, 0xd9c27a, 3, this.paduGroundY);
+      this.sound.clink();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  // The crossroads: the torch post lights up, and the chosen path shows a
+  // scatter of footsteps
+  private stepRascruce(blockId: string, _arg?: number): void {
+    const cx = this.pox + CROSS_X + 0.5;
+    const cz = this.poz + CROSS_Z + 0.5;
+    const gy = this.paduGroundY;
+    if (blockId === 'aprinde_torta') {
+      this.placeTemp(this.pox + TORCH_POST[0], gy + TORCH_POST[1], this.poz + TORCH_POST[2], BlockType.Torch, BlockType.Glass);
+      this.sound.fireballCast();
+    } else if (blockId === 'ia_o_la_stanga') {
+      this.spawnFlyingBits(cx - 3, gy + 1.3, cz, 0x8a7a5a, 3, gy);
+      this.sound.stepTick();
+    } else if (blockId === 'mergi_inainte') {
+      this.spawnFlyingBits(cx, gy + 1.3, cz - 3, 0x8a7a5a, 3, gy);
+      this.sound.stepTick();
+    } else if (blockId === 'fugi') {
+      this.spawnSmoke(cx, gy + 1.2, cz, 0x9a9a9a, 0.3);
+      this.sound.failTrombone();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
   // Places a block and remembers what it was before, so a failed attempt
   // (wrong repeat count, wrong nesting…) can be wiped clean before the next
   private placeTemp(x: number, y: number, z: number, id: BlockType, revertTo: BlockType): void {
@@ -1109,6 +1207,12 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
+    if (puzzleId === 'ciuperci') this.spawnFlyingBits(this.pox + GLADE_BASKET[0] + 0.5, this.paduGroundY + 2.2, this.poz + GLADE_BASKET[2] + 0.5, 0xa64a36, 4, this.paduGroundY);
+    if (puzzleId === 'rascruce') {
+      // Wings for the child: a burst of gold and dragon-red over the crossroads
+      this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0xe8b34d, 4, this.paduGroundY);
+      this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0x7a2416, 3, this.paduGroundY);
+    }
     // The payout is the puzzle's own rewardItems list, so what a lesson
     // hands over, what its reward line says, and what the Ajutor panel lists
     // can't drift apart. Vatra's six pay on every solve; the Luncă and

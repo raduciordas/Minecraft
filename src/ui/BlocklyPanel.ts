@@ -317,6 +317,10 @@ export class BlocklyPanel {
   private relearnBtn!: HTMLButtonElement;
   private nodeIds = new Map<ProgramNode, string>();
   private liveVars = new Map<string, number>();
+  // Blockly can't switch a live workspace between a plain flyout palette and
+  // one with categories, so we remember which kind is up and re-inject when
+  // the next lesson needs the other one.
+  private toolboxKind: string | null = null;
 
   constructor(
     container: HTMLElement,
@@ -437,9 +441,17 @@ export class BlocklyPanel {
     this.renderVars();
 
     const narrow = window.innerWidth < 720;
+    const toolbox = this.buildToolbox(puzzle);
+    const kind = (toolbox as { kind: string }).kind;
+    if (this.workspace && kind !== this.toolboxKind) {
+      this.workspace.dispose();
+      this.workspace = null;
+      this.blocklyDiv.innerHTML = '';
+    }
+    this.toolboxKind = kind;
     if (!this.workspace) {
       this.workspace = Blockly.inject(this.blocklyDiv, {
-        toolbox: this.buildToolbox(puzzle),
+        toolbox,
         theme: VATRA_THEME,
         renderer: 'zelos', // chunky Scratch-like blocks, best for kids and touch
         // Blockly otherwise pulls sprites and sounds from static.blockly.com
@@ -464,7 +476,7 @@ export class BlocklyPanel {
         if (!this.running) this.refresh();
       });
     } else {
-      this.workspace.updateToolbox(this.buildToolbox(puzzle));
+      this.workspace.updateToolbox(toolbox);
       this.workspace.setScale(narrow ? 0.65 : 0.95);
     }
     this.clearWorkspace();

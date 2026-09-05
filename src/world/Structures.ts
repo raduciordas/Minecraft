@@ -364,6 +364,17 @@ export function buildLuncaZone(originX: number, originZ: number): StructureTempl
 // generation and VatraModule (conditional-puzzle interactions).
 export const PADUREA_ORIGIN = { x: -50, z: -10 };
 
+// Poiana cu ciuperci and Răscrucea, shared with VatraModule so the layout
+// and the lesson animations can't drift apart. GLADE_POISON mirrors the
+// lesson's scenario: which of the six mushrooms are the violet, poisonous kind.
+export const GLADE_DX = [-9, -8, -7, -6, -5, -4];
+export const GLADE_DZ = 0;
+export const GLADE_POISON = [false, true, false, false, true, false];
+export const GLADE_BASKET: [number, number, number] = [-10, 1, 0];
+export const CROSS_X = 10;
+export const CROSS_Z = 4;
+export const TORCH_POST: [number, number, number] = [12, 3, 5];
+
 // Pădurea: the forest zone that teaches conditions — an unlit lantern on
 // Muma Pădurii's threshold path, a plank bridge over a carved river with a
 // sensor-driven railing, and a covered wolf trap that must tell a wolf from
@@ -407,6 +418,29 @@ export function buildPadureaZone(originX: number, originZ: number): StructureTem
     B(x, 2, z, BlockType.Log);
     B(x, 3, z, BlockType.Log);
   }
+
+  // Poiana cu ciuperci: six mushrooms in a row west of the bridge, two of
+  // them the violet poisonous kind — the "if inside a loop" lesson
+  GLADE_DX.forEach((x, i) => {
+    B(x, 1, GLADE_DZ, GLADE_POISON[i] ? BlockType.MushroomViolet : BlockType.Mushroom);
+  });
+
+  // Răscrucea: three river-stone paths meeting east of the bridge, a torch
+  // post (unlit glass until the lesson) and a great old tree as a landmark
+  for (let x = 6; x <= 16; x++) B(x, 0, CROSS_Z, BlockType.RiverStone); // west ↔ east
+  for (let z = 1; z <= 3; z++) B(CROSS_X, 0, z, BlockType.RiverStone); // north arm
+  B(TORCH_POST[0], 1, TORCH_POST[2], BlockType.Log);
+  B(TORCH_POST[0], 2, TORCH_POST[2], BlockType.Log);
+  B(TORCH_POST[0], 3, TORCH_POST[2], BlockType.Glass);
+  for (let y = 1; y <= 5; y++) B(14, y, 0, BlockType.Log);
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
+      B(14 + dx, 5, dz, BlockType.Leaves);
+      if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) B(14 + dx, 6, dz, BlockType.Leaves);
+    }
+  }
+  B(14, 7, 0, BlockType.Leaves);
 
   return {
     name: 'Pădurea',
