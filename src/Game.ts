@@ -36,7 +36,7 @@ import { CraftingPanel } from './ui/CraftingPanel';
 import { LessonInfoPanel } from './ui/LessonInfoPanel';
 import { HelpPanel } from './ui/HelpPanel';
 import { VatraModule } from './vatra/VatraModule';
-import { VATRA_PUZZLES, type ProgramNode } from './vatra/VatraPuzzles';
+import { VATRA_PUZZLES, PUZZLE_HELPERS, type ProgramNode } from './vatra/VatraPuzzles';
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
@@ -276,9 +276,19 @@ export class Game {
     // chunk and nobody needs it until they open their first lesson.
     this.tablaCallbacks = {
       onRunStart: (pz: string) => this.vatra.beginRun(pz),
-      onStep: (pz: string, block: string) => {
+      // Each scenario starts from a clean mechanism, under the sky it
+      // describes — a "Noaptea" run really is shown at night
+      onScenario: (pz: string, label: string) => {
+        this.vatra.beginRun(pz);
+        this.dayNight.preview = /noapte|noaptea|seara/i.test(label) ? 'night' : /zi|ziua|dimineața/i.test(label) ? 'day' : null;
+      },
+      onStep: (pz: string, block: string, arg?: number) => {
         this.noteLessonActivity(); // a long run is still the lesson being used
-        this.vatra.performStep(pz, block);
+        this.vatra.performStep(pz, block, arg);
+      },
+      onEvent: (pz: string, eventId: string) => this.vatra.performEvent(pz, eventId),
+      onRunEnd: () => {
+        this.dayNight.preview = null;
       },
       onFinish: (pz: string, program: ProgramNode[]) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),
@@ -376,6 +386,7 @@ export class Game {
     // Debug handles for the browser console
     (window as unknown as { __game: Game }).__game = this;
     (window as unknown as { __puzzles: typeof VATRA_PUZZLES }).__puzzles = VATRA_PUZZLES;
+    (window as unknown as { __puzzleHelpers: typeof PUZZLE_HELPERS }).__puzzleHelpers = PUZZLE_HELPERS;
 
     void this.connectMultiplayer();
   }
@@ -838,6 +849,14 @@ export class Game {
       }
     }
     this.tabla.open(VATRA_PUZZLES[puzzleId]);
+  }
+
+  // Test/debug hook: opens a lesson, loads a program (the canonical solution
+  // by default), runs it instantly and returns the verdict
+  async solveLesson(puzzleId: string, program?: ProgramNode[]): Promise<{ success: boolean; text: string } | null> {
+    await this.openTabla(puzzleId);
+    if (!this.tabla?.isOpen) return null;
+    return this.tabla.runForTest(program ?? VATRA_PUZZLES[puzzleId].solution);
   }
 
   private closeTabla(): void {

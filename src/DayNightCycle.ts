@@ -40,6 +40,11 @@ function timeToPhase(time: number): number {
 export class DayNightCycle {
   private phase = timeToPhase(DAY_START_TIME);
 
+  // A lesson scenario can paint the sky as night or day while it runs. It's
+  // purely visual — the clock keeps ticking and the mobs keep their real
+  // schedule (isNight below reads the true time).
+  preview: 'night' | 'day' | null = null;
+
   // Where the sun sits in the sky, derived from the clock. Assigning it
   // (a loaded save, a test) rewinds the clock to match.
   get time(): number {
@@ -99,9 +104,17 @@ export class DayNightCycle {
     scene.add(this.stars);
   }
 
+  // The sky position actually drawn — the previewed one while a lesson asks
+  // for it, the clock's otherwise
+  private get shownTime(): number {
+    if (this.preview === 'night') return 0.0;
+    if (this.preview === 'day') return 0.5;
+    return this.time;
+  }
+
   // Sun elevation: 1 at noon, -1 at midnight
   private get elevation(): number {
-    return Math.sin((this.time - 0.25) * Math.PI * 2);
+    return Math.sin((this.shownTime - 0.25) * Math.PI * 2);
   }
 
   // 0 = full night, 1 = full day
@@ -111,7 +124,7 @@ export class DayNightCycle {
   }
 
   get isNight(): boolean {
-    return this.elevation < 0;
+    return Math.sin((this.time - 0.25) * Math.PI * 2) < 0;
   }
 
   setNetworkEpoch(epochMs: number): void {
@@ -129,7 +142,7 @@ export class DayNightCycle {
       this.phase = (this.phase + dt / FULL_DAY_SECONDS) % 1;
     }
 
-    const angle = (this.time - 0.25) * Math.PI * 2;
+    const angle = (this.shownTime - 0.25) * Math.PI * 2;
     this.sunDir.set(Math.cos(angle), Math.sin(angle), 0.35).normalize();
 
     const daylight = this.daylight;

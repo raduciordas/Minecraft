@@ -10,7 +10,8 @@ import {
   HAYSTACK_DX,
   HAYSTACK_DZ,
 } from '../world/Structures';
-import { VATRA_PUZZLES, programEquals, type ProgramNode } from './VatraPuzzles';
+import { VATRA_PUZZLES, programEquivalent, gradesByTrace, type ProgramNode } from './VatraPuzzles';
+import { evaluate, tracesEqual } from './Interpreter';
 import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
 import type { SoundManager } from '../Sound';
@@ -679,8 +680,15 @@ export class VatraModule {
     }
   }
 
+  // Something happened in the lesson's world (an event a "când" block may be
+  // listening for): the zone's prop reacts. Nothing yet — the event lessons
+  // come with Prisaca.
+  performEvent(_puzzleId: string, _eventId: string): void {
+    this.sound.clink();
+  }
+
   // One program block executes: animate the matching mechanism
-  performStep(puzzleId: string, blockId: string): void {
+  performStep(puzzleId: string, blockId: string, _arg?: number): void {
     if (puzzleId === 'fantana') {
       if (blockId === 'coboara') {
         this.bucketTargetY = this.groundY + BUCKET_LOW;
@@ -941,10 +949,24 @@ export class VatraModule {
     this.tempBlocks = [];
   }
 
-  // Program ended: evaluate, play the success/fail act, grant one-time rewards
+  // Program ended: evaluate, play the success/fail act, grant one-time rewards.
+  // A program passes when it has the solution's shape (up to how the child
+  // named boxes and procedures), or — in a lesson graded on behaviour — when
+  // it does exactly what the solution does in every scenario and meets the
+  // lesson's requirements. Otherwise the first matching comic fail speaks.
   finish(puzzleId: string, program: ProgramNode[]): { success: boolean; text: string } {
     const puzzle = VATRA_PUZZLES[puzzleId];
-    const solved = programEquals(program, puzzle.solution);
+    const result = evaluate(puzzle, program);
+    let solved = programEquivalent(program, puzzle.solution);
+    let failText: string | null = null;
+    if (!solved && gradesByTrace(puzzle) && !result.infinite) {
+      const expected = evaluate(puzzle, puzzle.solution);
+      if (tracesEqual(result, expected)) {
+        const missing = (puzzle.requirements ?? []).find((r) => !r.check(program, result));
+        if (missing) failText = missing.text;
+        else solved = true;
+      }
+    }
 
     if (solved) {
       this.applySuccess(puzzleId);
@@ -952,7 +974,12 @@ export class VatraModule {
       return { success: true, text: puzzle.success };
     }
 
-    const fail = puzzle.fails.find((f) => f.matches(program)) ?? puzzle.fails[puzzle.fails.length - 1];
+    const fail =
+      puzzle.fails.find((f) => f.matches(program, result)) ?? puzzle.fails[puzzle.fails.length - 1];
+    if (failText) {
+      this.sound.failTrombone();
+      return { success: false, text: failText };
+    }
     if (fail.anim === 'coal') this.coalFail(puzzleId);
     if (fail.anim === 'bucket') this.bucketWater.visible = false;
     if (fail.anim === 'splash') this.splashFail();
@@ -1036,9 +1063,16 @@ export class VatraModule {
     this.save();
   }
 
+  // Which zone a lesson belongs to
+  zoneOf(puzzleId: string): string {
+    if (LUNCA_PUZZLES.has(puzzleId)) return 'lunca';
+    if (PADUREA_PUZZLES.has(puzzleId)) return 'padurea';
+    return 'vatra';
+  }
+
   // Zona 1 (Vatra), Zona 2 (Lunca) and Zona 3 (Pădurea) puzzles each use a
   // different world origin
-  private originFor(puzzleId: string): [number, number, number] {
+  originFor(puzzleId: string): [number, number, number] {
     if (LUNCA_PUZZLES.has(puzzleId)) return [this.lox, this.lunGroundY, this.loz];
     if (PADUREA_PUZZLES.has(puzzleId)) return [this.pox, this.paduGroundY, this.poz];
     return [this.ox, this.groundY, this.oz];

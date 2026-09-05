@@ -12,16 +12,43 @@ import { BlockType } from '../world/Block';
 import { WeaponId } from '../items/Weapon';
 import { ToolId } from '../items/Tool';
 import { ThrowableId } from '../items/Throwable';
+import type { RunResult } from './Interpreter';
+
+// ---- The program model ----------------------------------------------------
+//
+// A number is a valid Expr and a plain string is a valid Cond, so the
+// sequence/loop/if lessons written before variables and logic existed are
+// still valid data, unchanged.
+
+export type Expr =
+  | number
+  | { kind: 'var'; name: string }
+  | { kind: 'sensor'; id: string } // a number the world reports (steps to the pasture…)
+  | { kind: 'add' | 'sub' | 'mul' | 'div'; a: Expr; b: Expr }
+  | { kind: 'random'; min: Expr; max: Expr };
+
+export type Cond =
+  | string // a named condition the lesson offers ('e_noapte')
+  | { kind: 'and' | 'or'; a: Cond; b: Cond }
+  | { kind: 'not'; a: Cond }
+  | { kind: 'cmp'; op: '<' | '>' | '=' | '!=' | '<=' | '>='; a: Expr; b: Expr };
 
 export type ProgramNode =
-  | { kind: 'action'; id: string }
-  | { kind: 'repeat'; count: number; body: ProgramNode[] }
-  | { kind: 'while'; cond: string; body: ProgramNode[] }
-  | { kind: 'if'; cond: string; body: ProgramNode[]; elseBody: ProgramNode[] };
+  | { kind: 'action'; id: string; arg?: Expr }
+  | { kind: 'repeat'; count: Expr; body: ProgramNode[] }
+  | { kind: 'while'; cond: Cond; body: ProgramNode[] }
+  | { kind: 'if'; cond: Cond; body: ProgramNode[]; elseBody: ProgramNode[] }
+  | { kind: 'set'; name: string; value: Expr }
+  | { kind: 'change'; name: string; delta: Expr }
+  // define/when only ever sit at the top level of a program
+  | { kind: 'define'; name: string; params: string[]; body: ProgramNode[] }
+  | { kind: 'call'; name: string; args: Expr[] }
+  | { kind: 'when'; event: string; body: ProgramNode[] };
 
 export interface VatraAction {
   id: string;
-  label: string;
+  label: string; // may contain %1 when the action takes a number (hasArg)
+  hasArg?: boolean;
 }
 
 export interface VatraCondition {
@@ -29,16 +56,51 @@ export interface VatraCondition {
   label: string;
 }
 
+// A number the lesson's world can be asked for ('câți pași până la pășune')
+export interface VatraSensor {
+  id: string;
+  label: string;
+}
+
+// Something that happens in the lesson's world on its own ('vine ursul')
+export interface VatraEvent {
+  id: string;
+  label: string;
+}
+
+// One run-through of the world the program is tested in: what every named
+// condition answers (a list is consumed one value per read; after the last
+// one, it keeps repeating it), what every sensor reports, and which events
+// fire, in order, once the main program has run.
+export interface Scenario {
+  label: string;
+  conds?: Record<string, boolean | boolean[]>;
+  sensors?: Record<string, number | number[]>;
+  events?: string[];
+  seed?: number; // fixes the "la întâmplare" block so the run is repeatable
+}
+
 export interface VatraFail {
-  text: string; // Bunicul Fierar's comic verdict
+  text: string; // the guide's comic verdict
   anim: 'bucket' | 'coal' | 'dark' | 'splash' | 'none';
-  matches: (program: ProgramNode[]) => boolean;
+  // The run result is only there for lessons graded on behaviour; the older
+  // predicates just ignore it
+  matches: (program: ProgramNode[], result: RunResult) => boolean;
+}
+
+// A rule a behaviourally-correct program must also satisfy to pass — "you
+// have to use a loop", "the count must come from the box, not a number" —
+// so that a solution unrolled by hand doesn't get the same praise as one
+// that actually uses the concept being taught.
+export interface VatraRequirement {
+  text: string;
+  check: (program: ProgramNode[], result: RunResult) => boolean;
 }
 
 export interface VatraPuzzle {
   id: string;
   title: string;
-  intro: string; // Bunicul Fierar's guidance shown when the tabla opens
+  intro: string; // the guide's guidance shown when the tabla opens
   success: string;
   // What solving it actually hands over. VatraModule pays exactly this out,
   // the Ajutor panel reads it to say where a material comes from, and
@@ -49,10 +111,26 @@ export interface VatraPuzzle {
   rewardRepeats?: boolean; // paid out on every solve, not just the first
   actions: VatraAction[]; // atomic action blocks available in the palette
   conditions?: VatraCondition[]; // available for while/if, when allowed
+  sensors?: VatraSensor[];
+  events?: VatraEvent[];
+  variables?: string[]; // boxes pre-created in the workspace
   allowRepeat?: boolean; // shows the generic "repetă de N ori" container
   allowWhile?: boolean; // shows the generic "cât timp <condiție>" container
   allowIf?: boolean; // shows the generic "dacă <condiție> / altfel" container
+  allowLogic?: boolean; // ȘI / SAU / NU
+  allowCompare?: boolean; // < > =
+  allowVariables?: boolean; // pune / schimbă / citește
+  allowMath?: boolean; // numbers, + −
+  allowRandom?: boolean; // "la întâmplare între"
+  allowProcedures?: boolean; // definește / cheamă
+  allowEvents?: boolean; // "când se întâmplă…"
   solution: ProgramNode[];
+  // When present, the lesson is graded on what the program DOES in each
+  // scenario (its trace) rather than on its exact shape — any program that
+  // behaves like the solution everywhere, and meets the requirements, passes.
+  scenarios?: Scenario[];
+  requirements?: VatraRequirement[];
+  starterProgram?: ProgramNode[]; // a broken program pre-loaded for the child to fix
   fails: VatraFail[]; // checked in order; first match wins
 }
 
@@ -62,15 +140,63 @@ export function rewardWhen(puzzle: VatraPuzzle): string {
   return puzzle.rewardRepeats ? 'la fiecare rezolvare' : 'o singură dată, la prima rezolvare';
 }
 
-const A = (id: string): ProgramNode => ({ kind: 'action', id });
-const REPEAT = (count: number, body: ProgramNode[]): ProgramNode => ({ kind: 'repeat', count, body });
-const WHILE = (cond: string, body: ProgramNode[]): ProgramNode => ({ kind: 'while', cond, body });
-const IF = (cond: string, body: ProgramNode[], elseBody: ProgramNode[] = []): ProgramNode => ({
+// Lessons graded on behaviour (see VatraPuzzle.scenarios)
+export function gradesByTrace(puzzle: VatraPuzzle): boolean {
+  return !!puzzle.scenarios && puzzle.scenarios.length > 0;
+}
+
+// ---- Builders, so puzzle data reads like pseudocode ------------------------
+
+export const A = (id: string, arg?: Expr): ProgramNode => (arg === undefined ? { kind: 'action', id } : { kind: 'action', id, arg });
+export const REPEAT = (count: Expr, body: ProgramNode[]): ProgramNode => ({ kind: 'repeat', count, body });
+export const WHILE = (cond: Cond, body: ProgramNode[]): ProgramNode => ({ kind: 'while', cond, body });
+export const IF = (cond: Cond, body: ProgramNode[], elseBody: ProgramNode[] = []): ProgramNode => ({
   kind: 'if',
   cond,
   body,
   elseBody,
 });
+export const SET = (name: string, value: Expr): ProgramNode => ({ kind: 'set', name, value });
+export const CHG = (name: string, delta: Expr): ProgramNode => ({ kind: 'change', name, delta });
+export const DEF = (name: string, params: string[], body: ProgramNode[]): ProgramNode => ({ kind: 'define', name, params, body });
+export const CALL = (name: string, args: Expr[] = []): ProgramNode => ({ kind: 'call', name, args });
+export const WHEN = (event: string, body: ProgramNode[]): ProgramNode => ({ kind: 'when', event, body });
+export const V = (name: string): Expr => ({ kind: 'var', name });
+export const S = (id: string): Expr => ({ kind: 'sensor', id });
+export const ADD = (a: Expr, b: Expr): Expr => ({ kind: 'add', a, b });
+export const SUB = (a: Expr, b: Expr): Expr => ({ kind: 'sub', a, b });
+export const RND = (min: Expr, max: Expr): Expr => ({ kind: 'random', min, max });
+export const CMP = (a: Expr, op: '<' | '>' | '=' | '!=' | '<=' | '>=', b: Expr): Cond => ({ kind: 'cmp', op, a, b });
+export const AND = (a: Cond, b: Cond): Cond => ({ kind: 'and', a, b });
+export const OR = (a: Cond, b: Cond): Cond => ({ kind: 'or', a, b });
+export const NOT = (a: Cond): Cond => ({ kind: 'not', a });
+
+// The builders bundled for the browser console / test harness
+// (window.__puzzleHelpers), so a test can write a program as pseudocode
+export const PUZZLE_HELPERS = { A, REPEAT, WHILE, IF, SET, CHG, DEF, CALL, WHEN, V, S, ADD, SUB, RND, CMP, AND, OR, NOT };
+
+// ---- Structural equality ---------------------------------------------------
+
+export function exprEquals(a: Expr, b: Expr): boolean {
+  if (typeof a === 'number' || typeof b === 'number') return a === b;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'var' && b.kind === 'var') return a.name === b.name;
+  if (a.kind === 'sensor' && b.kind === 'sensor') return a.id === b.id;
+  if (a.kind === 'random' && b.kind === 'random') return exprEquals(a.min, b.min) && exprEquals(a.max, b.max);
+  if ((a.kind === 'add' || a.kind === 'sub' || a.kind === 'mul' || a.kind === 'div') && a.kind === b.kind) {
+    return exprEquals(a.a, b.a) && exprEquals(a.b, b.b);
+  }
+  return false;
+}
+
+export function condEquals(a: Cond, b: Cond): boolean {
+  if (typeof a === 'string' || typeof b === 'string') return a === b;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'not' && b.kind === 'not') return condEquals(a.a, b.a);
+  if ((a.kind === 'and' || a.kind === 'or') && a.kind === b.kind) return condEquals(a.a, b.a) && condEquals(a.b, b.b);
+  if (a.kind === 'cmp' && b.kind === 'cmp') return a.op === b.op && exprEquals(a.a, b.a) && exprEquals(a.b, b.b);
+  return false;
+}
 
 export function programEquals(a: ProgramNode[], b: ProgramNode[]): boolean {
   if (a.length !== b.length) return false;
@@ -79,13 +205,102 @@ export function programEquals(a: ProgramNode[], b: ProgramNode[]): boolean {
 
 function nodeEquals(a: ProgramNode, b: ProgramNode): boolean {
   if (a.kind !== b.kind) return false;
-  if (a.kind === 'action' && b.kind === 'action') return a.id === b.id;
-  if (a.kind === 'repeat' && b.kind === 'repeat') return a.count === b.count && programEquals(a.body, b.body);
-  if (a.kind === 'while' && b.kind === 'while') return a.cond === b.cond && programEquals(a.body, b.body);
-  if (a.kind === 'if' && b.kind === 'if') {
-    return a.cond === b.cond && programEquals(a.body, b.body) && programEquals(a.elseBody, b.elseBody);
+  if (a.kind === 'action' && b.kind === 'action') {
+    if (a.id !== b.id) return false;
+    if (a.arg === undefined || b.arg === undefined) return a.arg === b.arg;
+    return exprEquals(a.arg, b.arg);
   }
+  if (a.kind === 'repeat' && b.kind === 'repeat') return exprEquals(a.count, b.count) && programEquals(a.body, b.body);
+  if (a.kind === 'while' && b.kind === 'while') return condEquals(a.cond, b.cond) && programEquals(a.body, b.body);
+  if (a.kind === 'if' && b.kind === 'if') {
+    return condEquals(a.cond, b.cond) && programEquals(a.body, b.body) && programEquals(a.elseBody, b.elseBody);
+  }
+  if (a.kind === 'set' && b.kind === 'set') return a.name === b.name && exprEquals(a.value, b.value);
+  if (a.kind === 'change' && b.kind === 'change') return a.name === b.name && exprEquals(a.delta, b.delta);
+  if (a.kind === 'define' && b.kind === 'define') {
+    return a.name === b.name && a.params.length === b.params.length && a.params.every((p, i) => p === b.params[i]) && programEquals(a.body, b.body);
+  }
+  if (a.kind === 'call' && b.kind === 'call') {
+    return a.name === b.name && a.args.length === b.args.length && a.args.every((x, i) => exprEquals(x, b.args[i]));
+  }
+  if (a.kind === 'when' && b.kind === 'when') return a.event === b.event && programEquals(a.body, b.body);
   return false;
+}
+
+// ---- Equivalence up to naming ---------------------------------------------
+//
+// A child who calls the box "mieluțe" instead of "oi" has still understood
+// variables, so names are canonicalised (v1, v2… / p1, p2… in order of first
+// appearance) before comparing, and the top-level define/when blocks are
+// sorted, since the order they sit on the canvas in carries no meaning.
+
+export function normalise(program: ProgramNode[]): ProgramNode[] {
+  const vars = new Map<string, string>();
+  const procs = new Map<string, string>();
+  const varName = (n: string) => {
+    if (!vars.has(n)) vars.set(n, `v${vars.size + 1}`);
+    return vars.get(n)!;
+  };
+  const procName = (n: string) => {
+    if (!procs.has(n)) procs.set(n, `p${procs.size + 1}`);
+    return procs.get(n)!;
+  };
+  const expr = (e: Expr): Expr => {
+    if (typeof e === 'number') return e;
+    if (e.kind === 'var') return { kind: 'var', name: varName(e.name) };
+    if (e.kind === 'sensor') return e;
+    if (e.kind === 'random') return { kind: 'random', min: expr(e.min), max: expr(e.max) };
+    return { kind: e.kind, a: expr(e.a), b: expr(e.b) };
+  };
+  const cond = (c: Cond): Cond => {
+    if (typeof c === 'string') return c;
+    if (c.kind === 'not') return { kind: 'not', a: cond(c.a) };
+    if (c.kind === 'cmp') return { kind: 'cmp', op: c.op, a: expr(c.a), b: expr(c.b) };
+    return { kind: c.kind, a: cond(c.a), b: cond(c.b) };
+  };
+  const node = (n: ProgramNode): ProgramNode => {
+    switch (n.kind) {
+      case 'action':
+        return n.arg === undefined ? n : { kind: 'action', id: n.id, arg: expr(n.arg) };
+      case 'repeat':
+        return { kind: 'repeat', count: expr(n.count), body: n.body.map(node) };
+      case 'while':
+        return { kind: 'while', cond: cond(n.cond), body: n.body.map(node) };
+      case 'if':
+        return { kind: 'if', cond: cond(n.cond), body: n.body.map(node), elseBody: n.elseBody.map(node) };
+      case 'set':
+        return { kind: 'set', name: varName(n.name), value: expr(n.value) };
+      case 'change':
+        return { kind: 'change', name: varName(n.name), delta: expr(n.delta) };
+      case 'define':
+        return { kind: 'define', name: procName(n.name), params: n.params.map(varName), body: n.body.map(node) };
+      case 'call':
+        return { kind: 'call', name: procName(n.name), args: n.args.map(expr) };
+      case 'when':
+        return { kind: 'when', event: n.event, body: n.body.map(node) };
+    }
+  };
+  // Procedures are named in the order they're first CALLED or defined, walking
+  // main first, so a define placed above or below main doesn't change its name
+  const main = program.filter((n) => n.kind !== 'define' && n.kind !== 'when').map(node);
+  const defs = program.filter((n) => n.kind === 'define').map(node);
+  const whens = program.filter((n) => n.kind === 'when').map(node);
+  const key = (n: ProgramNode) => (n.kind === 'define' ? `d:${n.name}` : n.kind === 'when' ? `w:${n.event}` : '');
+  defs.sort((x, y) => key(x).localeCompare(key(y)));
+  whens.sort((x, y) => key(x).localeCompare(key(y)) || JSON.stringify(x).localeCompare(JSON.stringify(y)));
+  return [...main, ...defs, ...whens];
+}
+
+export function programEquivalent(a: ProgramNode[], b: ProgramNode[]): boolean {
+  return programEquals(normalise(a), normalise(b));
+}
+
+// ---- Helpers for fail predicates ------------------------------------------
+
+// A repeat's count when it's a plain number, NaN when it's a box or a sensor
+// (every comparison with NaN is false, so the numeric fails simply don't fire)
+export function repeatCount(n: ProgramNode): number {
+  return n.kind === 'repeat' && typeof n.count === 'number' ? n.count : NaN;
 }
 
 // The linear order actions would visually execute in — repeats fully
@@ -97,12 +312,14 @@ export function flattenActions(nodes: ProgramNode[]): string[] {
   const walk = (ns: ProgramNode[]) => {
     for (const n of ns) {
       if (n.kind === 'action') out.push(n.id);
-      else if (n.kind === 'repeat') for (let i = 0; i < Math.min(Math.max(n.count, 0), 400); i++) walk(n.body);
-      else if (n.kind === 'while') for (let i = 0; i < 5; i++) walk(n.body);
+      else if (n.kind === 'repeat') {
+        const count = typeof n.count === 'number' ? n.count : 5;
+        for (let i = 0; i < Math.min(Math.max(count, 0), 400); i++) walk(n.body);
+      } else if (n.kind === 'while') for (let i = 0; i < 5; i++) walk(n.body);
       else if (n.kind === 'if') {
         walk(n.body);
         walk(n.elseBody);
-      }
+      } else if (n.kind === 'define' || n.kind === 'when') walk(n.body);
     }
   };
   walk(nodes);
@@ -113,7 +330,7 @@ export function flattenActions(nodes: ProgramNode[]): string[] {
 export function hasNode(nodes: ProgramNode[], pred: (n: ProgramNode) => boolean): boolean {
   for (const n of nodes) {
     if (pred(n)) return true;
-    if (n.kind === 'repeat' || n.kind === 'while') {
+    if (n.kind === 'repeat' || n.kind === 'while' || n.kind === 'define' || n.kind === 'when') {
       if (hasNode(n.body, pred)) return true;
     } else if (n.kind === 'if') {
       if (hasNode(n.body, pred) || hasNode(n.elseBody, pred)) return true;
@@ -127,6 +344,20 @@ export function hasNode(nodes: ProgramNode[], pred: (n: ProgramNode) => boolean)
 // the loop/condition the puzzle expects it to live inside.
 export function hasTopLevelAction(nodes: ProgramNode[], id: string): boolean {
   return nodes.some((n) => n.kind === 'action' && n.id === id);
+}
+
+// Whether a condition tree mentions a named condition anywhere
+export function condMentions(c: Cond, id: string): boolean {
+  if (typeof c === 'string') return c === id;
+  if (c.kind === 'not') return condMentions(c.a, id);
+  if (c.kind === 'cmp') return false;
+  return condMentions(c.a, id) || condMentions(c.b, id);
+}
+
+// The action ids a scenario's trace ran, in order — for behavioural fails
+export function actionsIn(result: RunResult, scenarioLabel?: string): string[] {
+  const runs = scenarioLabel ? result.scenarios.filter((s) => s.label === scenarioLabel) : result.scenarios;
+  return runs.flatMap((s) => s.trace.filter((t) => t.t === 'act').map((t) => t.id));
 }
 
 const before = (program: ProgramNode[], a: string, b: string): boolean => {
@@ -407,12 +638,12 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       {
         text: 'Ai pus prea mulți! Gardul a ieșit din sat, peste deal, prin curtea vecinului — o boacănă legendară.',
         anim: 'dark',
-        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count > 30),
+        matches: (p) => hasNode(p, (n) => repeatCount(n) > 30),
       },
       {
         text: 'Prea puțini stâlpi înfipți — restul gardului e o gaură cât toată Lunca! Oile ies la plimbare.',
         anim: 'dark',
-        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count > 0 && n.count < 30),
+        matches: (p) => hasNode(p, (n) => repeatCount(n) > 0 && repeatCount(n) < 30),
       },
       {
         text: 'Gardul stă pe jumătate, dar capătul flutură-n vânt — nu-i priponit! Ordinea corectă, cu tot ce trebuie.',
@@ -443,7 +674,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
         matches: (p) =>
           hasNode(
             p,
-            (n) => n.kind === 'repeat' && n.count === 6 && hasNode(n.body, (m) => m.kind === 'repeat' && m.count === 4),
+            (n) => n.kind === 'repeat' && repeatCount(n) === 6 && hasNode(n.body, (m) => repeatCount(m) === 4),
           ),
       },
       {
@@ -525,7 +756,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       {
         text: 'Numărul buclei nu-i bun — livada are loc de exact patru meri, nici mai mulți, nici mai puțini.',
         anim: 'dark',
-        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && n.count !== 4),
+        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && repeatCount(n) !== 4),
       },
       {
         text: 'Ai pus pașii pe rând, pe dinafara buclei — merge, dar e trudă de pomana. Bagă toți trei pașii ÎNĂUNTRUL buclei.',
@@ -579,7 +810,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
             p,
             (n) =>
               n.kind === 'repeat' &&
-              n.count !== 4 &&
+              repeatCount(n) !== 4 &&
               n.body.length === 1 &&
               n.body[0].kind === 'action' &&
               n.body[0].id === 'arunca_fanul',
@@ -593,7 +824,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
             p,
             (n) =>
               n.kind === 'repeat' &&
-              n.count !== 3 &&
+              repeatCount(n) !== 3 &&
               n.body.some((m) => m.kind === 'action' && m.id === 'infige_parul'),
           ),
       },
