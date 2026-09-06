@@ -26,7 +26,7 @@ ajute mult.
 | Materiale noi | Unul nou pe lecție, treizeci și șase în total |
 | Progresie între zone | Deschisă, fără porți; recompensele ajută, nu blochează |
 | Amploare | Șapte zone, treizeci și șase de lecții |
-| Zborul pe tasta F | Devine răsplată câștigată, Aripile Zmeului, la ultima lecție din Pădure |
+| Zborul pe tasta F | Devine răsplată câștigată, Aripile Zmeului, la Fierăria lui Bunicul, a patra lecție din Vatra |
 
 ---
 
@@ -86,7 +86,7 @@ când, `V` valoarea cutiuței, `S` senzor, `CMP` comparație, `RND` aleator.
 | Fântâna | prima secvență | Găleată |
 | Cuptorul | ordinea contează | 3 cozonaci |
 | Ulița | prima buclă | 8 torțe |
-| Fierăria | buclă în secvență | Topor |
+| Fierăria | buclă în secvență | Topor **și Aripile Zmeului**, care deschid zborul |
 | Grajdul | secvență lungă | Lopată |
 | Spălătoria | secvență lungă | 12 frânghii |
 
@@ -110,7 +110,7 @@ Toate cinci se notează după purtare, în mai multe scenarii.
 | Podul mișcător | dacă, fără altfel | Viitura, Seceta | Undiță |
 | Capcana de lup | ȘI logic | patru vremuri | 6 capcane de lup |
 | Culesul de ciuperci | decizia din buclă | Poiana, șase ciuperci | Arc cu săgeți |
-| Răscrucea | SAU și NU | patru vremuri | Aripile Zmeului |
+| Răscrucea | SAU și NU | patru vremuri | Busolă |
 
 Soluțiile canonice pentru cele două lecții noi:
 
@@ -178,7 +178,7 @@ Origine propusă: x 5, z 45.
 
 | Lecție | Concept nou | Obiectul nou |
 |---|---|---|
-| Ulciorul | definește și cheamă de trei ori | Busolă |
+| Ulciorul | definește și cheamă de trei ori | *de ales* |
 | Hora | procedura chemată din buclă | Pat, sari peste noapte |
 | Covorul | procedura cu parametru | Buzdugan |
 | Căruța | proceduri care cheamă proceduri | Piatră de praștie |
@@ -252,7 +252,8 @@ Obiectele deja în joc, primele șaisprezece:
 | 13 | Undiță | 304 | pește din orice apă, după două secunde | Podul |
 | 14 | Capcană de lup | 44 | monstrul care calcă pierde șase viață și se încetinește | Capcana |
 | 15 | Arc cu săgeți | 105 | lovește de departe, singurul răspuns la Zmeu | Ciupercile |
-| 16 | Aripile Zmeului | 506 | deblochează zborul pe tasta F | Răscrucea |
+| 16 | Busolă | 303 | ținută în mână, săgeată spre cea mai apropiată zonă, cu distanța | Răscrucea |
+| — | Aripile Zmeului | 506 | deblochează zborul pe tasta F | Fierăria |
 
 Obiectele Stânii, adăugate la faza 2:
 
@@ -264,10 +265,12 @@ Obiectele Stânii, adăugate la faza 2:
 | 20 | Opinci iuți | 503 | viteză cu un sfert mai mare, cazi de la două cuburi mai sus | drumul_oilor |
 | 21 | Hartă | 309 | ținută în mână, minimapă cu zonele și casa însemnate | socoteala_stanii |
 
-Obiectele zonelor rămase, în ordinea lecțiilor: Busolă, Pat, Buzdugan, Piatră
-de praștie, Ulcior cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de
+Obiectele zonelor rămase, în ordinea lecțiilor: Pat, Buzdugan, Piatră de
+praștie, Ulcior cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de
 prisăcar, Scut, Cămașă de zale, Oglindă fermecată, Sabia lui Făt-Frumos,
-Mărul de aur.
+Mărul de aur. Prima lecție din Târg, Ulciorul, rămâne fără obiect ales,
+fiindcă Busola i-a fost mutată la Răscruce — de ales când se construiește
+zona.
 
 Trei dintre ele sunt deja legate în cod pentru zonele viitoare, dar nu le dă
 încă nicio lecție: Cămașa de zale, Masca de prisăcar și creșterea vieții

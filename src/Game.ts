@@ -24,6 +24,7 @@ import { CONSUMABLES, ConsumableId, isConsumable } from './items/Consumable';
 import { GearId, GEAR_ARMOUR, GEAR_SPEED, GEAR_FALL_GRACE } from './items/Gear';
 import { isPlaceable } from './items/Items';
 import { MiniMap } from './ui/MiniMap';
+import { Compass } from './ui/Compass';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
@@ -207,6 +208,7 @@ export class Game {
   private effects = new StatusEffects();
   private specials: SpecialBlockIndex;
   private miniMap: MiniMap;
+  private compass: Compass;
   private fishingTimer = 0; // > 0 while a line is in the water
   private toolCooldowns = new Map<number, number>(); // for the tools you trigger
   private playerName: string;
@@ -263,6 +265,7 @@ export class Game {
     this.doorRenderer = new DoorRenderer(this.scene, atlas);
     this.specials = new SpecialBlockIndex([BlockType.Scarecrow, BlockType.WolfTrap, BlockType.StrawMattress]);
     this.miniMap = new MiniMap(document.getElementById('minimap')!, ZONE_MARKS);
+    this.compass = new Compass(document.getElementById('compass')!, ZONE_MARKS);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -367,7 +370,7 @@ export class Game {
     // Flight is earned: the Aripile Zmeului come from Muma Pădurii's last lesson
     this.player.canFly = () => this.owns(GearId.AripileZmeului);
     this.player.onFlyDenied = () => {
-      this.showToast('Ca să zbori ai nevoie de Aripile Zmeului — le dă Muma Pădurii la Răscruce, în Pădure.');
+      this.showToast('Ca să zbori ai nevoie de Aripile Zmeului — le scoate Bunicul Fierar de sub nicovală, la lecția Fierăria.');
       this.sound.clink();
     };
 
@@ -657,6 +660,8 @@ export class Game {
     // The Hartă only draws while it's actually in hand
     this.miniMap.setVisible(this.hotbar.selectedItem === ToolId.Harta && this.owns(ToolId.Harta) && this.input.active);
     this.miniMap.update(now, this.world, this.player.body.x, this.player.body.z, this.input.yaw);
+    this.compass.setVisible(this.hotbar.selectedItem === ToolId.Busola && this.owns(ToolId.Busola) && this.input.active);
+    this.compass.update(this.player.body.x, this.player.body.z, this.input.yaw);
     this.updateHand(dt);
     this.updateSelectionBox();
     this.hud.tick(now);
@@ -1343,7 +1348,7 @@ export class Game {
       this.showToast(frozen > 0 ? `🎵 Fluierul a înțepenit ${frozen} monștri!` : '🎵 Ai fluierat… dar n-avea cine să te-audă.');
       return true;
     }
-    if (tool === ToolId.Harta) return false; // the map works by being held, not clicked
+    if (tool === ToolId.Harta || tool === ToolId.Busola) return false; // these work by being held, not clicked
     if (tool === ToolId.Undita) {
       if (this.fishingTimer > 0) return true;
       const hit = this.raycastIncludingWater();

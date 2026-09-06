@@ -24,6 +24,7 @@ export interface ToolDef {
 
 export const TOOLS: Record<number, ToolDef> = {
   [ToolId.Tarnacop]: { name: 'Târnăcop', shape: 'pickaxe', colors: { handle: 0x8a5a2e, head: 0x8d8d8d } },
+  [ToolId.Busola]: { name: 'Busolă', shape: 'compass', colors: { handle: 0x8a6a3a, head: 0xc9a227 } },
   [ToolId.Topor]: { name: 'Topor', shape: 'axe', colors: { handle: 0x8a5a2e, head: 0x9a9a9a } },
   [ToolId.Lopata]: { name: 'Lopată', shape: 'shovel', colors: { handle: 0x8a5a2e, head: 0x7a7a7a } },
   [ToolId.Undita]: { name: 'Undiță', shape: 'rod', colors: { handle: 0xa07a48, head: 0xd8d8d8 } },
@@ -40,6 +41,7 @@ export const TOOL_IDS: ToolId[] = [
   ToolId.Undita,
   ToolId.Galeata,
   ToolId.GaleataPlina,
+  ToolId.Busola,
   ToolId.Fluier,
   ToolId.Harta,
 ];

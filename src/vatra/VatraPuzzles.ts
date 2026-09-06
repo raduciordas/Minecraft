@@ -523,10 +523,15 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'fierarie',
     title: 'Fierăria lui Bunicul — potcoava norocoasă',
     intro:
-      'BUNICUL FIERAR: „Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Pune o buclă cu trei lovituri de ciocan, apoi călire-n apă rece, și gata potcoava. Nu sări nicio treaptă!"',
-    success: 'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. (+1 târnăcop, +1 topor)',
-    rewardItems: [{ id: ToolId.Tarnacop, count: 1 }, { id: ToolId.Topor, count: 1 }],
-    reward: '1 târnăcop și 1 topor — un buștean tăiat cu el dă trei',
+      'BUNICUL FIERAR: „Focul întâi, apoi fierul, apoi răbdare — să se-nroșească bine. Pune o buclă cu trei lovituri de ciocan, apoi călire-n apă rece, și gata potcoava. Nu sări nicio treaptă! Și dacă-mi iese potcoava cum trebuie, îți scot de sub nicovală ceva ce-am bătut într-o iarnă întreagă…"',
+    success:
+      'POTCOAVA-I GATA, lucie și tare! Norocul satului crește. Bunicul scoate de sub nicovală o pereche de aripi din solzi de zmeu, bătute de el într-o iarnă: „Ține, că ție-ți trebuie. De-acum zbori — apasă F." (+1 târnăcop, +1 topor și Aripile Zmeului)',
+    rewardItems: [
+      { id: ToolId.Tarnacop, count: 1 },
+      { id: ToolId.Topor, count: 1 },
+      { id: GearId.AripileZmeului, count: 1 },
+    ],
+    reward: '1 târnăcop, 1 topor — un buștean tăiat cu el dă trei — și Aripile Zmeului, care îți deschid ZBORUL pe tasta F',
     rewardRepeats: true,
     actions: [
       { id: 'aprinde_forja', label: 'Aprinde forja' },
@@ -1104,11 +1109,11 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'rascruce',
     title: 'Răscrucea — ȘI, SAU, NU',
     intro:
-      'MUMA PĂDURII: „La răscruce te oprești ÎNTÂI. Apoi: DACĂ e ceață SAU e noapte, aprinde torța — una din două ajunge, de-aia-i «sau». Și: DACĂ NU e poteca dreaptă, ia-o la stânga; ALTFEL mergi înainte. Te încerc în patru vremuri — treci prin toate și-ți dau aripile Zmeului, să zbori peste pădurea mea!"',
+      'MUMA PĂDURII: „La răscruce te oprești ÎNTÂI. Apoi: DACĂ e ceață SAU e noapte, aprinde torța — una din două ajunge, de-aia-i «sau». Și: DACĂ NU e poteca dreaptă, ia-o la stânga; ALTFEL mergi înainte. Te încerc în patru vremuri — treci prin toate și nu te mai rătăcești în veci prin pădurea mea!"',
     success:
-      'AI TRECUT RĂSCRUCEA în toate cele patru vremuri! Muma Pădurii îți prinde pe umeri aripile Zmeului — de-acum zbori (tasta F). Ai învățat SAU și NU. (+1 Aripile Zmeului și +6 torțe)',
-    rewardItems: [{ id: GearId.AripileZmeului, count: 1 }, { id: BlockType.Torch, count: 6 }],
-    reward: '1 Aripile Zmeului — deblochează ZBORUL (tasta F) — și 6 torțe',
+      'AI TRECUT RĂSCRUCEA în toate cele patru vremuri! Ai învățat SAU și NU. Muma Pădurii îți pune în palmă busola ei de aramă, cea care arată mereu unde-i satul cel mai apropiat: „Hâhâhî, acum n-am cum să te mai încurc." (+1 busolă și +6 torțe)',
+    rewardItems: [{ id: ToolId.Busola, count: 1 }, { id: BlockType.Torch, count: 6 }],
+    reward: '1 busolă — ținută în mână arată încotro e cea mai apropiată zonă cu lecții și cât mai ai de mers — și 6 torțe',
     actions: [
       { id: 'aprinde_torta', label: 'Aprinde torța' },
       { id: 'opreste_te', label: 'Oprește-te și uită-te' },

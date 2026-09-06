@@ -67,6 +67,7 @@ const TOOL_NOTES: Record<number, string> = {
   [ToolId.Undita]: 'Ține-o în mână, uită-te la apă și dă click dreapta: după două secunde tragi un Pește (mâncare). Singura mâncare care nu vine din lecții.',
   [ToolId.Galeata]: 'Ține-o în mână, uită-te la un cub de apă și dă click dreapta: se umple. Singurul fel de a lua apă din lume.',
   [ToolId.GaleataPlina]: 'Click dreapta pe un loc liber varsă apa acolo. Fă-ți iaz, adăpătoare sau râu în curte.',
+  [ToolId.Busola]: 'Ține-o în mână și sus pe ecran apare o săgeată spre cea mai apropiată zonă cu lecții, cu numele ei și câte cuburi mai ai de mers. Săgeata arată față de încotro te uiți: dacă e în sus, mergi drept înainte.',
   [ToolId.Fluier]: 'Click dreapta cu el în mână și toți monștrii pe doisprezece cuburi în jur înțepenesc cinci secunde, sclipind albăstrui. Apoi fluierul se odihnește douăzeci de secunde. Bun când te-au înconjurat noaptea.',
   [ToolId.Harta]: 'Ține-o în mână și-ți apare harta locului în colț: pădurea, apa, munții, plus numele zonelor și unde-i casa. Săgeata roșie ești tu și se întoarce odată cu tine.',
 };
@@ -87,7 +88,7 @@ const CONSUMABLE_NOTES: Record<number, string> = {
 
 const GEAR_NOTES: Record<number, string> = {
   [GearId.AmuletaUsturoi]: 'TALISMAN: cât o ai în traistă, monștrii te observă doar de la jumătate din distanța obișnuită. Nu trebuie pusă nicăieri — lucrează din traistă.',
-  [GearId.AripileZmeului]: 'ZBOR: fără ele, tasta F (și butonul ✈) nu fac nimic. Cu ele în traistă, zbori cât vrei. Le dă Muma Pădurii la ultima ei lecție, Răscrucea.',
+  [GearId.AripileZmeului]: 'ZBOR: fără ele, tasta F (și butonul ✈) nu fac nimic. Cu ele în traistă, zbori cât vrei. Le bate Bunicul Fierar din solzi de zmeu și ți le dă când îi iese potcoava, la lecția Fierăria.',
   [GearId.Cojoc]: 'ARMURĂ: cât îl ai în traistă, fiecare lovitură primită te doare cu o inimă mai puțin. Nu trebuie îmbrăcat, lucrează din traistă.',
   [GearId.OpinciIuti]: 'IUȚEALĂ: mergi cu un sfert mai repede și cazi de la două cuburi mai de sus fără să te doară. Cu ele, drumul între zone e mult mai scurt.',
 };

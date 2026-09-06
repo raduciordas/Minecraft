@@ -340,6 +340,20 @@
       .lore-open-btn:hover { background: #3a739e; }
 
       /* Transient "coming soon" style notices */
+      /* The Busolă: a needle and a caption at the top of the screen */
+      #compass {
+        position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6;
+        background: rgba(43, 24, 8, 0.72); border: 3px solid #c9a227; border-radius: 6px;
+        padding: 6px 14px; font-family: monospace; color: #f4ecd0;
+        display: flex; align-items: center; gap: 10px;
+      }
+      #compass.hidden { display: none; }
+      .compass-needle { font-size: 20px; color: #ffcf5a; line-height: 1; }
+      .compass-caption { font: bold 13px monospace; }
+      @media (max-width: 720px) {
+        #compass { top: 8px; padding: 4px 10px; }
+        .compass-caption { font-size: 11px; }
+      }
       /* The Hartă, drawn only while that tool is the held item */
       #minimap {
         position: fixed; top: 14px; right: 14px; z-index: 6;
@@ -549,6 +563,7 @@
     <div id="lore" class="hidden"></div>
     <div id="help" class="hidden"></div>
     <div id="minimap" class="hidden"></div>
+    <div id="compass" class="hidden"></div>
     <div id="toast"></div>
     <div id="underwater" class="hidden"></div>
     <div id="status"></div>
@@ -568,7 +583,7 @@
         Night mobs: Zombie (melee) &nbsp;|&nbsp; Umbra (teleports close) &nbsp;|&nbsp; Wasp (flies, fragile)<br />
         Golem (heavy hitter) &nbsp;|&nbsp; Zmeu (fire breath, ranged) &nbsp;|&nbsp; Capcaun (giant, deadliest)<br />
         Satul Codat: caută Vatra (lângă spawn, spre nord-vest) — click dreapta pe fântână, cuptor sau felinare și programează-le!<br />
-        1-9 / scroll — select slot &nbsp;|&nbsp; E — inventory (pick materials) &nbsp;|&nbsp; F — zbor (doar cu Aripile Zmeului, din Pădure) &nbsp;|&nbsp; Esc — pause<br />
+        1-9 / scroll — select slot &nbsp;|&nbsp; E — inventory (pick materials) &nbsp;|&nbsp; F — zbor (cu Aripile Zmeului, de la Fierărie) &nbsp;|&nbsp; Esc — pause<br />
         <b>H — Ajutor: de unde iei fiecare material și la ce folosește</b><br />
         Progress is saved automatically in your browser.<br />
         <a class="promo-link" href="https://www.yoocode.ro" target="_blank" rel="noopener noreferrer"
