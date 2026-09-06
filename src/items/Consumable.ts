@@ -9,6 +9,7 @@ export const enum ConsumableId {
   Placinta = 401,
   Mar = 402,
   Peste = 403,
+  BranzaBurduf = 404,
 }
 
 export interface StatusEffectDef {
@@ -21,7 +22,7 @@ export interface ConsumableDef {
   name: string;
   heal: number; // hp restored (2 per heart)
   effect?: StatusEffectDef;
-  shape: 'loaf' | 'cozonac' | 'pie' | 'apple' | 'fish';
+  shape: 'loaf' | 'cozonac' | 'pie' | 'apple' | 'fish' | 'cheese';
   colors: { main: number; accent: number };
   notStarterStock: true; // every food is earned
 }
@@ -39,9 +40,24 @@ export const CONSUMABLES: Record<number, ConsumableDef> = {
   [ConsumableId.Placinta]: { name: 'Plăcintă cu brânză', heal: 5, shape: 'pie', colors: { main: 0xd9a64a, accent: 0xf4ecd0 }, notStarterStock: true },
   [ConsumableId.Mar]: { name: 'Măr', heal: 2, shape: 'apple', colors: { main: 0xc8342a, accent: 0x5a8a2a }, notStarterStock: true },
   [ConsumableId.Peste]: { name: 'Pește', heal: 4, shape: 'fish', colors: { main: 0x8aa8c0, accent: 0xd8e4ec }, notStarterStock: true },
+  [ConsumableId.BranzaBurduf]: {
+    name: 'Brânză de burduf',
+    heal: 6,
+    effect: { kind: 'speed', seconds: 20, factor: 1.3 },
+    shape: 'cheese',
+    colors: { main: 0xf0e4b8, accent: 0x8a6a3a },
+    notStarterStock: true,
+  },
 };
 
-export const CONSUMABLE_IDS: number[] = [BlockType.Paine, ConsumableId.Cozonac, ConsumableId.Placinta, ConsumableId.Mar, ConsumableId.Peste];
+export const CONSUMABLE_IDS: number[] = [
+  BlockType.Paine,
+  ConsumableId.Cozonac,
+  ConsumableId.Placinta,
+  ConsumableId.Mar,
+  ConsumableId.Peste,
+  ConsumableId.BranzaBurduf,
+];
 
 // Pâine included: anything you eat rather than place
 export function isConsumable(id: number): boolean {
@@ -101,6 +117,15 @@ export function makeConsumableIcon(id: number): HTMLCanvasElement {
       px(4, 7, 0x222222);
       for (let x = 5; x <= 9; x += 2) px(x, 8, accent);
       break;
+    case 'cheese':
+      // A sheepskin burduf tied at the neck, cheese showing at the mouth
+      rect(3, 5, 12, 13, accent);
+      rect(4, 4, 11, 4, accent);
+      rect(5, 2, 10, 3, 0xa08050);
+      rect(6, 1, 9, 1, main);
+      rect(5, 6, 10, 11, main);
+      for (const [x, y] of [[6, 7], [9, 8], [7, 10]]) px(x, y, 0xd8c890);
+      break;
   }
   return canvas;
 }
@@ -136,6 +161,11 @@ export function buildConsumableModel(id: number): THREE.Group {
     case 'fish':
       box(group, 0.16, 0.06, 0.04, main, 0, 0, 0);
       box(group, 0.05, 0.08, 0.02, accent, 0.1, 0, 0);
+      break;
+    case 'cheese':
+      box(group, 0.13, 0.14, 0.11, accent, 0, 0, 0);
+      box(group, 0.06, 0.05, 0.05, 0xa08050, 0, 0.09, 0);
+      box(group, 0.05, 0.03, 0.045, main, 0, 0.12, 0);
       break;
   }
   group.position.set(0, 0.08, 0.05);

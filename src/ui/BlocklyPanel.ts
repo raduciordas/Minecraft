@@ -36,6 +36,8 @@ export interface BlocklyCallbacks {
   onScenario: (puzzleId: string, label: string, index: number, total: number) => void;
   onStep: (puzzleId: string, blockId: string, arg?: number) => void;
   onEvent: (puzzleId: string, eventId: string) => void;
+  // A box changed value: the world's own tally board follows along
+  onVar: (puzzleId: string, name: string, value: number) => void;
   onRunEnd: (puzzleId: string) => void;
   onFinish: (puzzleId: string, program: ProgramNode[]) => { success: boolean; text: string };
   onRequestClose: () => void;
@@ -972,6 +974,7 @@ export class BlocklyPanel {
         case 'var':
           this.liveVars.set(ev.name, ev.value);
           this.renderVars();
+          this.cb.onVar(puzzle.id, ev.name, ev.value);
           break;
         case 'infinite':
           this.setStatus('Bucla nu se mai oprește — tăblița s-a oprit singură…', false);

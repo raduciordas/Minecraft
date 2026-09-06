@@ -35,6 +35,16 @@ export const ZONES: Record<string, ZoneInfo> = {
       'încearcă programul în mai multe nopți și zile — să meargă în toate, altfel te-ncurc în potecă!',
     lessons: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
   },
+  stana: {
+    guide: '🧣 Baba Dochia',
+    concept:
+      '<b>Ce-s cutiuțele?</b> Eu, Dochia, am nouă cojoace și le număr în fiecare dimineață. O <b>cutiuță</b> ' +
+      'e un locșor cu nume în care ții un număr: „cojoace = 9". Poți s-o umpli, poți s-o schimbi cu unul mai ' +
+      'mult sau mai puțin, și poți s-o întrebi oricând cât are. Programul care citește din cutiuță merge la ' +
+      'fel de bine cu patru oi sau cu patruzeci — pe când numărul scris de mână merge o singură dată. Pe ' +
+      'răbojul din sat vezi tot timpul ce ține fiecare cutiuță.',
+    lessons: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
+  },
 };
 
 export interface LessonInfoCallbacks {

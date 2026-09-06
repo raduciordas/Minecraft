@@ -362,6 +362,38 @@ export function actionsIn(result: RunResult, scenarioLabel?: string): string[] {
   return runs.flatMap((s) => s.trace.filter((t) => t.t === 'act').map((t) => t.id));
 }
 
+// The number an action was last called with — what the child actually
+// announced, whether it came out of a box or was typed by hand
+export function argOf(result: RunResult, actionId: string, scenarioLabel?: string): number | null {
+  const runs = scenarioLabel ? result.scenarios.filter((s) => s.label === scenarioLabel) : result.scenarios;
+  for (const s of runs) {
+    for (let i = s.trace.length - 1; i >= 0; i--) {
+      const t = s.trace[i];
+      if (t.t === 'act' && t.id === actionId) return t.arg ?? null;
+    }
+  }
+  return null;
+}
+
+// How many times an action ran, across every scenario or in one of them
+export function timesRan(result: RunResult, actionId: string, scenarioLabel?: string): number {
+  return actionsIn(result, scenarioLabel).filter((a) => a === actionId).length;
+}
+
+// True if the program ever hands this action a number read out of a box,
+// rather than one typed straight into the block
+export function readsFromBox(nodes: ProgramNode[], actionId: string): boolean {
+  return hasNode(
+    nodes,
+    (n) => n.kind === 'action' && n.id === actionId && typeof n.arg === 'object' && n.arg.kind === 'var',
+  );
+}
+
+// True if the program contains any loop at all
+export function usesLoop(nodes: ProgramNode[]): boolean {
+  return hasNode(nodes, (n) => n.kind === 'repeat' || n.kind === 'while');
+}
+
 const before = (program: ProgramNode[], a: string, b: string): boolean => {
   const flat = flattenActions(program);
   const ia = flat.indexOf(a);
@@ -1147,6 +1179,325 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
       {
         text: 'Răscrucea te-a încurcat. Oprește-te; DACĂ ceață SAU noapte, torța; DACĂ NU e dreaptă, la stânga, ALTFEL înainte.',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  // ---- Zona 4 — Stâna Babei Dochia (variabile). Cutiuțele cu nume țin
+  // numere: le pui, le schimbi, le citești. Toate cinci se notează după
+  // purtare, cu cerințe care cer folosirea cutiuței, nu numărul scris de mână.
+  cojoacele: {
+    id: 'cojoacele',
+    title: 'Cojoacele Dochiei — prima cutiuță',
+    intro:
+      'BABA DOCHIA: „Eu am nouă cojoace, copile, și le număr în fiecare dimineață. Ia o cutiuță, pune-i numele «cojoace», bagă NOUĂ în ea, și abia apoi spune-mi câte sunt — citind din cutiuță, nu din burtă. Pe răboj o să vezi ce ține cutiuța."',
+    success:
+      'NOUĂ, spune răbojul, și tot nouă spune și cutiuța! Cojoacele s-au atârnat singure pe gard, unul lângă altul. Dochia îți dă unul, să nu-ți fie frig. (+1 cojoc)',
+    rewardItems: [{ id: GearId.Cojoc, count: 1 }],
+    reward: '1 cojoc — cât îl ai în traistă, fiecare lovitură te doare cu o inimă mai puțin',
+    actions: [
+      { id: 'spune_cate', label: 'Spune câte cojoace am: %1', hasArg: true },
+      { id: 'numara_pe_degete', label: 'Numără pe degete' },
+      { id: 'scutura_cojocul', label: 'Scutură un cojoc' },
+    ],
+    variables: ['cojoace'],
+    allowVariables: true,
+    allowMath: true,
+    solution: [SET('cojoace', 9), A('spune_cate', V('cojoace'))],
+    scenarios: [{ label: 'Dimineața' }],
+    requirements: [
+      {
+        text: 'Ai strigat numărul din burtă. Dochia vrea să-l PUI în cutiuță întâi, apoi să-l citești din ea — așa merge programul și la iarnă, când o să aibă alt număr de cojoace.',
+        check: (p) => readsFromBox(p, 'spune_cate'),
+      },
+    ],
+    fails: [
+      {
+        text: 'Ai numărat pe degete și te-ai încurcat la al șaselea. Dochia are mai multe cojoace decât degete la o mână, de-aia se ține socoteala într-o cutiuță!',
+        anim: 'none',
+        matches: (_p, r) => actionsIn(r).includes('numara_pe_degete'),
+      },
+      {
+        text: 'Ai scuturat cojocul și-a sărit praful în ochii Dochiei. Nu asta ți-a cerut, ci NUMĂRUL lor.',
+        anim: 'dark',
+        matches: (_p, r) => actionsIn(r).includes('scutura_cojocul'),
+      },
+      {
+        text: 'Cutiuța e goală și-ai spus «zero». Dochia s-a supărat și și-a mai pus un cojoc pe ea, de necaz.',
+        anim: 'none',
+        matches: (_p, r) => argOf(r, 'spune_cate') === 0,
+      },
+      {
+        text: 'Dochia are NOUĂ cojoace, nici mai multe, nici mai puține. Numără-le încă o dată pe gard și pune numărul bun în cutiuță.',
+        anim: 'none',
+        matches: (_p, r) => argOf(r, 'spune_cate') !== 9,
+      },
+      {
+        text: 'N-ai spus nimic — Dochia a așteptat cu mâna streașină la ochi. Pune nouă în cutiuță și spune-i câte sunt.',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  oile_la_numarat: {
+    id: 'oile_la_numarat',
+    title: 'Numărătoarea oilor — cutiuța care crește',
+    intro:
+      'BABA DOCHIA: „Șapte oi trec seara pe la poartă, una câte una. Pune cutiuța «oi» pe ZERO la început, apoi într-o buclă lasă o oaie să treacă ȘI schimbă cutiuța cu unu. La sfârșit, spune-mi câte au trecut — din cutiuță!"',
+    success:
+      'ȘAPTE oi, și tot șapte scrie și pe răboj! Ai numărat fără să te-ncurci. Dochia îți dă din brânza ei cea tare. (+6 brânză de burduf)',
+    rewardItems: [{ id: ConsumableId.BranzaBurduf, count: 6 }],
+    reward: '6 brânză de burduf — șase inimi înapoi și douăzeci de secunde de mers iute',
+    rewardRepeats: true,
+    actions: [
+      { id: 'trece_o_oaie', label: 'Lasă o oaie să treacă' },
+      { id: 'spune_cate', label: 'Spune câte oi au trecut: %1', hasArg: true },
+      { id: 'fluiera_a_paguba', label: 'Fluieră a pagubă' },
+    ],
+    variables: ['oi'],
+    allowRepeat: true,
+    allowVariables: true,
+    allowMath: true,
+    solution: [SET('oi', 0), REPEAT(7, [A('trece_o_oaie'), CHG('oi', 1)]), A('spune_cate', V('oi'))],
+    scenarios: [{ label: 'Seara, la poartă' }],
+    requirements: [
+      {
+        text: 'Merge, dar le-ai scris pe toate șapte de mână. Pune o buclă «repetă» — o oaie și-un pas de socoteală înăuntru, și gata toată turma.',
+        check: (p) => usesLoop(p),
+      },
+      {
+        text: 'Ai numărat bine, dar la sfârșit ai spus numărul din burtă. Citește-l din cutiuță, ca să meargă și când trec zece oi.',
+        check: (p) => readsFromBox(p, 'spune_cate'),
+      },
+    ],
+    fails: [
+      {
+        text: 'Ai fluierat a pagubă și oile s-au împrăștiat pe deal. Acum n-are cine să le mai numere.',
+        anim: 'dark',
+        matches: (_p, r) => actionsIn(r).includes('fluiera_a_paguba'),
+      },
+      {
+        text: 'Au trecut toate șapte oile și cutiuța zice tot ZERO — ai uitat «schimbă oi cu 1» ÎN buclă. Lupul aplaudă din tufiș.',
+        anim: 'dark',
+        matches: (_p, r) => argOf(r, 'spune_cate') === 0 && timesRan(r, 'trece_o_oaie') >= 7,
+      },
+      {
+        text: 'Cutiuța n-a pornit de la ZERO — ai numărat de la ce era în ea de ieri. Pune-o pe zero la început, mereu.',
+        anim: 'none',
+        matches: (_p, r) => timesRan(r, 'trece_o_oaie') === 7 && (argOf(r, 'spune_cate') ?? 0) > 7,
+      },
+      {
+        text: 'Pe poartă au trecut alte oi decât șapte, și Dochia le știe pe toate după nume. Numărul buclei nu-i bun!',
+        anim: 'dark',
+        matches: (_p, r) => timesRan(r, 'trece_o_oaie') !== 7,
+      },
+      {
+        text: 'Socoteala nu iese. Pune «oi» pe zero, apoi repetă de șapte ori cu oaia și schimbarea înăuntru, apoi spune câte au trecut.',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  tarcul: {
+    id: 'tarcul',
+    title: 'Țarcul — cât timp mai sunt oi afară',
+    intro:
+      'BABA DOCHIA: „Cinci oi au rămas afară. Pune-le într-o cutiuță și zi așa: CÂT TIMP «afara» e mai mare ca zero, bagă o oaie ȘI scade unu din cutiuță. Când ajunge la zero, bucla se oprește singură și tu închizi poarta. Bagă seama: dacă uiți să scazi, bucla se-nvârte până dimineață!"',
+    success:
+      'CINCI OI ÎN ȚARC și poarta închisă, exact când s-a golit cutiuța! Bucla s-a oprit singură, fără să-i spui tu când. Dochia îți dă fluierul ei fermecat. (+1 fluier fermecat)',
+    rewardItems: [{ id: ToolId.Fluier, count: 1 }],
+    reward: '1 fluier fermecat — click dreapta cu el în mână și monștrii din jur înțepenesc cinci secunde',
+    actions: [
+      { id: 'baga_o_oaie', label: 'Bagă o oaie în țarc' },
+      { id: 'inchide_poarta', label: 'Închide poarta' },
+      { id: 'numara_stelele', label: 'Numără stelele' },
+    ],
+    variables: ['afara'],
+    allowWhile: true,
+    allowVariables: true,
+    allowCompare: true,
+    allowMath: true,
+    solution: [
+      SET('afara', 5),
+      WHILE(CMP(V('afara'), '>', 0), [A('baga_o_oaie'), CHG('afara', -1)]),
+      A('inchide_poarta'),
+    ],
+    scenarios: [{ label: 'Seara' }],
+    requirements: [
+      {
+        text: 'Le-ai băgat pe rând, cu mâna. Dochia vrea bucla «cât timp» — ea trebuie să se oprească singură, când cutiuța ajunge la zero.',
+        check: (p) => hasNode(p, (n) => n.kind === 'while'),
+      },
+    ],
+    fails: [
+      {
+        text: 'Bucla nu se mai oprește — ai uitat să scazi din cutiuță, așa că «afara» rămâne mereu cinci. Dochia a albit la poartă până dimineață!',
+        anim: 'dark',
+        matches: (_p, r) => r.infinite,
+      },
+      {
+        text: 'Ai numărat stelele în loc de oi. Frumos, dar dimineața turma era la vecinul.',
+        anim: 'none',
+        matches: (_p, r) => actionsIn(r).includes('numara_stelele'),
+      },
+      {
+        text: 'Ai închis poarta ÎNTÂI și pe urmă ai vrut să bagi oile. S-au izbit toate cinci de scânduri, behăind indignate.',
+        anim: 'dark',
+        matches: (_p, r) => {
+          const acts = actionsIn(r);
+          return acts.indexOf('inchide_poarta') >= 0 && acts.indexOf('inchide_poarta') < acts.lastIndexOf('baga_o_oaie');
+        },
+      },
+      {
+        text: 'Ai băgat oile și-ai lăsat poarta VRAIȘTE. Dimineața țarcul era gol și turma pe deal, la mure.',
+        anim: 'dark',
+        matches: (_p, r) => !actionsIn(r).includes('inchide_poarta'),
+      },
+      {
+        text: 'În țarc n-au intrat exact cinci oi. Pune cinci în cutiuță și lasă bucla să le bage, una câte una.',
+        anim: 'dark',
+        matches: (_p, r) => timesRan(r, 'baga_o_oaie') !== 5,
+      },
+      {
+        text: 'Nu iese socoteala la țarc. Cutiuța pe cinci, «cât timp e mai mare ca zero» bagă o oaie și scade unu, apoi închide poarta.',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  drumul_oilor: {
+    id: 'drumul_oilor',
+    title: 'Drumul oilor — numărul care se schimbă',
+    intro:
+      'BABA DOCHIA: „Pășunea nu-i mereu la fel de departe, copile. Întreabă borna câți pași sunt până la ea, pune numărul în cutiuță, și repetă pasul de ATÂTEA ori cât zice cutiuța. Te-ncerc pe trei drumuri diferite — dacă scrii un număr de mână, la al doilea drum ajungi în râpă."',
+    success:
+      'AI NIMERIT PĂȘUNEA pe toate cele trei drumuri, oricât de departe era! Numărul l-a dat borna, nu tu. Dochia îți dă opincile ei iuți. (+1 opinci iuți)',
+    rewardItems: [{ id: GearId.OpinciIuti, count: 1 }],
+    reward: '1 opinci iuți — mergi cu un sfert mai repede și cazi de mai sus fără să te doară',
+    actions: [
+      { id: 'pas_inainte', label: 'Un pas înainte' },
+      { id: 'lasa_oile_sa_pasca', label: 'Lasă oile să pască' },
+      { id: 'striga_la_oi', label: 'Strigă la oi' },
+    ],
+    sensors: [{ id: 'pasi_pana_la_pasune', label: 'câți pași până la pășune' }],
+    variables: ['pasi'],
+    allowRepeat: true,
+    allowVariables: true,
+    allowMath: true,
+    solution: [
+      SET('pasi', S('pasi_pana_la_pasune')),
+      REPEAT(V('pasi'), [A('pas_inainte')]),
+      A('lasa_oile_sa_pasca'),
+    ],
+    scenarios: [
+      { label: 'Pășunea de aproape', sensors: { pasi_pana_la_pasune: 4 } },
+      { label: 'Pășunea de sus', sensors: { pasi_pana_la_pasune: 7 } },
+      { label: 'Pășunea de după stâncă', sensors: { pasi_pana_la_pasune: 2 } },
+    ],
+    fails: [
+      {
+        text: 'Ai strigat la oi și s-au speriat, luând-o înapoi spre stână. Drumul se face cu pașii, nu cu gura.',
+        anim: 'dark',
+        matches: (_p, r) => actionsIn(r).includes('striga_la_oi'),
+      },
+      {
+        text: 'Merge la un drum… dar Dochia a mutat stâna, și la celălalt te-ai oprit în râpă cu oile după tine! Nu scrie numărul de mână — întreabă borna și pune-l în cutiuță.',
+        anim: 'dark',
+        matches: (p) => hasNode(p, (n) => n.kind === 'repeat' && typeof n.count === 'number'),
+      },
+      {
+        text: 'Ai ajuns la pășune și te-ai întors fără să le lași să pască. Oile te-au privit lung, cu reproș.',
+        anim: 'none',
+        matches: (_p, r) => !actionsIn(r).includes('lasa_oile_sa_pasca'),
+      },
+      {
+        text: 'Le-ai lăsat să pască în drum, pe potecă, printre pietre. N-au găsit decât scaieți.',
+        anim: 'dark',
+        matches: (_p, r) => actionsIn(r, 'Pășunea de sus')[0] === 'lasa_oile_sa_pasca',
+      },
+      {
+        text: 'Nu nimerești pășunea. Întreabă borna, pune răspunsul în cutiuță, repetă pasul de atâtea ori, apoi lasă-le să pască.',
+        anim: 'dark',
+        matches: () => true,
+      },
+    ],
+  },
+  socoteala_stanii: {
+    id: 'socoteala_stanii',
+    title: 'Socoteala stânii — două cutiuțe deodată',
+    intro:
+      'BABA DOCHIA: „Asta-i cea mai grea, copile. Două cutiuțe: «lapte» și «branza», amândouă pe zero. Mulgi patru oi, și la fiecare pui doi litri în «lapte». Apoi, CÂT TIMP mai e lapte, faci un caș: scazi doi din lapte și adaugi unu la brânză. La urmă îmi spui câte cașuri au ieșit. Socotește bine — o cutiuță o umple pe cealaltă!"',
+    success:
+      'PATRU CAȘURI din opt litri, și amândouă cutiuțele au ieșit la socoteală! Ai pus o cutiuță să hrănească pe cealaltă. Dochia îți dă harta ei. (+1 hartă)',
+    rewardItems: [{ id: ToolId.Harta, count: 1 }],
+    reward: '1 hartă — ține-o în mână și vezi harta locului, cu zonele și casa însemnate',
+    actions: [
+      { id: 'mulge_o_oaie', label: 'Mulge o oaie' },
+      { id: 'fa_un_cas', label: 'Fă un caș' },
+      { id: 'spune_cate', label: 'Spune câte cașuri au ieșit: %1', hasArg: true },
+      { id: 'gusta_laptele', label: 'Gustă laptele' },
+    ],
+    variables: ['lapte', 'branza'],
+    allowRepeat: true,
+    allowWhile: true,
+    allowVariables: true,
+    allowCompare: true,
+    allowMath: true,
+    solution: [
+      SET('lapte', 0),
+      SET('branza', 0),
+      REPEAT(4, [A('mulge_o_oaie'), CHG('lapte', 2)]),
+      WHILE(CMP(V('lapte'), '>', 0), [A('fa_un_cas'), CHG('lapte', -2), CHG('branza', 1)]),
+      A('spune_cate', V('branza')),
+    ],
+    scenarios: [{ label: 'Seara la stână' }],
+    requirements: [
+      {
+        text: 'Merge, dar ai scris fiecare pas de mână. Dochia vrea buclele: una care mulge, una care face caș cât timp mai e lapte.',
+        check: (p) => usesLoop(p),
+      },
+      {
+        text: 'Numărul de la sfârșit trebuie citit din cutiuța «branza», nu scris de tine. Altfel n-ai socotit, ai ghicit.',
+        check: (p) => readsFromBox(p, 'spune_cate'),
+      },
+    ],
+    fails: [
+      {
+        text: 'Ai gustat din lapte până n-a mai rămas de caș. Dochia te-a văzut pe geam și-a râs cu toți dinții, câți i-au mai rămas.',
+        anim: 'none',
+        matches: (_p, r) => actionsIn(r).includes('gusta_laptele'),
+      },
+      {
+        text: 'Bucla de caș nu se mai oprește — ai uitat să SCAZI laptele. Cazanul dă pe dinafară și stâna-i lac de lapte!',
+        anim: 'splash',
+        matches: (_p, r) => r.infinite,
+      },
+      {
+        text: 'Ai muls alte oi decât patru. Dochia are exact patru oi cu lapte, restul sunt mieluțe.',
+        anim: 'dark',
+        matches: (_p, r) => timesRan(r, 'mulge_o_oaie') !== 4,
+      },
+      {
+        text: 'Din opt litri ies PATRU cașuri, nu atâtea câte-ai făcut tu. Un caș mănâncă doi litri, nici mai mult, nici mai puțin.',
+        anim: 'dark',
+        matches: (_p, r) => timesRan(r, 'fa_un_cas') !== 4,
+      },
+      {
+        text: 'Ai făcut cașurile ÎNAINTE să mulgi — din ce, din aer? Cazanul a scos un fum acru și-atât.',
+        anim: 'coal',
+        matches: (_p, r) => {
+          const acts = actionsIn(r);
+          return acts.indexOf('fa_un_cas') >= 0 && acts.indexOf('fa_un_cas') < acts.indexOf('mulge_o_oaie');
+        },
+      },
+      {
+        text: 'Ai spus un număr de cașuri care nu se potrivește cu ce-a ieșit din cazan. Citește din cutiuța «branza», nu din burtă.',
+        anim: 'none',
+        matches: (_p, r) => argOf(r, 'spune_cate') !== 4,
+      },
+      {
+        text: 'Socoteala stânii nu iese. Ambele cutiuțe pe zero, patru mulsuri a câte doi litri, apoi caș cât timp mai e lapte, apoi spune câte au ieșit.',
         anim: 'dark',
         matches: () => true,
       },

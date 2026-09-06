@@ -62,7 +62,7 @@ ajute mult.
 | 1 | Vatra | Secvențe | Bunicul Fierar | 6 | gata |
 | 2 | Lunca | Bucle | Baciul Luncii | 5 | gata |
 | 3 | Pădurea | Condiții, logică, decizia în buclă | Muma Pădurii | 5 | gata |
-| 4 | Stâna | Variabile, numărare, comparații, senzori | Baba Dochia | 5 | de făcut |
+| 4 | Stâna | Variabile, numărare, comparații, senzori | Baba Dochia | 5 | gata |
 | 5 | Târgul | Proceduri, parametri, compunere | Meșterul Olar | 5 | de făcut |
 | 6 | Prisaca | Evenimente | Moș Ilie Prisăcarul | 5 | de făcut |
 | 7 | Cetatea | Depanare, aleator, recapitulare | Pârcălabul Radu | 5 | de făcut |
@@ -125,25 +125,52 @@ rascruce:  A(opreste_te)
            IF(NOT(poteca_e_dreapta), [A(ia_o_la_stanga)], [A(mergi_inainte)])
 ```
 
+### Zona 4 — Stâna Babei Dochia, variabile
+
+Construită peste **Satul Bunicii**, satul care stătea gol lângă castelul lui
+Vlad, la x 36, z 36. Cele trei case și fântâna au rămas exact unde erau;
+stâna s-a ridicat în jurul lor. Toate cinci lecțiile se notează după purtare,
+cu cerințe care cer folosirea cutiuței, nu numărul scris de mână.
+
+| Lecție | Ce învață | Obiectul nou |
+|---|---|---|
+| Cojoacele Dochiei | prima cutiuță, acțiune cu argument | Cojoc, scade fiecare lovitură cu o inimă |
+| Numărătoarea oilor | contor care crește în buclă | 6 brânză de burduf |
+| Țarcul | cât timp, cu comparație pe cutiuță | Fluier fermecat |
+| Drumul oilor | senzor, cutiuța ca număr de pași | Opinci iuți |
+| Socoteala stânii | două cutiuțe care se hrănesc una pe alta | Hartă, minimapă |
+
+Soluțiile canonice:
+
+```
+cojoacele:        SET(cojoace,9), A(spune_cate, V(cojoace))
+oile_la_numarat:  SET(oi,0), R(7,[A(trece_o_oaie), CHG(oi,1)]), A(spune_cate,V(oi))
+tarcul:           SET(afara,5), W(CMP(V(afara),'>',0),[A(baga_o_oaie), CHG(afara,-1)]),
+                  A(inchide_poarta)
+drumul_oilor:     SET(pasi,S(pasi_pana_la_pasune)), R(V(pasi),[A(pas_inainte)]),
+                  A(lasa_oile_sa_pasca)
+socoteala_stanii: SET(lapte,0), SET(branza,0),
+                  R(4,[A(mulge_o_oaie), CHG(lapte,2)]),
+                  W(CMP(V(lapte),'>',0),[A(fa_un_cas), CHG(lapte,-2), CHG(branza,1)]),
+                  A(spune_cate, V(branza))
+```
+
+Structuri, toate în jurul caselor vechi: gardul cu nouă cojoace la vest de
+fântână, poarta de numărat la nord, țarcul mai departe spre nord pe terenul
+plat, poteca cu opt borne spre pășune, jgheabul de muls cu poliță de caș la
+sud-vest, și **răbojul**, o tăblie care scrie în lume ce ține fiecare cutiuță,
+în timp ce programul rulează.
+
+**De ce e așezată așa.** Satul stă pe o creastă îngustă: terenul cade șase
+cuburi spre vest și urcă în munte spre sud-est. Generatorul aplatizează un
+singur dreptunghi în jurul tuturor blocurilor unei construcții, așa că stâna
+e întinsă spre nord, unde terenul e la nivel, și nu trece de x 13 sau z 12.
+Așezarea finală sapă 14 cuburi din deal, față de 13 cât săpa satul singur —
+practic aceeași urmă.
+
 ---
 
 ## 5. Zonele de construit
-
-### Zona 4 — Stâna, variabile, Baba Dochia
-
-Origine propusă în lume: x 30, z -30. De validat pe teren înainte de a fixa.
-
-| Lecție | Concept nou | Program canonic | Obiectul nou |
-|---|---|---|---|
-| Cojoacele Dochiei | prima cutiuță, acțiune cu argument | `SET(cojoace,9), A(spune_cate, V(cojoace))` | Cojoc, scade daunele cu 1 |
-| Numărătoarea oilor | contor în buclă | `SET(oi,0), R(7,[A(trece_o_oaie), CHG(oi,1)]), A(spune_cate,V(oi))` | Brânză de burduf |
-| Țarcul | cât timp, cu comparație | `SET(afara,5), W(CMP(V(afara),'>',0),[A(baga_o_oaie), CHG(afara,-1)]), A(inchide_poarta)` | Fluier fermecat |
-| Drumul oilor | senzor, variabila ca număr de pași | `SET(pasi,S(pasi_pana_la_pasune)), R(V(pasi),[A(pas_inainte)]), A(lasa_oile_sa_pasca)` | Opinci iuți |
-| Socoteala stânii | două cutiuțe care se influențează | mulge de patru ori, apoi cât timp mai e lapte fă caș | Hartă, minimapă |
-
-Structuri: țarc cu poartă, colibă, gard cu nouă cojoace care cad unul câte
-unul, jgheab de muls, potecă cu opt borne spre pășune, un răboj care arată
-valorile cutiuțelor pe măsură ce se schimbă.
 
 ### Zona 5 — Târgul, proceduri, Meșterul Olar
 
@@ -227,15 +254,24 @@ Obiectele deja în joc, primele șaisprezece:
 | 15 | Arc cu săgeți | 105 | lovește de departe, singurul răspuns la Zmeu | Ciupercile |
 | 16 | Aripile Zmeului | 506 | deblochează zborul pe tasta F | Răscrucea |
 
-Obiectele următoarelor zone, în ordinea lecțiilor: Cojoc, Brânză de burduf,
-Fluier fermecat, Opinci iuți, Hartă, Busolă, Pat, Buzdugan, Piatră de
-praștie, Ulcior cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de
+Obiectele Stânii, adăugate la faza 2:
+
+| # | Obiect | Id | Ce face | Lecția |
+|---|---|---|---|---|
+| 17 | Cojoc | 502 | fiecare lovitură primită doare cu o inimă mai puțin | cojoacele |
+| 18 | Brânză de burduf | 404 | trei inimi, plus douăzeci de secunde de mers iute | oile_la_numarat |
+| 19 | Fluier fermecat | 307 | monștrii pe doisprezece cuburi înțepenesc cinci secunde | tarcul |
+| 20 | Opinci iuți | 503 | viteză cu un sfert mai mare, cazi de la două cuburi mai sus | drumul_oilor |
+| 21 | Hartă | 309 | ținută în mână, minimapă cu zonele și casa însemnate | socoteala_stanii |
+
+Obiectele zonelor rămase, în ordinea lecțiilor: Busolă, Pat, Buzdugan, Piatră
+de praștie, Ulcior cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de
 prisăcar, Scut, Cămașă de zale, Oglindă fermecată, Sabia lui Făt-Frumos,
 Mărul de aur.
 
-Patru dintre ele sunt deja legate în cod pentru zonele viitoare, dar nu le dă
-încă nicio lecție: Cojocul, Cămașa de zale, Masca de prisăcar și creșterea
-vieții maxime de la Mărul de aur.
+Trei dintre ele sunt deja legate în cod pentru zonele viitoare, dar nu le dă
+încă nicio lecție: Cămașa de zale, Masca de prisăcar și creșterea vieții
+maxime de la Mărul de aur.
 
 ---
 
@@ -246,7 +282,7 @@ vieții maxime de la Mărul de aur.
 | 0a | Interpretorul, modelul de program, notarea hibridă, tabla Blockly | mare | gata |
 | 0b | Zone pe tabel, infrastructura obiectelor | mare | gata |
 | 1 | Pădurea deschisă, două lecții noi, obiectele 1–16 | medie | gata |
-| 2 | Stâna, variabile, obiectele 17–21 | mare | de făcut |
+| 2 | Stâna, variabile, obiectele 17–21 | mare | gata |
 | 3 | Târgul, proceduri, obiectele 22–26 | medie spre mare | de făcut |
 | 4 | Prisaca, evenimente, obiectele 27–31 | medie | de făcut |
 | 5 | Cetatea, capstone, obiectele 32–36 | medie | de făcut |
@@ -275,6 +311,18 @@ Fișiere noi: `src/items/Consumable.ts`, `src/items/Gear.ts`,
 `src/items/Items.ts`, `src/player/StatusEffects.ts`,
 `src/world/SpecialBlockIndex.ts`.
 
+### Ce s-a construit la faza 2
+
+Zona 4 peste satul gol de lângă castel. Panoul Cutiuțe din tablă și fereastra
+proprie pentru numele unei cutiuțe, scrise la faza 0a, intră abia acum în
+folosință, fiindcă astea sunt primele lecții cu variabile. Răbojul e o
+tăblie din lume legată de același flux: tabla anunță fiecare schimbare de
+cutiuță, iar tăblia o scrie pe scândură.
+
+Mecanici noi de motor: armura și viteza care vin din traistă, iertarea la
+cădere, înghețarea monștrilor, și minimapa din `src/ui/MiniMap.ts`, desenată
+de patru ori pe secundă doar cât harta e în mână.
+
 ### Ce s-a construit la faza 1
 
 Muma Pădurii a devenit ghid clicabil cu panoul ei, cele trei lecții vechi din
@@ -289,19 +337,21 @@ otrăvitoare, răscrucea cu trei poteci, stâlpul cu torță și copacul reper.
 Scripturile de verificare stau în directorul de lucru al sesiunii, nu în
 repo, fiindcă pornesc un browser real peste serverul de dezvoltare.
 
-| Script | Ce verifică | Rezultat la faza 1 |
+| Script | Ce verifică | Rezultat la faza 2 |
 |---|---|---|
-| `check_puzzles.js` | datele lecțiilor: soluția rezolvă toate scenariile, niciun mesaj de eșec nu se declanșează pe soluție, toate acțiunile și condițiile există, fiecare răsplată e un obiect cunoscut, fiecare lecție e într-o singură zonă | 16 lecții curate |
-| `regress.js` | fiecare lecție rezolvată prin tablă, cu răsplata numărată în traistă, plus câte un program greșit pentru fiecare mesaj de eșec | 16 din 16, 33 mesaje din 33 |
+| `check_puzzles.js` | datele lecțiilor: soluția rezolvă toate scenariile, niciun mesaj de eșec nu se declanșează pe soluție, toate acțiunile și condițiile există, fiecare răsplată e un obiect cunoscut, fiecare lecție e într-o singură zonă | 21 lecții curate |
+| `regress.js` | fiecare lecție rezolvată prin tablă, cu răsplata numărată în traistă, plus câte un program greșit pentru fiecare mesaj de eșec | 21 din 21, 55 mesaje din 55 |
 | `alt_solutions.js` | programe cu altă formă dar aceeași purtare trebuie acceptate | 5 din 5 |
-| `items.js` | câte o aserțiune pentru fiecare mecanică nouă de obiect | 17 din 17 |
+| `items.js` | câte o aserțiune pentru fiecare mecanică de obiect din faza 1 | 17 din 17 |
+| `items_stana.js` | aceleași, pentru cele cinci obiecte ale Stânii | 5 din 5 |
+| `requirements.js` | variantele echivalente trec, iar cele care sar peste concept sunt refuzate cu textul cerinței | 9 din 9 |
 | `roundtrip.js` | un program dus în tablă și adus înapoi rămâne identic | identic |
 
 Comanda de pornire a serverului pentru ele: `npx vite --port 5210 --strictPort`.
 
 ---
 
-## 9. Testul manual după faza 1
+## 9. Testele manuale
 
 ### 9.1 Pregătire
 
@@ -333,7 +383,7 @@ Unde dai click dreapta pentru lecțiile din Pădure:
 | Răscrucea | poteca de piatră | -40 | -6 |
 | Muma Pădurii | direct pe ea, deschide panoul | -53 | -14 |
 
-### 9.2 Lecțiile și tabla de blocuri
+### 9.2 Pădurea și tabla de blocuri, faza 1
 
 - [ ] **Muma Pădurii e ghid.** Click dreapta pe ea deschide panoul cu
       explicația despre condiții și cu toate cele cinci lecții, fiecare cu
@@ -365,7 +415,7 @@ Unde dai click dreapta pentru lecțiile din Pădure:
 - [ ] **Codul Python.** La Răscruce, secțiunea „Vezi codul adevărat" arată
       `if` cu `and`, `or` și `not` scrise corect.
 
-### 9.3 Obiectele
+### 9.3 Obiectele fazei 1
 
 - [ ] **Găleata.** Click dreapta pe apă o umple, click dreapta pe loc liber o
       varsă. Pe pătratele lecțiilor nu merge, se aude doar un clinchet.
@@ -418,15 +468,68 @@ Unde dai click dreapta pentru lecțiile din Pădure:
       pe niciun pătrat de lecție, inclusiv în poiana cu ciuperci și pe
       răscruce.
 
-### 9.6 Ce nu se poate testa încă
+### 9.6 Stâna Babei Dochia, faza 2
 
-Panoul Cutiuțe și fereastra pentru numele unei cutiuțe sunt scrise, dar nicio
-lecție din faza asta nu folosește variabile, deci apar abia la Stână. La fel,
-programul stricat care se repară singur, cojocul, cămașa de zale, masca de
-prisăcar și creșterea vieții maxime sunt legate în cod pentru zonele
-următoare, dar nu le dă încă nicio lecție. Blocarea unei lecții pentru un
-singur jucător în multiplayer funcționează doar după redeploy-ul serverului
-de pe Render.
+Satul e la x 36, z 36, lângă castel. Unde dai click dreapta:
+
+| Lecție | Pe ce dai click | x | z |
+|---|---|---|---|
+| Cojoacele | un stâlp din gardul de cojoace | 25 | 38 |
+| Numărătoarea oilor | pământul bătut de sub poartă | 36 | 25 |
+| Țarcul | un buștean din gardul țarcului | 41 | 21 |
+| Drumul oilor | o bornă de pe potecă | 33 | 21 |
+| Socoteala stânii | jgheabul de muls | 28 | 43 |
+| Baba Dochia | direct pe ea, deschide panoul | 36 | 39 |
+
+- [ ] **Satul a rămas sat.** Cele trei case și fântâna sunt exact unde erau,
+      cu stâna ridicată în jurul lor, iar marginile pad-ului plat nu fac
+      faleze mai mari decât înainte.
+- [ ] **Baba Dochia e ghid.** Click dreapta pe ea deschide panoul cu
+      explicația despre cutiuțe și cele cinci lecții.
+- [ ] **Panoul Cutiuțe.** La orice lecție din Stână, sub tablă apare rândul
+      „🧮 Cutiuțe" și valorile se schimbă în timp real cât rulează programul.
+      Aici se vede prima dată, fiindcă sunt primele lecții cu variabile.
+- [ ] **Răbojul.** Tăblia de lângă Dochia scrie aceleași valori, în lume, în
+      timp ce programul rulează, și se golește la fiecare rulare nouă.
+- [ ] **Creezi o cutiuță.** În categoria Cutiuțe, apasă „Creează o variabilă".
+      Trebuie să apară fereastra de lemn a jocului, nu cea a browserului.
+- [ ] **Numele nu contează.** La Numărătoarea oilor, botează cutiuța „mieluțe"
+      în loc de „oi". Programul trebuie să treacă la fel.
+- [ ] **Cerințele.** La Numărătoarea oilor, scrie cele șapte oi pe rând, fără
+      buclă. Trebuie să fii refuzat cu mesajul care-ți cere bucla, nu cu un
+      eșec obișnuit. La fel, la Cojoacele, scrie numărul 9 direct în bloc: te
+      refuză și-ți cere să-l citești din cutiuță.
+- [ ] **Bucla fără capăt.** La Țarc, scoate „schimbă afara cu -1" din buclă.
+      Trebuie să primești mesajul cu Dochia care a albit la poartă, nu o
+      pagină înghețată.
+- [ ] **Trei drumuri.** La Drumul oilor, pune un număr fix în buclă, de
+      exemplu 4. Trece primul scenariu dar pică la al doilea, cu mesajul
+      despre râpă. Cu senzorul în cutiuță, trec toate trei.
+- [ ] **Efectele în lume.** După fiecare rezolvare: cojoacele atârnă pe gard,
+      oile numărate se aliniază dincolo de poartă, țarcul se închide și apar
+      cinci oi înăuntru, poteca se înverzește, iar polița se umple cu cașuri.
+
+### 9.7 Obiectele Stânii
+
+- [ ] **Cojoc.** Lasă un monstru să te lovească fără el, apoi cu el în
+      traistă. A doua lovitură trebuie să doară cu o inimă mai puțin.
+- [ ] **Brânză de burduf.** Sub jumătate de viață: trei inimi înapoi și
+      douăzeci de secunde vizibil mai iute.
+- [ ] **Fluier fermecat.** Noaptea, cu monștri aproape, click dreapta. Cei pe
+      doisprezece cuburi înțepenesc cinci secunde, sclipind albăstrui, iar
+      fluierul intră în răgaz douăzeci de secunde.
+- [ ] **Opinci iuți.** Mergi cu ele și fără ele: diferența se simte. Sari de
+      la vreo șapte cuburi: fără ele doare, cu ele nu.
+- [ ] **Hartă.** Selectează-o: apare harta în colțul din dreapta sus, cu
+      terenul, numele zonelor și săgeata ta roșie care se rotește. Schimbă
+      obiectul din mână: harta dispare.
+
+### 9.8 Ce nu se poate testa încă
+
+Programul stricat care se repară singur, cămașa de zale, masca de prisăcar și
+creșterea vieții maxime sunt legate în cod pentru zonele următoare, dar nu le
+dă încă nicio lecție. Blocarea unei lecții pentru un singur jucător în
+multiplayer funcționează doar după redeploy-ul serverului de pe Render.
 
 ---
 

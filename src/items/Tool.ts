@@ -11,12 +11,15 @@ export const enum ToolId {
   Undita = 304, // fish from any water
   Galeata = 305, // scoops water up…
   GaleataPlina = 306, // …and pours it out again
+  Fluier = 307, // freezes the monsters around you for a few seconds
+  Harta = 309, // a minimap while it's in your hand
 }
 
 export interface ToolDef {
   name: string;
-  shape: 'pickaxe' | 'axe' | 'shovel' | 'compass' | 'rod' | 'bucket' | 'bucket_full';
+  shape: 'pickaxe' | 'axe' | 'shovel' | 'compass' | 'rod' | 'bucket' | 'bucket_full' | 'whistle' | 'map';
   colors: { handle: number; head: number };
+  cooldownSeconds?: number; // for the tools you trigger, not hold
 }
 
 export const TOOLS: Record<number, ToolDef> = {
@@ -26,9 +29,20 @@ export const TOOLS: Record<number, ToolDef> = {
   [ToolId.Undita]: { name: 'Undiță', shape: 'rod', colors: { handle: 0xa07a48, head: 0xd8d8d8 } },
   [ToolId.Galeata]: { name: 'Găleată', shape: 'bucket', colors: { handle: 0x4a4a4a, head: 0x8a8a8a } },
   [ToolId.GaleataPlina]: { name: 'Găleată cu apă', shape: 'bucket_full', colors: { handle: 0x4a4a4a, head: 0x3a78d8 } },
+  [ToolId.Fluier]: { name: 'Fluier fermecat', shape: 'whistle', colors: { handle: 0x8a6a3a, head: 0xd8c07a }, cooldownSeconds: 20 },
+  [ToolId.Harta]: { name: 'Hartă', shape: 'map', colors: { handle: 0x8a6a3a, head: 0xf0e0b8 } },
 };
 
-export const TOOL_IDS: ToolId[] = [ToolId.Tarnacop, ToolId.Topor, ToolId.Lopata, ToolId.Undita, ToolId.Galeata, ToolId.GaleataPlina];
+export const TOOL_IDS: ToolId[] = [
+  ToolId.Tarnacop,
+  ToolId.Topor,
+  ToolId.Lopata,
+  ToolId.Undita,
+  ToolId.Galeata,
+  ToolId.GaleataPlina,
+  ToolId.Fluier,
+  ToolId.Harta,
+];
 
 export function isTool(id: number): boolean {
   return id >= 300 && id < 400;
@@ -99,6 +113,27 @@ export function makeToolIcon(id: ToolId): HTMLCanvasElement {
       if (shape === 'bucket_full') rect(4, 6, 11, 8, head);
       else rect(4, 6, 11, 7, 0x6a6a6a);
       break;
+    case 'whistle':
+      // A shepherd's pipe with finger holes and a puff of sound
+      for (let i = 0; i <= 9; i++) {
+        px(3 + i, 12 - i, handle);
+        px(4 + i, 12 - i, head);
+      }
+      for (const [x, y] of [[6, 9], [8, 7], [10, 5]]) px(x, y, 0x5a3a1a);
+      px(13, 2, 0xffffff);
+      px(14, 1, 0xffffff);
+      px(12, 1, 0xffffff);
+      break;
+    case 'map':
+      // A rolled parchment with a route drawn on it
+      rect(2, 3, 13, 12, head);
+      rect(1, 2, 14, 2, handle);
+      rect(1, 13, 14, 13, handle);
+      for (let i = 0; i < 5; i++) px(4 + i, 9 - i, 0x8a2a2a);
+      for (let i = 0; i < 3; i++) px(9 + i, 5 + i, 0x8a2a2a);
+      px(4, 10, 0x2a6a2a);
+      px(12, 8, 0x2a6a2a);
+      break;
   }
   return canvas;
 }
@@ -145,6 +180,17 @@ export function buildToolModel(id: ToolId): THREE.Group {
       box(group, 0.16, 0.16, 0.16, 0x8a8a8a, 0, 0.05, 0);
       box(group, 0.18, 0.015, 0.015, handle, 0, 0.14, 0);
       if (TOOLS[id].shape === 'bucket_full') box(group, 0.13, 0.02, 0.13, head, 0, 0.12, 0);
+      break;
+    case 'whistle': {
+      const pipe = box(group, 0.04, 0.34, 0.04, handle, 0, 0.14, 0);
+      pipe.rotation.z = 0.4;
+      box(group, 0.055, 0.06, 0.055, head, -0.06, 0.29, 0);
+      break;
+    }
+    case 'map':
+      box(group, 0.22, 0.01, 0.17, head, 0, 0.05, 0);
+      box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, 0.085);
+      box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, -0.085);
       break;
   }
   return group;

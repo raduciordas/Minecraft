@@ -271,6 +271,7 @@ export class Mob {
   private dieTimer = 0;
   private hitFlashTimer = 0;
   private slowTimer = 0;
+  private stunTimer = 0; // frozen stiff by the magic whistle
   private teleportTimer = 2;
   private emissiveDirty = false;
   private attackCooldown = 0;
@@ -307,6 +308,16 @@ export class Mob {
 
   get damage(): number {
     return this.spec.damage;
+  }
+
+  // Frozen where it stands: no walking, no chasing, no hitting. The magic
+  // whistle does this to everything within earshot.
+  stun(seconds: number): void {
+    this.stunTimer = Math.max(this.stunTimer, seconds);
+  }
+
+  get stunned(): boolean {
+    return this.stunTimer > 0;
   }
 
   // A weapon (or fist) strike: damage, knockback impulse, optional chill
@@ -347,6 +358,7 @@ export class Mob {
     this.attackCooldown -= dt;
     this.hitFlashTimer -= dt;
     this.slowTimer -= dt;
+    this.stunTimer -= dt;
 
     // Ambient sounds when the player is close enough to hear
     if (ctx) {
@@ -361,7 +373,7 @@ export class Mob {
     // Hostile mobs hunt the player at night; everyone else wanders
     let chasing = false;
     let distToPlayer = Infinity;
-    if (this.spec.hostile && ctx && ctx.isNight && !ctx.playerDead && !this.burning) {
+    if (this.spec.hostile && ctx && ctx.isNight && !ctx.playerDead && !this.burning && this.stunTimer <= 0) {
       const dx = ctx.player.x - this.body.x;
       const dz = ctx.player.z - this.body.z;
       distToPlayer = Math.hypot(dx, dz);
@@ -413,6 +425,7 @@ export class Mob {
 
     let speed = this.walking ? (chasing ? this.spec.chaseSpeed : this.spec.speed) : 0;
     if (this.slowTimer > 0) speed *= 0.45;
+    if (this.stunTimer > 0) speed = 0; // rooted to the spot by the whistle
 
     if (this.spec.flying) {
       this.updateFlying(world, dt, ctx, chasing, speed);
@@ -435,7 +448,7 @@ export class Mob {
       }
     }
 
-    this.legPhase += dt * (this.walking ? (chasing ? 10 : 7) : 0);
+    this.legPhase += dt * (this.walking && this.stunTimer <= 0 ? (chasing ? 10 : 7) : 0);
     this.syncTransform();
   }
 
@@ -557,7 +570,7 @@ export class Mob {
   }
 
   private updateEmissive(): void {
-    const active = this.burning || this.hitFlashTimer > 0;
+    const active = this.burning || this.hitFlashTimer > 0 || this.stunTimer > 0;
     if (!active && !this.emissiveDirty) return;
     this.group.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
@@ -567,6 +580,8 @@ export class Mob {
         material.emissive.setRGB(flicker, flicker * 0.35, 0);
       } else if (this.hitFlashTimer > 0) {
         material.emissive.setRGB(0.8, 0.05, 0.05);
+      } else if (this.stunTimer > 0) {
+        material.emissive.setRGB(0.15, 0.3, 0.5); // an icy sheen while frozen
       } else {
         material.emissive.setRGB(0, 0, 0);
       }

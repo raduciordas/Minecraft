@@ -67,6 +67,8 @@ const TOOL_NOTES: Record<number, string> = {
   [ToolId.Undita]: 'Ține-o în mână, uită-te la apă și dă click dreapta: după două secunde tragi un Pește (mâncare). Singura mâncare care nu vine din lecții.',
   [ToolId.Galeata]: 'Ține-o în mână, uită-te la un cub de apă și dă click dreapta: se umple. Singurul fel de a lua apă din lume.',
   [ToolId.GaleataPlina]: 'Click dreapta pe un loc liber varsă apa acolo. Fă-ți iaz, adăpătoare sau râu în curte.',
+  [ToolId.Fluier]: 'Click dreapta cu el în mână și toți monștrii pe doisprezece cuburi în jur înțepenesc cinci secunde, sclipind albăstrui. Apoi fluierul se odihnește douăzeci de secunde. Bun când te-au înconjurat noaptea.',
+  [ToolId.Harta]: 'Ține-o în mână și-ți apare harta locului în colț: pădurea, apa, munții, plus numele zonelor și unde-i casa. Săgeata roșie ești tu și se întoarce odată cu tine.',
 };
 
 const THROWABLE_NOTES: Record<number, string> = {
@@ -80,11 +82,14 @@ const CONSUMABLE_NOTES: Record<number, string> = {
   [ConsumableId.Placinta]: 'MÂNCARE: două inimi și jumătate înapoi, dintr-o singură plăcintă.',
   [ConsumableId.Mar]: 'MÂNCARE: o inimă înapoi. Vin mulți deodată, numai buni de luat la drum.',
   [ConsumableId.Peste]: 'MÂNCARE: două inimi înapoi. Se pescuiește cu Undița din orice apă.',
+  [ConsumableId.BranzaBurduf]: 'MÂNCARE tare, de stână: trei inimi înapoi, și douăzeci de secunde mergi cu o treime mai iute. Bună înainte de o fugă lungă.',
 };
 
 const GEAR_NOTES: Record<number, string> = {
   [GearId.AmuletaUsturoi]: 'TALISMAN: cât o ai în traistă, monștrii te observă doar de la jumătate din distanța obișnuită. Nu trebuie pusă nicăieri — lucrează din traistă.',
   [GearId.AripileZmeului]: 'ZBOR: fără ele, tasta F (și butonul ✈) nu fac nimic. Cu ele în traistă, zbori cât vrei. Le dă Muma Pădurii la ultima ei lecție, Răscrucea.',
+  [GearId.Cojoc]: 'ARMURĂ: cât îl ai în traistă, fiecare lovitură primită te doare cu o inimă mai puțin. Nu trebuie îmbrăcat, lucrează din traistă.',
+  [GearId.OpinciIuti]: 'IUȚEALĂ: mergi cu un sfert mai repede și cazi de la două cuburi mai de sus fără să te doară. Cu ele, drumul între zone e mult mai scurt.',
 };
 
 export interface HelpItem {

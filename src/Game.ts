@@ -21,8 +21,9 @@ import { BlockType, isWater, isSolid, isDoor, isClimbable, toggleDoorId, require
 import { SpecialBlockIndex } from './world/SpecialBlockIndex';
 import { StatusEffects } from './player/StatusEffects';
 import { CONSUMABLES, ConsumableId, isConsumable } from './items/Consumable';
-import { GearId } from './items/Gear';
+import { GearId, GEAR_ARMOUR, GEAR_SPEED, GEAR_FALL_GRACE } from './items/Gear';
 import { isPlaceable } from './items/Items';
+import { MiniMap } from './ui/MiniMap';
 import { raycastVoxels } from './world/raycast';
 import { TextureAtlas } from './rendering/TextureAtlas';
 import { ChunkMeshManager } from './rendering/ChunkMeshManager';
@@ -49,6 +50,14 @@ import { isEarned, isKnownItem, itemName } from './items/Items';
 // Everything the lesson-data sanity check (scratch test check_puzzles.js)
 // needs from inside the page
 const PUZZLE_CHECK = { evaluate, tracesEqual, programEquivalent, normalise, gradesByTrace, ZONE_DEFS, ZONES, isEarned, isKnownItem, itemName };
+
+// What the Hartă names: every teaching zone, plus the two landmarks a child
+// navigates by
+const ZONE_MARKS = [
+  ...ZONE_DEFS.map((z) => ({ x: z.origin.x, z: z.origin.z, label: ZONES[z.id]?.guide.replace(/^\S+\s/, '') ?? z.id })),
+  { x: 80, z: 0, label: 'Castelul' },
+  { x: 0, z: 0, label: 'Acasă' },
+];
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
 import { TouchControls } from './ui/TouchControls';
 import { HealthHud } from './ui/HealthHud';
@@ -61,7 +70,7 @@ import { Health } from './player/Health';
 import { SoundManager } from './Sound';
 import { WEAPONS, WeaponId, isWeapon } from './items/Weapon';
 import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Throwable';
-import { ToolId, isTool } from './items/Tool';
+import { TOOLS, ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
 import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
@@ -75,6 +84,8 @@ const TRAP_DAMAGE = 6;
 const TRAP_SLOW_SECONDS = 4;
 const MATTRESS_BOUNCE = 9; // the upward speed a straw mattress throws you back with
 const FISHING_SECONDS = 2;
+const WHISTLE_RANGE = 12; // monsters this close freeze when the whistle blows
+const WHISTLE_STUN_SECONDS = 5;
 const AXE_LOG_YIELD = 3;
 const SHOVEL_DEPTH = 3;
 const SOFT_EARTH = new Set<number>([BlockType.Dirt, BlockType.Grass, BlockType.Sand]);
@@ -195,7 +206,9 @@ export class Game {
   private heldLight: THREE.PointLight | null = null; // a torch in hand lights the way
   private effects = new StatusEffects();
   private specials: SpecialBlockIndex;
+  private miniMap: MiniMap;
   private fishingTimer = 0; // > 0 while a line is in the water
+  private toolCooldowns = new Map<number, number>(); // for the tools you trigger
   private playerName: string;
   private network = new NetworkClient();
   private remotePlayers: RemotePlayerManager;
@@ -249,6 +262,7 @@ export class Game {
     this.lightManager = new LightManager(this.scene);
     this.doorRenderer = new DoorRenderer(this.scene, atlas);
     this.specials = new SpecialBlockIndex([BlockType.Scarecrow, BlockType.WolfTrap, BlockType.StrawMattress]);
+    this.miniMap = new MiniMap(document.getElementById('minimap')!, ZONE_MARKS);
 
     const overlay = document.getElementById('overlay')!;
     this.input = new InputController(this.renderer.domElement, overlay);
@@ -314,6 +328,7 @@ export class Game {
         this.vatra.performStep(pz, block, arg);
       },
       onEvent: (pz: string, eventId: string) => this.vatra.performEvent(pz, eventId),
+      onVar: (pz: string, name: string, value: number) => this.vatra.performVar(pz, name, value),
       onRunEnd: () => {
         this.dayNight.preview = null;
       },
@@ -343,8 +358,9 @@ export class Game {
       }
       this.sound.land(impactSpeed > FALL_SAFE_SPEED);
       if (!this.player.flying) {
-        // ~ (fall height in blocks) - 3, derived from v² = 2·g·h
-        const damage = Math.floor((impactSpeed * impactSpeed) / (2 * 25) - 3);
+        // ~ (fall height in blocks) - 3, derived from v² = 2·g·h. Nimble
+        // footwear buys a couple more blocks before it starts to hurt.
+        const damage = Math.floor((impactSpeed * impactSpeed) / (2 * 25) - 3 - this.fallGrace());
         if (damage > 0) this.health.damage(damage);
       }
     };
@@ -528,8 +544,12 @@ export class Game {
     if (this.worldReady && !this.health.dead) {
       // Passive bonuses from what's in the pack and what was eaten
       this.effects.update(dt);
-      this.player.speedMul = this.effects.speedMul;
+      this.player.speedMul = this.effects.speedMul * this.gearSpeed();
       this.health.regenMul = this.effects.regenMul;
+      for (const [id, left] of this.toolCooldowns) {
+        if (left <= dt) this.toolCooldowns.delete(id);
+        else this.toolCooldowns.set(id, left - dt);
+      }
       const mobContext = {
         player: this.player.body,
         isNight: this.dayNight.isNight,
@@ -634,6 +654,9 @@ export class Game {
     }
 
     this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    // The Hartă only draws while it's actually in hand
+    this.miniMap.setVisible(this.hotbar.selectedItem === ToolId.Harta && this.owns(ToolId.Harta) && this.input.active);
+    this.miniMap.update(now, this.world, this.player.body.x, this.player.body.z, this.input.yaw);
     this.updateHand(dt);
     this.updateSelectionBox();
     this.hud.tick(now);
@@ -667,9 +690,29 @@ export class Game {
   // Damage a blow takes off before it lands, from the gear in the pack
   private armor(): number {
     let armor = 0;
-    if (this.owns(GearId.Cojoc)) armor += 1;
-    if (this.owns(GearId.CamasaZale)) armor += 2;
+    for (const [id, value] of Object.entries(GEAR_ARMOUR)) {
+      if (this.owns(Number(id))) armor += value;
+    }
     return armor;
+  }
+
+  // Walking speed multiplier from the gear in the pack (the food's own bonus
+  // is multiplied on top, in the frame loop)
+  private gearSpeed(): number {
+    let mul = 1;
+    for (const [id, value] of Object.entries(GEAR_SPEED)) {
+      if (this.owns(Number(id))) mul *= value;
+    }
+    return mul;
+  }
+
+  // Extra blocks of fall the gear absorbs before it starts to hurt
+  private fallGrace(): number {
+    let grace = 0;
+    for (const [id, value] of Object.entries(GEAR_FALL_GRACE)) {
+      if (this.owns(Number(id))) grace += value;
+    }
+    return grace;
   }
 
   private mobHit(mob: Mob): void {
@@ -1282,6 +1325,25 @@ export class Game {
       this.sound.splash();
       return true;
     }
+    if (tool === ToolId.Fluier) {
+      if ((this.toolCooldowns.get(tool) ?? 0) > 0) {
+        this.showToast('Fluierul încă își trage sufletul…');
+        return true;
+      }
+      this.toolCooldowns.set(tool, TOOLS[tool].cooldownSeconds ?? 20);
+      let frozen = 0;
+      for (const mob of this.mobManager.all()) {
+        if (mob.dying || !mob.hostile) continue;
+        const d = Math.hypot(mob.body.x - this.player.body.x, mob.body.z - this.player.body.z);
+        if (d > WHISTLE_RANGE) continue;
+        mob.stun(WHISTLE_STUN_SECONDS);
+        frozen++;
+      }
+      this.sound.success();
+      this.showToast(frozen > 0 ? `🎵 Fluierul a înțepenit ${frozen} monștri!` : '🎵 Ai fluierat… dar n-avea cine să te-audă.');
+      return true;
+    }
+    if (tool === ToolId.Harta) return false; // the map works by being held, not clicked
     if (tool === ToolId.Undita) {
       if (this.fishingTimer > 0) return true;
       const hit = this.raycastIncludingWater();

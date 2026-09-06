@@ -24,7 +24,8 @@ import {
 import { BlockType } from './Block';
 import { Chunk } from './Chunk';
 import {
-  buildGrandmaVillage,
+  buildStanaZone,
+  STANA_ORIGIN,
   buildVladCastle,
   buildVatraSatului,
   VATRA_ORIGIN,
@@ -81,7 +82,7 @@ export class TerrainGenerator {
     // Satul Bunicii sits in the flatland just outside the mountain ring;
     // Castelul lui Vlad Tepes crowns a peak on the ring itself.
     this.structures = [
-      buildGrandmaVillage(36, 36),
+      buildStanaZone(STANA_ORIGIN.x, STANA_ORIGIN.z),
       buildVladCastle(80, 0),
       buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
       buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),

@@ -72,19 +72,127 @@ function addWell(blocks: StructureBlock[], hx: number, hz: number): void {
   }
 }
 
-// Satul Bunicii: a handful of small huts and a well, tucked at the foot of the Carpathians
-export function buildGrandmaVillage(originX: number, originZ: number): StructureTemplate {
+// Where Zona 4 (Stâna — Variabile) lives: the old Satul Bunicii, the one
+// standing empty near Vlad's castle. Its three huts and its well stay exactly
+// where they were; Baba Dochia's sheepfold is built around them.
+export const STANA_ORIGIN = { x: 36, z: 36 };
+
+// The village stands on a narrow shelf: the ground falls away sharply to the
+// west and climbs into a mountain to the south-east. The pad the generator
+// flattens is one rectangle around every block of the template, so the fold
+// is laid out NORTH of the huts, over the level ground, and never reaches
+// past dx 13 or dz 12 — beyond those the pad would start carving the
+// mountainside instead of resting on it.
+
+// The nine sheepskin coats hang on a fence just west of the well
+export const COAT_DX = -11;
+export const COAT_DZ = [-3, -2, -1, 0, 1, 2, 3, 4, 5];
+// The counting gate north of the huts: sheep file through it one by one and
+// line up on the trodden ground beyond
+export const GATE_DZ = -11;
+export const GATE_DX = [-4, 2]; // the two posts; they pass between them
+export const COUNT_DX = [-3, -2, -1, 0, 1, 2, 3]; // where each counted sheep lands
+// The pen further north, on the level ground, and the spots the sheep take
+export const PEN_X0 = 5;
+export const PEN_X1 = 11;
+export const PEN_Z0 = -17;
+export const PEN_Z1 = -12;
+export const PEN_GATE_DX = 8; // the gap in its south wall, facing the village
+export const PEN_SPOTS: [number, number][] = [
+  [6, -16],
+  [9, -16],
+  [7, -14],
+  [10, -14],
+  [8, -13],
+];
+// The path to the pasture, west of the pen: eight markers, one per step
+export const PATH_DZ = -14;
+export const PATH_DX = [-6, -5, -4, -3, -2, -1, 0, 1];
+// The milking trough and the cheese shelf, south-west of the village
+export const TROUGH_DX = [-10, -9, -8, -7, -6];
+export const TROUGH_DZ = 7;
+export const CHEESE_DX = [-10, -9, -8, -7];
+export const CHEESE_DZ = 9;
+// Where the tally board stands, so the module and the world agree
+export const TALLY_POS: [number, number] = [3, 3];
+
+// Stâna Babei Dochia: the old grandmother village, now a sheepfold that
+// teaches variables. Every mechanism starts empty — the coats are off the
+// fence, the pen has no sheep, the trough is dry — and the lessons fill them.
+export function buildStanaZone(originX: number, originZ: number): StructureTemplate {
   const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  // The village as it always was: three huts round a well
   addHouse(blocks, -8, -7, 2, 2, 3);
   addHouse(blocks, 8, -6, 2, 2, 3);
-  addHouse(blocks, 0, 8, 3, 2, 4); // grandma's own house, a little larger
+  addHouse(blocks, 0, 8, 3, 2, 4); // Dochia's own house, a little larger
   addWell(blocks, 0, -1);
+
+  // Gardul cu cojoace: nine bare posts with a rail, west of the village. The
+  // coats themselves appear only once Dochia has counted them.
+  for (const dz of COAT_DZ) {
+    B(COAT_DX, 1, dz, BlockType.Log);
+    B(COAT_DX, 2, dz, BlockType.Log);
+  }
+  for (let dz = COAT_DZ[0] - 1; dz <= COAT_DZ[COAT_DZ.length - 1] + 1; dz++) {
+    B(COAT_DX + 1, 2, dz, BlockType.Plank); // the rail the coats hang over
+  }
+
+  // Poarta de numărat: two posts with a lintel, north of the huts, and a
+  // packed-earth run the counted sheep line up on
+  for (const dx of GATE_DX) {
+    for (let y = 1; y <= 3; y++) B(dx, y, GATE_DZ, BlockType.Log);
+  }
+  for (let dx = GATE_DX[0]; dx <= GATE_DX[1]; dx++) {
+    B(dx, 4, GATE_DZ, BlockType.Log); // lintel
+    B(dx, 0, GATE_DZ, BlockType.Dirt); // trodden ground under the gate
+  }
+  for (const dx of COUNT_DX) B(dx, 0, GATE_DZ + 2, BlockType.Dirt); // where they line up
+
+  // Țarcul: a log pen on the level ground north of the huts, with a gap in
+  // its south wall, facing the village
+  for (let dx = PEN_X0; dx <= PEN_X1; dx++) {
+    for (const dz of [PEN_Z0, PEN_Z1]) {
+      if (dz === PEN_Z1 && dx >= PEN_GATE_DX - 1 && dx <= PEN_GATE_DX + 1) continue; // the gateway
+      B(dx, 1, dz, BlockType.Log);
+      B(dx, 2, dz, BlockType.Log);
+    }
+  }
+  for (let dz = PEN_Z0 + 1; dz <= PEN_Z1 - 1; dz++) {
+    for (const dx of [PEN_X0, PEN_X1]) {
+      B(dx, 1, dz, BlockType.Log);
+      B(dx, 2, dz, BlockType.Log);
+    }
+  }
+
+  // Drumul oilor: a beaten path west of the pen, with eight markers along it
+  for (let dx = PATH_DX[0] - 1; dx <= PATH_DX[PATH_DX.length - 1] + 1; dx++) {
+    B(dx, 0, PATH_DZ, BlockType.RiverStone);
+    B(dx, 0, PATH_DZ + 1, BlockType.RiverStone);
+  }
+  for (const dx of PATH_DX) B(dx, 1, PATH_DZ - 1, BlockType.Log); // the border stones
+
+  // Jgheabul de muls and the cheese shelf beside it
+  for (const dx of TROUGH_DX) {
+    B(dx, 1, TROUGH_DZ, BlockType.Plank);
+    B(dx, 1, TROUGH_DZ - 1, BlockType.Log);
+  }
+  for (const dx of CHEESE_DX) {
+    B(dx, 1, CHEESE_DZ, BlockType.Log);
+    B(dx, 2, CHEESE_DZ, BlockType.Plank); // the shelf the cheeses land on
+  }
+
+  // Răbojul: the tally post Dochia reads her numbers off
+  B(TALLY_POS[0], 1, TALLY_POS[1], BlockType.Log);
+  B(TALLY_POS[0], 2, TALLY_POS[1], BlockType.Log);
+
   return {
-    name: 'Satul Bunicii',
+    name: 'Stâna Babei Dochia',
     originX,
     originZ,
     surface: BlockType.Grass,
-    clearAbove: 8,
+    clearAbove: 9,
     pad: 2,
     blocks,
   };

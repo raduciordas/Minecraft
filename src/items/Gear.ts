@@ -21,10 +21,26 @@ export interface GearDef {
 
 export const GEAR: Record<number, GearDef> = {
   [GearId.AmuletaUsturoi]: { name: 'Amuletă de usturoi', shape: 'amulet', colors: { main: 0xf0ead8, accent: 0x8a6a3a }, notStarterStock: true },
+  [GearId.Cojoc]: { name: 'Cojoc', shape: 'coat', colors: { main: 0xe8e0cc, accent: 0x8a5a2e }, notStarterStock: true },
+  [GearId.OpinciIuti]: { name: 'Opinci iuți', shape: 'boots', colors: { main: 0x9a6a3a, accent: 0xd8c07a }, notStarterStock: true },
   [GearId.AripileZmeului]: { name: 'Aripile Zmeului', shape: 'wings', colors: { main: 0x7a2416, accent: 0xe8b34d }, notStarterStock: true },
 };
 
-export const GEAR_IDS: GearId[] = [GearId.AmuletaUsturoi, GearId.AripileZmeului];
+export const GEAR_IDS: GearId[] = [GearId.AmuletaUsturoi, GearId.Cojoc, GearId.OpinciIuti, GearId.AripileZmeului];
+
+// How much damage each piece of gear takes off a blow, and how much faster
+// it makes you walk. Game.ts adds these up for whatever is in the pack.
+export const GEAR_ARMOUR: Record<number, number> = {
+  [GearId.Cojoc]: 1,
+  [GearId.CamasaZale]: 2,
+};
+export const GEAR_SPEED: Record<number, number> = {
+  [GearId.OpinciIuti]: 1.25,
+};
+// Extra blocks of fall a piece of gear lets you take without hurting
+export const GEAR_FALL_GRACE: Record<number, number> = {
+  [GearId.OpinciIuti]: 2,
+};
 
 export function isGear(id: number): boolean {
   return id >= 500 && id < 600;
@@ -67,6 +83,25 @@ export function makeGearIcon(id: number): HTMLCanvasElement {
       rect(9, 9, 14, 9, main);
       rect(7, 7, 8, 10, accent);
       break;
+    case 'coat':
+      // A sheepskin waistcoat: fleecy body, leather trim, open front
+      rect(3, 3, 12, 14, main);
+      rect(4, 2, 11, 2, main);
+      rect(2, 4, 2, 11, accent);
+      rect(13, 4, 13, 11, accent);
+      rect(7, 3, 8, 14, accent);
+      for (const [x, y] of [[5, 6], [10, 6], [5, 11], [10, 11]]) px(x, y, 0xf8f4e8);
+      break;
+    case 'boots':
+      // A pair of opinci with their laces criss-crossed up the ankle
+      for (const x0 of [1, 8]) {
+        rect(x0, 8, x0 + 5, 13, main);
+        rect(x0, 13, x0 + 6, 14, 0x6a4a26);
+        px(x0 + 5, 7, main);
+        for (let i = 0; i < 3; i++) px(x0 + 1 + i, 9 + i, accent);
+        for (let i = 0; i < 3; i++) px(x0 + 4 - i, 9 + i, accent);
+      }
+      break;
     default:
       rect(3, 3, 12, 12, main);
       rect(5, 5, 10, 10, accent);
@@ -98,6 +133,16 @@ export function buildGearModel(id: number): THREE.Group {
         group.add(wing);
       }
       box(group, 0.04, 0.05, 0.03, accent, 0, 0.05, 0);
+      break;
+    case 'coat':
+      box(group, 0.14, 0.16, 0.07, main, 0, 0.05, 0);
+      box(group, 0.02, 0.16, 0.075, accent, 0, 0.05, 0);
+      break;
+    case 'boots':
+      for (const side of [-1, 1]) {
+        box(group, 0.07, 0.06, 0.11, main, side * 0.05, 0.03, 0);
+        box(group, 0.08, 0.02, 0.13, accent, side * 0.05, -0.005, 0);
+      }
       break;
     default:
       box(group, 0.12, 0.12, 0.05, main, 0, 0.05, 0);

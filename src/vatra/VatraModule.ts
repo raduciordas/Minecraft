@@ -16,6 +16,21 @@ import {
   CROSS_X,
   CROSS_Z,
   TORCH_POST,
+  STANA_ORIGIN,
+  COAT_DX,
+  COAT_DZ,
+  GATE_DZ,
+  COUNT_DX,
+  PEN_SPOTS,
+  PEN_GATE_DX,
+  PEN_Z1,
+  PATH_DZ,
+  PATH_DX,
+  TROUGH_DX,
+  TROUGH_DZ,
+  CHEESE_DX,
+  CHEESE_DZ,
+  TALLY_POS,
 } from '../world/Structures';
 import { VATRA_PUZZLES, programEquivalent, gradesByTrace, type ProgramNode } from './VatraPuzzles';
 import { evaluate, tracesEqual } from './Interpreter';
@@ -58,9 +73,10 @@ const MILL_WHEEL_LOGS: [number, number, number][] = [
   [19, 2, 7],
   [19, 2, 9],
 ];
+type Rel = [number, number, number];
+
 // One orchard tree: a 2-block trunk under a leaf cross with a cap. The
 // planting mound (dy 1) is Dirt until the tree takes root.
-type Rel = [number, number, number];
 function orchardTree(x: number): { trunk: Rel[]; canopy: Rel[] } {
   const z = ORCHARD_DZ;
   return {
@@ -146,6 +162,11 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   capcana: { dx: 13, dz: -1, label: 'Capcana de lup' },
   ciuperci: { dx: -6.5, dz: 2, label: 'Culesul de ciuperci' },
   rascruce: { dx: 8, dz: 6.5, label: 'Răscrucea' },
+  cojoacele: { dx: -8.5, dz: 1, label: 'Cojoacele Dochiei', yaw: Math.PI / 2 },
+  oile_la_numarat: { dx: -1, dz: -7, label: 'Numărătoarea oilor' },
+  tarcul: { dx: 8, dz: -10.5, label: 'Țarcul' },
+  drumul_oilor: { dx: 2.5, dz: -14, label: 'Drumul oilor', yaw: Math.PI / 2 },
+  socoteala_stanii: { dx: -5, dz: 8, label: 'Socoteala stânii', yaw: Math.PI / 2 },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -255,6 +276,12 @@ export const ZONE_DEFS: ZoneDef[] = [
     puzzles: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
     protect: [-11, 17, -9, 8, 0, 8],
   },
+  {
+    id: 'stana',
+    origin: STANA_ORIGIN,
+    puzzles: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
+    protect: [-17, 22, -16, 16, 0, 10],
+  },
 ];
 
 // The footprint a right-click on a block opens each lesson from, relative to
@@ -276,6 +303,11 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   capcana: [10, 16, -8, -2],
   ciuperci: [-11, -3, -2, 1],
   rascruce: [5, 17, 0, 7],
+  cojoacele: [-13, -9, -5, 5],
+  oile_la_numarat: [-6, 3, -13, -8],
+  tarcul: [4, 13, -19, -10],
+  drumul_oilor: [-9, 2, -17, -14],
+  socoteala_stanii: [-12, -4, 6, 11],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -342,6 +374,17 @@ const PUZZLE_EFFECTS: Record<string, PuzzleEffect[]> = {
     { pos: GLADE_BASKET, solved: BlockType.Hay, unsolved: BlockType.Air },
   ],
   rascruce: [{ pos: TORCH_POST, solved: BlockType.Torch, unsolved: BlockType.Glass }],
+  // Stâna: each lesson leaves its own mark on the fold — the coats on the
+  // rail, the counted sheep lined up past the gate, the pen's gateway barred
+  // once the flock is in, the path trodden to the pasture, the cheese shelf full
+  cojoacele: COAT_DZ.map((dz) => ({ pos: [COAT_DX + 1, 3, dz] as Rel, solved: BlockType.Wool, unsolved: BlockType.Air })),
+  oile_la_numarat: COUNT_DX.map((dx) => ({ pos: [dx, 1, GATE_DZ + 2] as Rel, solved: BlockType.Wool, unsolved: BlockType.Air })),
+  tarcul: [
+    { pos: [PEN_GATE_DX, 1, PEN_Z1], solved: BlockType.Log, unsolved: BlockType.Air },
+    { pos: [PEN_GATE_DX, 2, PEN_Z1], solved: BlockType.Log, unsolved: BlockType.Air },
+  ],
+  drumul_oilor: PATH_DX.map((dx) => ({ pos: [dx, 1, PATH_DZ + 1] as Rel, solved: BlockType.Grass, unsolved: BlockType.Air })),
+  socoteala_stanii: CHEESE_DX.map((dx) => ({ pos: [dx, 3, CHEESE_DZ] as Rel, solved: BlockType.Mamaliga, unsolved: BlockType.Air })),
 };
 
 interface Flying {
@@ -405,6 +448,36 @@ function buildLaundryLine(): THREE.Group {
     line.add(shirt);
   }
   return line;
+}
+
+// Baba Dochia's tally board: a plank face she reads her numbers off. It
+// redraws whenever a lesson's box changes value, so a child watching the
+// world sees the same thing the Cutiuțe panel shows.
+function drawTallyCanvas(lines: string[]): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 192;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#c9a86a';
+  ctx.fillRect(0, 0, 256, 192);
+  ctx.strokeStyle = '#4a2f16';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 182);
+  ctx.fillStyle = '#3a2410';
+  ctx.font = 'bold 26px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('RĂBOJ', 128, 40);
+  ctx.font = 'bold 24px monospace';
+  if (lines.length === 0) {
+    ctx.fillStyle = '#6b4a26';
+    ctx.fillText('(gol)', 128, 110);
+  } else {
+    lines.slice(0, 4).forEach((line, i) => {
+      ctx.fillStyle = '#3a2410';
+      ctx.fillText(line, 128, 80 + i * 30);
+    });
+  }
+  return canvas;
 }
 
 // One of the sheep let into the Luncă once its fence finally closes
@@ -490,6 +563,11 @@ export class VatraModule {
     capcana: this.stepCapcana,
     ciuperci: this.stepCiuperci,
     rascruce: this.stepRascruce,
+    cojoacele: this.stepCojoacele,
+    oile_la_numarat: this.stepOileLaNumarat,
+    tarcul: this.stepTarcul,
+    drumul_oilor: this.stepDrumulOilor,
+    socoteala_stanii: this.stepSocotealaStanii,
   };
 
   // Animation state
@@ -531,6 +609,13 @@ export class VatraModule {
   private capitaIndex = 0; // which haystack the outer loop is on
   private forkIndex = 0; // which forkful of hay within that haystack
   private gladeIndex = 0; // which mushroom the picking loop is looking at
+  private countIndex = 0; // which spot past the gate the next counted sheep takes
+  private penIndex = 0; // which spot in the pen the next sheep takes
+  private stepIndex = 0; // how far along the pasture path the flock has walked
+  private cheeseIndex = 0; // which shelf spot the next cheese lands on
+  private tallyBoard: THREE.Mesh | null = null;
+  private tallyValues = new Map<string, number>();
+  private penSheepProps: THREE.Group[] = [];
 
   constructor(
     private scene: THREE.Scene,
@@ -576,12 +661,102 @@ export class VatraModule {
     this.buildBunicul();
     this.buildBaciul();
     this.buildMumaPadurii();
+    this.buildBabaDochia();
+    this.buildTallyBoard();
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
     if (this.done.has('grajd')) this.setHorseProp(true);
     if (this.done.has('spalatorie')) this.setLaundryProp(true);
     if (this.done.has('gard')) this.setSheepProps(true);
     if (this.done.has('moara')) this.setMillWheelProp(true);
+    if (this.done.has('tarcul')) this.setPenSheepProps(true);
+  }
+
+  // Baba Dochia: the old shepherdess of the nine sheepskin coats, standing
+  // between her well and her tally board. Clickable, like the other guides.
+  private buildBabaDochia(): void {
+    const zone = this.zones.get('stana')!;
+    const npc = new THREE.Group();
+    const COJOC = 0xd8cbb0;
+    const FUSTA = 0x6b3a4a;
+    box(npc, 0.5, 0.5, 0.32, FUSTA, 0, 0.6, 0); // long skirt
+    box(npc, 0.48, 0.6, 0.3, 0xe8e0d0, 0, 1.1, 0); // linen shirt
+    // The nine coats she wears one over another, stacked as a bulky bodice
+    for (let i = 0; i < 3; i++) {
+      box(npc, 0.56 - i * 0.03, 0.16, 0.36 - i * 0.02, COJOC, 0, 0.95 + i * 0.17, 0);
+    }
+    const head = box(npc, 0.4, 0.4, 0.4, 0xd8b898, 0, 1.66, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.08, 0.08, 0.05, 0xfaf6ea, side * 0.1, 0.04, -0.2); // eye whites
+      box(head, 0.04, 0.04, 0.05, 0x241a0e, side * 0.1, 0.04, -0.22); // pupils
+    }
+    box(head, 0.44, 0.26, 0.44, 0x8a2f3a, 0, 0.2, 0); // basma, the head scarf
+    box(head, 0.16, 0.3, 0.16, 0x8a2f3a, 0, 0.08, 0.24); // its knot at the back
+    for (const side of [-1, 1]) {
+      box(npc, 0.13, 0.5, 0.13, 0xe8e0d0, side * 0.31, 0.85, 0); // arms
+      box(npc, 0.15, 0.15, 0.15, 0xd8b898, side * 0.31, 0.55, 0); // hands
+    }
+    box(npc, 0.08, 1.8, 0.08, 0x6b4a26, 0.42, 0.9, 0.1); // toiag, her staff
+    npc.position.set(zone.ox + 0.5, zone.gy + 1, zone.oz + 3 + 0.5);
+    npc.rotation.y = Math.PI * 0.85; // facing the path in from the well
+    this.scene.add(npc);
+    this.registerGuide('stana', npc.position.x, zone.gy + 1.9, npc.position.z);
+
+    const nameSign = makeSign('Baba Dochia', 1.6);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
+    this.scene.add(nameSign);
+  }
+
+  // The tally board on its post: shows every box a running lesson touches
+  private buildTallyBoard(): void {
+    const zone = this.zones.get('stana')!;
+    const texture = new THREE.CanvasTexture(drawTallyCanvas([]));
+    texture.minFilter = THREE.LinearFilter;
+    this.tallyBoard = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 1.1),
+      new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
+    );
+    this.tallyBoard.position.set(zone.ox + TALLY_POS[0] + 0.5, zone.gy + 3, zone.oz + TALLY_POS[1] + 0.5);
+    this.tallyBoard.rotation.y = Math.PI; // facing the village square
+    this.scene.add(this.tallyBoard);
+  }
+
+  // A box changed value mid-run: write it on the tally board
+  performVar(_puzzleId: string, name: string, value: number): void {
+    this.tallyValues.set(name, value);
+    this.redrawTally();
+  }
+
+  private redrawTally(): void {
+    if (!this.tallyBoard) return;
+    const lines = [...this.tallyValues].map(([n, v]) => `${n} = ${v}`);
+    const material = this.tallyBoard.material as THREE.MeshLambertMaterial;
+    material.map?.dispose();
+    const texture = new THREE.CanvasTexture(drawTallyCanvas(lines));
+    texture.minFilter = THREE.LinearFilter;
+    material.map = texture;
+    material.needsUpdate = true;
+  }
+
+  // The flock finally shut in the pen once Țarcul is solved
+  private setPenSheepProps(show: boolean): void {
+    if (!show) {
+      for (const sheep of this.penSheepProps) {
+        this.scene.remove(sheep);
+        disposeModel(sheep);
+      }
+      this.penSheepProps = [];
+      return;
+    }
+    if (this.penSheepProps.length > 0) return;
+    const zone = this.zones.get('stana')!;
+    for (const [dx, dz] of PEN_SPOTS) {
+      const sheep = buildSheep();
+      sheep.position.set(zone.ox + dx + 0.5, zone.gy + 1, zone.oz + dz + 0.5);
+      sheep.rotation.y = (dx * 1.7 + dz) % (Math.PI * 2);
+      this.scene.add(sheep);
+      this.penSheepProps.push(sheep);
+    }
   }
 
   // Baciul Luncii: the shepherd who teaches loops, standing in the meadow
@@ -767,6 +942,13 @@ export class VatraModule {
       this.forkIndex = 0;
     }
     if (puzzleId === 'ciuperci') this.gladeIndex = 0;
+    if (puzzleId === 'oile_la_numarat') this.countIndex = 0;
+    if (puzzleId === 'tarcul') this.penIndex = 0;
+    if (puzzleId === 'drumul_oilor') this.stepIndex = 0;
+    if (puzzleId === 'socoteala_stanii') this.cheeseIndex = 0;
+    // The tally board starts each run blank, like a wiped slate
+    this.tallyValues.clear();
+    this.redrawTally();
   }
 
   // Something happened in the lesson's world (an event a "când" block may be
@@ -1114,6 +1296,107 @@ export class VatraModule {
     }
   }
 
+  // Dochia hangs one coat per counted garment on the rail west of the village
+  private stepCojoacele(blockId: string, arg?: number): void {
+    const zone = this.zones.get('stana')!;
+    if (blockId === 'spune_cate') {
+      const n = Math.max(0, Math.min(Math.floor(arg ?? 0), COAT_DZ.length));
+      for (let i = 0; i < n; i++) {
+        this.placeTemp(zone.ox + COAT_DX + 1, zone.gy + 3, zone.oz + COAT_DZ[i], BlockType.Wool, BlockType.Air);
+      }
+      this.spawnFlyingBits(zone.ox + COAT_DX + 1.5, zone.gy + 3.6, zone.oz + 0.5, 0xe8e0cc, 3, zone.gy);
+      this.sound.place();
+    } else if (blockId === 'scutura_cojocul') {
+      this.spawnSmoke(zone.ox + COAT_DX + 1.5, zone.gy + 3.2, zone.oz + 0.5, 0xb0a890, 0.25);
+      this.sound.stepTick();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  // Each sheep through the gate lines up on the trodden ground beyond it
+  private stepOileLaNumarat(blockId: string, _arg?: number): void {
+    const zone = this.zones.get('stana')!;
+    if (blockId === 'trece_o_oaie') {
+      if (this.countIndex < COUNT_DX.length) {
+        this.placeTemp(zone.ox + COUNT_DX[this.countIndex], zone.gy + 1, zone.oz + GATE_DZ + 2, BlockType.Wool, BlockType.Air);
+      }
+      this.countIndex++;
+      this.sound.place();
+    } else if (blockId === 'spune_cate') {
+      this.spawnFlyingBits(zone.ox + 0.5, zone.gy + 2, zone.oz + GATE_DZ + 2.5, 0xf0ece0, 3, zone.gy);
+      this.sound.clink();
+    } else if (blockId === 'fluiera_a_paguba') {
+      this.spawnSmoke(zone.ox + 0.5, zone.gy + 2.5, zone.oz + GATE_DZ + 1.5, 0xc0c0c0, 0.3);
+      this.sound.failTrombone();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  // Sheep go into the pen one at a time, and the gateway is barred at the end
+  private stepTarcul(blockId: string, _arg?: number): void {
+    const zone = this.zones.get('stana')!;
+    if (blockId === 'baga_o_oaie') {
+      if (this.penIndex < PEN_SPOTS.length) {
+        const [dx, dz] = PEN_SPOTS[this.penIndex];
+        this.placeTemp(zone.ox + dx, zone.gy + 1, zone.oz + dz, BlockType.Wool, BlockType.Air);
+      }
+      this.penIndex++;
+      this.sound.place();
+    } else if (blockId === 'inchide_poarta') {
+      this.placeTemp(zone.ox + PEN_GATE_DX, zone.gy + 1, zone.oz + PEN_Z1, BlockType.Log, BlockType.Air);
+      this.placeTemp(zone.ox + PEN_GATE_DX, zone.gy + 2, zone.oz + PEN_Z1, BlockType.Log, BlockType.Air);
+      this.sound.doorToggle();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  // The flock treads the path south, one tuft of grass per step
+  private stepDrumulOilor(blockId: string, _arg?: number): void {
+    const zone = this.zones.get('stana')!;
+    if (blockId === 'pas_inainte') {
+      if (this.stepIndex < PATH_DX.length) {
+        this.placeTemp(zone.ox + PATH_DX[this.stepIndex], zone.gy + 1, zone.oz + PATH_DZ + 1, BlockType.Grass, BlockType.Air);
+      }
+      this.stepIndex++;
+      this.sound.stepTick();
+    } else if (blockId === 'lasa_oile_sa_pasca') {
+      const dx = PATH_DX[Math.min(this.stepIndex, PATH_DX.length - 1)];
+      this.spawnFlyingBits(zone.ox + dx + 0.5, zone.gy + 2, zone.oz + PATH_DZ + 1.5, 0x8fb54a, 3, zone.gy);
+      this.sound.place();
+    } else if (blockId === 'striga_la_oi') {
+      this.spawnSmoke(zone.ox - 2.5, zone.gy + 2.5, zone.oz + PATH_DZ + 0.5, 0xc0c0c0, 0.3);
+      this.sound.failTrombone();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
+  // Milk splashes into the trough; each cheese lands on the shelf beside it
+  private stepSocotealaStanii(blockId: string, _arg?: number): void {
+    const zone = this.zones.get('stana')!;
+    const troughX = zone.ox + TROUGH_DX[Math.min(this.cheeseIndex, TROUGH_DX.length - 1)] + 0.5;
+    if (blockId === 'mulge_o_oaie') {
+      this.spawnFlyingBits(troughX, zone.gy + 2, zone.oz + TROUGH_DZ + 0.5, 0xf4f0e4, 2, zone.gy);
+      this.sound.splash();
+    } else if (blockId === 'fa_un_cas') {
+      if (this.cheeseIndex < CHEESE_DX.length) {
+        this.placeTemp(zone.ox + CHEESE_DX[this.cheeseIndex], zone.gy + 3, zone.oz + CHEESE_DZ, BlockType.Mamaliga, BlockType.Air);
+      }
+      this.cheeseIndex++;
+      this.sound.place();
+    } else if (blockId === 'spune_cate') {
+      this.spawnFlyingBits(zone.ox + CHEESE_DX[0] + 0.5, zone.gy + 3.6, zone.oz + CHEESE_DZ + 0.5, 0xe8d8a8, 3, zone.gy);
+      this.sound.clink();
+    } else if (blockId === 'gusta_laptele') {
+      this.sound.eat();
+    } else {
+      this.sound.stepTick();
+    }
+  }
+
   // Places a block and remembers what it was before, so a failed attempt
   // (wrong repeat count, wrong nesting…) can be wiped clean before the next
   private placeTemp(x: number, y: number, z: number, id: BlockType, revertTo: BlockType): void {
@@ -1207,6 +1490,11 @@ export class VatraModule {
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
     if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
+    if (puzzleId === 'tarcul') this.setPenSheepProps(true);
+    if (this.zoneOf(puzzleId) === 'stana') {
+      const zone = this.zones.get('stana')!;
+      this.spawnFlyingBits(zone.ox + 0.5, zone.gy + 2.5, zone.oz + 3.5, 0xe8e0cc, 3, zone.gy);
+    }
     if (puzzleId === 'ciuperci') this.spawnFlyingBits(this.pox + GLADE_BASKET[0] + 0.5, this.paduGroundY + 2.2, this.poz + GLADE_BASKET[2] + 0.5, 0xa64a36, 4, this.paduGroundY);
     if (puzzleId === 'rascruce') {
       // Wings for the child: a burst of gold and dragon-red over the crossroads
@@ -1244,6 +1532,7 @@ export class VatraModule {
     }
     if (puzzleId === 'gard') this.setSheepProps(false);
     if (puzzleId === 'moara') this.setMillWheelProp(false);
+    if (puzzleId === 'tarcul') this.setPenSheepProps(false);
     this.done.delete(puzzleId);
     this.save();
   }
