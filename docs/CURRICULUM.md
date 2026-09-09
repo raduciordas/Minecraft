@@ -23,7 +23,7 @@ ajute mult.
 
 | Întrebare | Decizie |
 |---|---|
-| Materiale noi | Unul nou pe lecție, treizeci și șase în total |
+| Recompense noi | Treizeci și șase principale, câte una pe lecție, plus Aripile Zmeului ca bonus la Fierărie |
 | Progresie între zone | Deschisă, fără porți; recompensele ajută, nu blochează |
 | Amploare | Șapte zone, treizeci și șase de lecții |
 | Zborul pe tasta F | Devine răsplată câștigată, Aripile Zmeului, la Fierăria lui Bunicul, a patra lecție din Vatra |
@@ -219,10 +219,12 @@ catarg cu steag ridicat la reușita finală, torțe care se aprind noaptea.
 
 ---
 
-## 6. Cele treizeci și șase de obiecte
+## 6. Cele treizeci și șase de recompense principale și bonusul
 
-Cheia întregului plan: fiecare lecție aduce un obiect nou, cu mecanică
-adevărată. Identificatorii stau pe intervale care nu se ciocnesc.
+Cheia întregului plan: fiecare dintre cele treizeci și șase de lecții aduce
+o recompensă principală cu mecanică adevărată. Aripile Zmeului sunt un bonus
+suplimentar al Fierăriei și nu intră în numerotarea 1–36. Identificatorii
+stau pe intervale care nu se ciocnesc.
 
 | Interval | Categorie | Fișier |
 |---|---|---|
@@ -233,7 +235,7 @@ adevărată. Identificatorii stau pe intervale care nu se ciocnesc.
 | 400–499 | mâncare | `src/items/Consumable.ts` |
 | 500–599 | straie și talismane | `src/items/Gear.ts` |
 
-Obiectele deja în joc, primele șaisprezece:
+Recompensele principale deja în joc, primele șaisprezece:
 
 | # | Obiect | Id | Ce face | Lecția |
 |---|---|---|---|---|
@@ -253,9 +255,9 @@ Obiectele deja în joc, primele șaisprezece:
 | 14 | Capcană de lup | 44 | monstrul care calcă pierde șase viață și se încetinește | Capcana |
 | 15 | Arc cu săgeți | 105 | lovește de departe, singurul răspuns la Zmeu | Ciupercile |
 | 16 | Busolă | 303 | ținută în mână, săgeată spre cea mai apropiată zonă, cu distanța | Răscrucea |
-| — | Aripile Zmeului | 506 | deblochează zborul pe tasta F | Fierăria |
+| bonus | Aripile Zmeului | 506 | deblochează zborul pe tasta F | Fierăria |
 
-Obiectele Stânii, adăugate la faza 2:
+Recompensele principale ale Stânii, adăugate la faza 2:
 
 | # | Obiect | Id | Ce face | Lecția |
 |---|---|---|---|---|
@@ -265,12 +267,12 @@ Obiectele Stânii, adăugate la faza 2:
 | 20 | Opinci iuți | 503 | viteză cu un sfert mai mare, cazi de la două cuburi mai sus | drumul_oilor |
 | 21 | Hartă | 309 | ținută în mână, minimapă cu zonele și casa însemnate | socoteala_stanii |
 
-Obiectele zonelor rămase, în ordinea lecțiilor: Pat, Buzdugan, Piatră de
-praștie, Ulcior cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de
-prisăcar, Scut, Cămașă de zale, Oglindă fermecată, Sabia lui Făt-Frumos,
-Mărul de aur. Prima lecție din Târg, Ulciorul, rămâne fără obiect ales,
-fiindcă Busola i-a fost mutată la Răscruce — de ales când se construiește
-zona.
+Cele cincisprezece recompense principale ale zonelor rămase ocupă pozițiile
+22–36. Paisprezece sunt deja alese: Pat, Buzdugan, Piatră de praștie, Ulcior
+cu jar, Miere, Foc de tabără, Clopot, Scară, Mască de prisăcar, Scut, Cămașă
+de zale, Oglindă fermecată, Sabia lui Făt-Frumos și Mărul de aur. Recompensa
+principală pentru Ulciorul, prima lecție din Târg, rămâne de ales înainte de
+construirea fazei 3.
 
 Trei dintre ele sunt deja legate în cod pentru zonele viitoare, dar nu le dă
 încă nicio lecție: Cămașa de zale, Masca de prisăcar și creșterea vieții
@@ -337,20 +339,29 @@ otrăvitoare, răscrucea cu trei poteci, stâlpul cu torță și copacul reper.
 
 ## 8. Verificarea automată
 
-Scripturile de verificare stau în directorul de lucru al sesiunii, nu în
-repo, fiindcă pornesc un browser real peste serverul de dezvoltare.
+Suita reproductibilă este versionată în `tests/` și folosește runner-ul nativ
+Node. Nu adaugă pachete de testare: loaderul TypeScript folosește copia
+`esbuild` instalată deja prin Vite.
 
-| Script | Ce verifică | Rezultat la faza 2 |
-|---|---|---|
-| `check_puzzles.js` | datele lecțiilor: soluția rezolvă toate scenariile, niciun mesaj de eșec nu se declanșează pe soluție, toate acțiunile și condițiile există, fiecare răsplată e un obiect cunoscut, fiecare lecție e într-o singură zonă | 21 lecții curate |
-| `regress.js` | fiecare lecție rezolvată prin tablă, cu răsplata numărată în traistă, plus câte un program greșit pentru fiecare mesaj de eșec | 21 din 21, 55 mesaje din 55 |
-| `alt_solutions.js` | programe cu altă formă dar aceeași purtare trebuie acceptate | 5 din 5 |
-| `items.js` | câte o aserțiune pentru fiecare mecanică de obiect din faza 1 | 17 din 17 |
-| `items_stana.js` | aceleași, pentru cele cinci obiecte ale Stânii | 5 din 5 |
-| `requirements.js` | variantele echivalente trec, iar cele care sar peste concept sunt refuzate cu textul cerinței | 9 din 9 |
-| `roundtrip.js` | un program dus în tablă și adus înapoi rămâne identic | identic |
+| Fișier | Ce verifică |
+|---|---|
+| `tests/interpreter.test.mjs` | secvențe, expresii, logică, scenarii, evenimente, proceduri, aleator determinist și limitele buclelor recursive |
+| `tests/content-integrity.test.mjs` | toate soluțiile lecțiilor, recompensele, identificatorii și regula uneltelor necesare pentru blocurile tari |
+| `tests/game-state.test.mjs` | inventarul, viața, înecul, regenerarea, respawn-ul și efectele temporare |
+| `tests/world-index.test.mjs` | indexarea voxelilor și sincronizarea blocurilor speciale în chunk-uri pozitive și negative |
 
-Comanda de pornire a serverului pentru ele: `npx vite --port 5210 --strictPort`.
+Rularea completă locală:
+
+```bash
+npm ci
+npm run check
+```
+
+`npm run check` execută typecheck-ul TypeScript, cele 26 de teste și build-ul
+Vite de producție. Workflow-ul `.github/workflows/test.yml` execută aceeași
+comandă la fiecare push și pull request. Fluxurile complete Blockly, WebGL și
+interacțiunile tactile rămân în lista manuală de mai jos, fiindcă necesită un
+browser real și verificare vizuală.
 
 ---
 
@@ -372,7 +383,7 @@ __game.dayNight.time = 0;             // noapte
 __game.dayNight.time = 0.5;           // zi
 await __game.solveLesson('ciuperci'); // rezolvă instant o lecție
 localStorage.removeItem('cuburia-vatra-v1'); location.reload();  // reia toate lecțiile
-localStorage.clear(); location.reload();                          // lume nouă de tot
+Storage.prototype.setItem = () => {}; localStorage.clear(); location.reload(); // lume nouă de tot
 ```
 
 Unde dai click dreapta pentru lecțiile din Pădure:
@@ -454,8 +465,9 @@ Unde dai click dreapta pentru lecțiile din Pădure:
 - [ ] **Zborul blocat.** Într-o lume nouă, tasta F nu face nimic, apare doar
       mesajul că ai nevoie de Aripile Zmeului. La fel butonul cu avion pe
       telefon.
-- [ ] **Zborul deblochat.** După Răscruce, F zboară. Ecranul de pornire spune
-      corect că F cere aripile.
+- [ ] **Zborul deblocat.** După Fierărie, F activează zborul. Înainte de
+      Fierărie, inclusiv după Răscruce, F rămâne blocat. Ecranul de pornire
+      spune corect că F cere aripile.
 - [ ] **Ajutorul pe H.** Există secțiunile noi „De mâncat" și „Straie și
       talismane", iar la Unelte sunt șase unelte. Niciun material nu scrie că
       nu are nicio sursă.
