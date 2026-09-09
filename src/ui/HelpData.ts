@@ -114,8 +114,7 @@ function lessonSources(id: number): string[] {
   for (const puzzle of Object.values(VATRA_PUZZLES)) {
     const item = puzzle.rewardItems.find((r) => r.id === id);
     if (!item) continue;
-    const when = puzzle.rewardRepeats ? 'la fiecare rezolvare' : 'o singură dată';
-    out.push(`Răsplată la lecția „${puzzle.title.split('—')[0].trim()}" — ${pieces(item.count)}, ${when}.`);
+    out.push(`Răsplată la lecția „${puzzle.title.split('—')[0].trim()}" — ${pieces(item.count)}, la fiecare rezolvare.`);
   }
   return out;
 }
