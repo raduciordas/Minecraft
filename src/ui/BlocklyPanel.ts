@@ -28,6 +28,7 @@ export const STEP_MS = 1100; // a top-level/branch block's beat while executing
 const LOOP_STEP_MS = 35; // loop bodies run at the computer's speed, not yours
 const SCENARIO_PAUSE_MS = 900; // a breath between "Încercarea 1" and "Încercarea 2"
 const EVENT_PAUSE_MS = 700;
+const RESULT_REVEAL_MS = 1400; // leave the world visible long enough to see the final effect
 
 export interface BlocklyCallbacks {
   onRunStart: (puzzleId: string) => void;
@@ -933,6 +934,10 @@ export class BlocklyPanel {
     this.renderVars();
     this.refresh();
 
+    // Keep the editor state alive, but uncover the world while its program
+    // animates. Fast test runs stay headless and skip the visual pause.
+    const previewAnimation = !this.fastMode;
+    if (previewAnimation) this.root.classList.add('hidden');
     this.cb.onRunStart(puzzle.id);
     const gen = execute(puzzle, program);
     let completed = true;
@@ -990,13 +995,21 @@ export class BlocklyPanel {
     if (!this.isOpen) return; // closed mid-run — abort quietly
     if (!completed) {
       this.running = false;
+      if (previewAnimation && this.isOpen) this.root.classList.remove('hidden');
       this.refresh();
       return;
     }
 
     const result = this.cb.onFinish(puzzle.id, program);
-    this.running = false;
     this.status = { text: result.text, ok: result.success };
+    await this.wait(RESULT_REVEAL_MS);
+    this.running = false;
+    if (previewAnimation && this.isOpen) {
+      this.root.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        if (this.workspace) Blockly.svgResize(this.workspace);
+      });
+    }
     this.refresh();
   }
 }

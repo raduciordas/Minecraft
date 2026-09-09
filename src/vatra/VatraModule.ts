@@ -1505,16 +1505,12 @@ export class VatraModule {
       this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0xe8b34d, 4, this.paduGroundY);
       this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0x7a2416, 3, this.paduGroundY);
     }
-    // The payout is the puzzle's own rewardItems list, so what a lesson
-    // hands over, what its reward line says, and what the Ajutor panel lists
-    // can't drift apart. Vatra's six pay on every solve; the Luncă and
-    // Pădurea ones only the first time.
+    // Every successful run pays the puzzle's reward again. Refillable
+    // rewards represent a fresh finite supply, so replaying replaces any
+    // leftovers instead of stacking another quiver.
     const puzzle = VATRA_PUZZLES[puzzleId];
     if (puzzle) {
       for (const item of puzzle.rewardItems) {
-        if (!firstTime && !puzzle.rewardRepeats && !item.refill) continue;
-        // Refillable rewards represent a fresh, finite supply. Replaying the
-        // lesson replaces any leftovers instead of stacking another quiver.
         if (item.refill) this.inventory.remove(item.id, this.inventory.count(item.id));
         this.inventory.add(item.id as BlockType, item.count);
       }
