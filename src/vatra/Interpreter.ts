@@ -245,10 +245,15 @@ export function* execute(puzzle: VatraPuzzle, program: ProgramNode[]): Generator
             if (callDepth >= MAX_CALL_DEPTH) throw new Infinite();
             // Parameters shadow same-named boxes for the duration of the call
             const saved: [string, number | undefined][] = [];
+            // Evaluate every argument in the caller's scope before binding
+            // parameters. Otherwise an earlier parameter can overwrite a
+            // variable still needed by a later argument (f(y, x)).
+            const values = proc.params.map((_, i) =>
+              node.args[i] === undefined ? 0 : evalExpr(node.args[i]),
+            );
             proc.params.forEach((p, i) => {
               saved.push([p, vars.get(p)]);
-              const value = node.args[i] === undefined ? 0 : evalExpr(node.args[i]);
-              vars.set(p, value);
+              vars.set(p, values[i]);
             });
             for (const p of proc.params) yield { type: 'var', name: p, value: vars.get(p) ?? 0 };
             yield* runList(proc.body, inLoop, callDepth + 1);

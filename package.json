@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-loader ./tests/ts-loader.mjs tests/*.test.mjs",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "blockly": "^13.2.0",
@@ -20,3 +22,4 @@
     "vite": "^6.0.0"
   }
 }
+
