@@ -796,7 +796,11 @@ export class VatraModule {
   // other guides — she teaches conditions.
   private buildMumaPadurii(): void {
     const npc = new THREE.Group();
-    box(npc, 0.46, 0.85, 0.34, 0x2e3a24, 0, 1.1, 0); // dark mossy robe
+    // A layered robe reaches the ground; the old single torso made her look
+    // as if she were hovering above the forest floor.
+    box(npc, 0.58, 0.76, 0.44, 0x26321f, 0, 0.38, 0); // wide lower skirt
+    box(npc, 0.46, 0.85, 0.34, 0x2e3a24, 0, 1.1, 0); // dark mossy upper robe
+    box(npc, 0.64, 0.12, 0.48, 0x1d2919, 0, 0.08, 0); // ragged hem/shadow at her feet
     const head = box(npc, 0.34, 0.34, 0.34, 0xb8a888, 0, 1.86, 0);
     for (const side of [-1, 1]) {
       box(head, 0.07, 0.07, 0.04, 0xd8f070, side * 0.09, 0.04, -0.17); // glinting green eyes
@@ -1506,8 +1510,14 @@ export class VatraModule {
     // can't drift apart. Vatra's six pay on every solve; the Luncă and
     // Pădurea ones only the first time.
     const puzzle = VATRA_PUZZLES[puzzleId];
-    if (puzzle && (puzzle.rewardRepeats || firstTime)) {
-      for (const item of puzzle.rewardItems) this.inventory.add(item.id as BlockType, item.count);
+    if (puzzle) {
+      for (const item of puzzle.rewardItems) {
+        if (!firstTime && !puzzle.rewardRepeats && !item.refill) continue;
+        // Refillable rewards represent a fresh, finite supply. Replaying the
+        // lesson replaces any leftovers instead of stacking another quiver.
+        if (item.refill) this.inventory.remove(item.id, this.inventory.count(item.id));
+        this.inventory.add(item.id as BlockType, item.count);
+      }
     }
     if (firstTime) {
       this.done.add(puzzleId);

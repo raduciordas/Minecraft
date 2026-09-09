@@ -4,6 +4,7 @@ import { evaluate } from '../src/vatra/Interpreter.ts';
 import { VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
 import { ALL_ITEM_IDS, canMineBlock, isKnownItem, itemName } from '../src/items/Items.ts';
 import { ToolId } from '../src/items/Tool.ts';
+import { BOW_QUIVER_SIZE, WEAPONS, WeaponId } from '../src/items/Weapon.ts';
 import { BlockType } from '../src/world/Block.ts';
 
 function visit(nodes, fn) {
@@ -75,3 +76,11 @@ test('puzzle IDs and declared IDs are unique', () => {
   }
 });
 
+
+
+test('the mushroom lesson refills a twenty-shot bow', () => {
+  const bow = VATRA_PUZZLES.ciuperci.rewardItems.find((item) => item.id === WeaponId.Arc);
+  assert.deepEqual(bow, { id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true });
+  assert.equal(BOW_QUIVER_SIZE, 20);
+  assert.equal(WEAPONS[WeaponId.Arc].ammoPerUse, 1);
+});

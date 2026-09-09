@@ -757,6 +757,8 @@ export class Game {
     // same convention as a block you're out of, which simply won't place.
     const weapon = isWeapon(selected) && this.ownsWeapon(selected) ? WEAPONS[selected] : null;
     if (weapon?.ranged) {
+      const ammo = weapon.ammoPerUse ?? 0;
+      if (ammo > 0 && !this.inventory.remove(selected, ammo)) return;
       this.shootArrow(weapon.damage, weapon.cooldown);
       return;
     }

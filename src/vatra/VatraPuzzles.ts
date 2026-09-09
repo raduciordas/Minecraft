@@ -9,7 +9,7 @@
 // another loop.
 
 import { BlockType } from '../world/Block';
-import { WeaponId } from '../items/Weapon';
+import { BOW_QUIVER_SIZE, WeaponId } from '../items/Weapon';
 import { ToolId } from '../items/Tool';
 import { ThrowableId } from '../items/Throwable';
 import { ConsumableId } from '../items/Consumable';
@@ -108,7 +108,7 @@ export interface VatraPuzzle {
   // the Ajutor panel reads it to say where a material comes from, and
   // `reward` is the same list written out for a child to read — keep the
   // three in step (test_reward_truth.js checks the prose against the grant).
-  rewardItems: { id: number; count: number }[];
+  rewardItems: { id: number; count: number; refill?: boolean }[];
   reward: string; // rewardItems in words, shown under the intro
   rewardRepeats?: boolean; // paid out on every solve, not just the first
   actions: VatraAction[]; // atomic action blocks available in the palette
@@ -1034,9 +1034,9 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'MUMA PĂDURII: „Șase ciuperci în poiana mea, și două-s otrăvitoare — cele violete, hâhâhî. Ia coșul, apoi pune o buclă de șase ori și ÎN ea: privește ciuperca, DACĂ e otrăvitoare ocolește-o, ALTFEL culege-o. Decizia se ia la FIECARE ciupercă — de-aia stă în buclă. La urmă, du coșul acasă."',
     success:
-      'COȘ PLIN, patru ciuperci bune și niciuna violetă! Muma Pădurii îți dă arcul ei de corn — cu el ajungi și la Zmeul din văzduh. (+1 arc cu săgeți și +6 ciuperci)',
-    rewardItems: [{ id: WeaponId.Arc, count: 1 }, { id: BlockType.Mushroom, count: 6 }],
-    reward: '1 arc cu săgeți — singura armă care lovește de departe, chiar și Zmeul în zbor — și 6 ciuperci',
+      'COȘ PLIN, patru ciuperci bune și niciuna violetă! Muma Pădurii îți dă arcul ei de corn, cu 20 de săgeți — cu el ajungi și la Zmeul din văzduh. (+1 arc cu 20 de săgeți și +6 ciuperci)',
+    rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }, { id: BlockType.Mushroom, count: 6 }],
+    reward: '1 arc cu 20 de săgeți — fiecare lovitură consumă o săgeată; refă activitatea pentru un set nou — și 6 ciuperci',
     actions: [
       { id: 'culege', label: 'Culege ciuperca' },
       { id: 'ia_cosul', label: 'Ia coșul' },

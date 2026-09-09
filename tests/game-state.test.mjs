@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Inventory } from '../src/player/Inventory.ts';
+import { makeBody, stepBody } from '../src/player/Physics.ts';
 import { Health, MAX_MAX_HP } from '../src/player/Health.ts';
 import { StatusEffects } from '../src/player/StatusEffects.ts';
 import { MAX_HP, MAX_OXYGEN_SECONDS } from '../src/config.ts';
@@ -86,3 +87,21 @@ test('status effects keep the strongest value, extend duration, and expire', () 
   assert.equal(effects.summary, '');
 });
 
+
+
+test('a swimmer can step from the water onto a one-block bank', () => {
+  const bank = new Set(['1,1,0']);
+  const world = { getBlock: (x, y, z) => bank.has(`${x},${y},${z}`) ? 1 : 0 };
+  const blocked = makeBody(0.3, 1.8);
+  Object.assign(blocked, { x: 0.69, y: 1.001, z: 0.5, vx: 2 });
+  stepBody(blocked, world, 0.1);
+  assert.equal(blocked.hitWall, true);
+  assert.ok(blocked.x < 0.8);
+
+  const swimmer = makeBody(0.3, 1.8);
+  Object.assign(swimmer, { x: 0.69, y: 1.001, z: 0.5, vx: 2 });
+  stepBody(swimmer, world, 0.1, 1.05);
+  assert.equal(swimmer.hitWall, false);
+  assert.ok(swimmer.x > 0.8);
+  assert.ok(swimmer.y > 2);
+});

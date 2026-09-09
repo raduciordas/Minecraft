@@ -10,6 +10,8 @@ export const enum WeaponId {
   Arc = 105, // bow: fires an arrow (see Projectile.ts) — the answer to the Zmeu
 }
 
+export const BOW_QUIVER_SIZE = 20;
+
 export interface WeaponDef {
   name: string;
   damage: number;
@@ -18,6 +20,7 @@ export interface WeaponDef {
   knockback: number;
   slowSeconds?: number; // ice spear chills its target
   ranged?: boolean; // shoots an arrow instead of swinging
+  ammoPerUse?: number; // stock consumed by each ranged attack
   notStarterStock?: boolean; // must be earned; without one in the pack you swing bare-handed
   shape?: 'sword' | 'hammer' | 'spear' | 'club' | 'bow';
   colors: { blade: number; accent: number; handle: number };
@@ -78,6 +81,7 @@ export const WEAPONS: Record<number, WeaponDef> = {
     cooldown: 0.7,
     knockback: 4,
     ranged: true,
+    ammoPerUse: 1,
     shape: 'bow',
     colors: { blade: 0xa07a48, accent: 0xe8e0d0, handle: 0x5a3a1a },
   },

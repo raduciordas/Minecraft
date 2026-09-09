@@ -19,7 +19,8 @@ import { stepBody, makeBody, type Body } from './Physics';
 import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../config';
 
 const CLIMB_SPEED = 3.2;
-const CLIMB_SLIDE_SPEED = -1.2; // holding on without pressing anything: a slow slide down
+const CLIMB_SLIDE_SPEED = -1.2;
+const SWIM_STEP_HEIGHT = 1.05; // lets forward movement carry the player onto a one-block bank // holding on without pressing anything: a slow slide down
 
 export class Player {
   body: Body = makeBody(PLAYER_WIDTH / 2, PLAYER_HEIGHT);
@@ -128,7 +129,7 @@ export class Player {
     }
 
     const preStepVy = this.body.vy;
-    stepBody(this.body, world, dt);
+    stepBody(this.body, world, dt, inWater ? SWIM_STEP_HEIGHT : 0);
     if (this.body.onGround && preStepVy < -8) {
       this.onLand?.(-preStepVy);
     }
