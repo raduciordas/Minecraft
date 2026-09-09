@@ -17,12 +17,12 @@ import {
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
 import type { Chunk } from './world/Chunk';
-import { BlockType, isWater, isSolid, isDoor, isClimbable, toggleDoorId, requiresPickaxe, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
+import { BlockType, isWater, isSolid, isDoor, isClimbable, toggleDoorId, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
 import { SpecialBlockIndex } from './world/SpecialBlockIndex';
 import { StatusEffects } from './player/StatusEffects';
 import { CONSUMABLES, ConsumableId, isConsumable } from './items/Consumable';
 import { GearId, GEAR_ARMOUR, GEAR_SPEED, GEAR_FALL_GRACE } from './items/Gear';
-import { isPlaceable } from './items/Items';
+import { canMineBlock, isPlaceable } from './items/Items';
 import { MiniMap } from './ui/MiniMap';
 import { Compass } from './ui/Compass';
 import { raycastVoxels } from './world/raycast';
@@ -1250,7 +1250,7 @@ export class Game {
     }
 
     const tool = this.hotbar.selectedItem;
-    if (requiresPickaxe(broken) && tool !== ToolId.Tarnacop) {
+    if (!canMineBlock(broken, tool, this.inventory.count(tool))) {
       this.sound.clink(); // too hard to break by hand — needs the Târnăcop
       return;
     }

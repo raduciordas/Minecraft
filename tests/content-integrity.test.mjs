@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluate } from '../src/vatra/Interpreter.ts';
 import { VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
-import { ALL_ITEM_IDS, isKnownItem, itemName } from '../src/items/Items.ts';
+import { ALL_ITEM_IDS, canMineBlock, isKnownItem, itemName } from '../src/items/Items.ts';
+import { ToolId } from '../src/items/Tool.ts';
+import { BlockType } from '../src/world/Block.ts';
 
 function visit(nodes, fn) {
   for (const node of nodes) {
@@ -11,6 +13,13 @@ function visit(nodes, fn) {
     if (node.elseBody) visit(node.elseBody, fn);
   }
 }
+
+test('hard blocks require an owned pickaxe', () => {
+  assert.equal(canMineBlock(BlockType.Stone, ToolId.Tarnacop, 0), false);
+  assert.equal(canMineBlock(BlockType.Stone, ToolId.Tarnacop, 1), true);
+  assert.equal(canMineBlock(BlockType.Stone, ToolId.Lopata, 1), false);
+  assert.equal(canMineBlock(BlockType.Dirt, ToolId.Lopata, 0), true);
+});
 
 test('the item catalogue contains unique, named, known IDs', () => {
   assert.equal(new Set(ALL_ITEM_IDS).size, ALL_ITEM_IDS.length);

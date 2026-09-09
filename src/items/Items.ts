@@ -1,7 +1,7 @@
-import { BLOCKS, PLACEABLE_BLOCKS, type BlockType } from '../world/Block';
+import { BLOCKS, PLACEABLE_BLOCKS, requiresPickaxe, type BlockType } from '../world/Block';
 import { WEAPONS, WEAPON_IDS, isWeapon, makeWeaponIcon, type WeaponId } from './Weapon';
 import { THROWABLES, THROWABLE_IDS, isThrowable, makeThrowableIcon, type ThrowableId } from './Throwable';
-import { TOOLS, TOOL_IDS, isTool, makeToolIcon, type ToolId } from './Tool';
+import { TOOLS, TOOL_IDS, ToolId, isTool, makeToolIcon } from './Tool';
 import { CONSUMABLES, CONSUMABLE_IDS, isConsumable, makeConsumableIcon } from './Consumable';
 import { GEAR, GEAR_IDS, isGear, makeGearIcon } from './Gear';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
@@ -35,6 +35,11 @@ export function makeItemIcon(id: number, atlas: TextureAtlas): HTMLCanvasElement
 // Whether right-clicking with it in hand puts a block in the world
 export function isPlaceable(id: number): boolean {
   return !!BLOCKS[id] && !isConsumable(id);
+}
+
+// Hard blocks require a pickaxe that is both selected and actually in stock.
+export function canMineBlock(blockId: number, selectedItem: number, selectedCount: number): boolean {
+  return !requiresPickaxe(blockId) || (selectedItem === ToolId.Tarnacop && selectedCount > 0);
 }
 
 // Not handed out free at the start of a session
