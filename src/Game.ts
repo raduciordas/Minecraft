@@ -47,6 +47,7 @@ import { evaluate, tracesEqual } from './vatra/Interpreter';
 import { ZONE_DEFS } from './vatra/VatraModule';
 import { ZONES } from './ui/LessonInfoPanel';
 import { isEarned, isKnownItem, itemName } from './items/Items';
+import { DroppedItemManager, type DroppedItem, type DroppedItemData } from './items/DroppedItem';
 
 // Everything the lesson-data sanity check (scratch test check_puzzles.js)
 // needs from inside the page
@@ -74,7 +75,7 @@ import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Thr
 import { TOOLS, ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
-import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
+import type { BlockEditEvent, MoveEvent, RemotePlayerState, DropItemEvent, PickupItemEvent } from './net/NetworkClient';
 import { RemotePlayerManager } from './net/RemotePlayer';
 
 const THROWABLE_STARTER_STOCK = 20;
@@ -188,6 +189,7 @@ export class Game {
   private tablaLoading = false;
   private mobManager: MobManager;
   private projectiles: ProjectileManager;
+  private droppedItemManager: DroppedItemManager;
   private dayNight: DayNightCycle;
   private health: Health;
   private healthHud: HealthHud;
@@ -304,6 +306,7 @@ export class Game {
     this.helpPanel = new HelpPanel(document.getElementById('help')!, atlas, () => this.toggleHelpPanel());
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
+    this.droppedItemManager = new DroppedItemManager(this.scene, this.atlas);
     this.remotePlayers = new RemotePlayerManager(this.scene);
     this.mpStatusEl = document.getElementById('mp-status')!;
     new TouchControls(this.input);
@@ -381,6 +384,7 @@ export class Game {
     this.input.onScroll((delta) => this.hotbar.scroll(delta));
     this.input.onBreak(() => this.attack());
     this.input.onPlace(() => this.placeBlock());
+    this.input.onDrop(() => this.dropSelectedItem());
     this.input.onInventoryToggle(() => this.toggleInventoryPanel());
     this.input.onHelpToggle(() => this.toggleHelpPanel());
 
@@ -472,6 +476,12 @@ export class Game {
       this.remotePlayers.applyMove(e.id, e.x, e.y, e.z, e.yaw, e.moving);
     });
     this.network.on('blockEdit', (e: BlockEditEvent) => this.applyRemoteBlockEdit(e));
+    this.network.on('dropItem', (e: DropItemEvent) => {
+      this.droppedItemManager.addDroppedItem(e, 0.8);
+    });
+    this.network.on('pickupItem', (e: PickupItemEvent) => {
+      this.droppedItemManager.removeDroppedItem(e.id);
+    });
     this.network.onDisconnect(() => {
       this.multiplayer = false;
       this.remotePlayers.clear();
@@ -498,6 +508,11 @@ export class Game {
     }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
+    if (init.droppedItems) {
+      for (const itemData of init.droppedItems) {
+        this.droppedItemManager.addDroppedItem(itemData, 0);
+      }
+    }
     this.updateMpStatus();
   }
 
@@ -537,6 +552,53 @@ export class Game {
     this.renderer.setAnimationLoop((now) => this.frame(now));
   }
 
+  private dropSelectedItem(): void {
+    if (this.health.dead) return;
+    const selected = this.hotbar.selectedItem;
+    if (!isKnownItem(selected)) return;
+
+    if (!this.inventory.remove(selected, 1)) return;
+
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const ox = this.player.eyeX;
+    const oy = this.player.eyeY - 0.2;
+    const oz = this.player.eyeZ;
+
+    const vx = dir.x * 5 + this.player.body.vx * 0.5;
+    const vy = dir.y * 5 + 2;
+    const vz = dir.z * 5 + this.player.body.vz * 0.5;
+
+    const id = `${this.playerName}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const itemData: DroppedItemData = {
+      id,
+      itemId: selected,
+      count: 1,
+      x: ox + dir.x * 0.5,
+      y: oy,
+      z: oz + dir.z * 0.5,
+      vx,
+      vy,
+      vz,
+    };
+
+    this.droppedItemManager.addDroppedItem(itemData, 1.0);
+    this.sound.swing();
+
+    if (this.multiplayer) {
+      this.network.sendDropItem(itemData);
+    }
+  }
+
+  private handleItemPickup(item: DroppedItem): void {
+    this.inventory.add(item.itemId, item.count);
+    this.sound.place();
+    this.showToast(`+1 ${itemName(item.itemId)}`);
+    if (this.multiplayer) {
+      this.network.sendPickupItem(item.id);
+    }
+  }
+
   private frame(now: number): void {
     const dt = Math.min(0.25, (now - this.lastTime) / 1000);
     this.lastTime = now;
@@ -569,6 +631,7 @@ export class Game {
       while (this.accumulator >= PHYSICS_STEP && steps < MAX_STEPS_PER_FRAME) {
         this.player.update(this.world, PHYSICS_STEP);
         this.mobManager.update(PHYSICS_STEP, mobContext);
+        this.droppedItemManager.update(PHYSICS_STEP, this.world, this.player.body, (item) => this.handleItemPickup(item));
         this.projectiles.update(
           PHYSICS_STEP,
           this.world,
@@ -1110,7 +1173,7 @@ export class Game {
       const da = Math.max(Math.abs(a.cx - pcx), Math.abs(a.cz - pcz));
       const db = Math.max(Math.abs(b.cx - pcx), Math.abs(b.cz - pcz));
       if (da !== db) return da - db;
-      return a.kind === b.kind ? 0 : a.kind === 'generate' ? -1 : 1;
+      return a.kind === 'generate' ? -1 : 1;
     });
 
     this.taskQueue = tasks.filter((t) => {
