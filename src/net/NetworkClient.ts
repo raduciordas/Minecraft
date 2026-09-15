@@ -1,5 +1,6 @@
 import { CONNECT_TIMEOUT_MS } from '../config';
 import type { EditsData } from '../world/World';
+import type { DroppedItemData } from '../items/DroppedItem';
 
 export interface PlayerColor {
   hue: number;
@@ -21,6 +22,7 @@ export interface InitPayload {
   epoch: number;
   edits: EditsData;
   players: RemotePlayerState[];
+  droppedItems?: DroppedItemData[];
 }
 
 export interface MoveEvent {
@@ -41,11 +43,22 @@ export interface BlockEditEvent {
   by: string;
 }
 
+export interface DropItemEvent extends DroppedItemData {
+  by?: string;
+}
+
+export interface PickupItemEvent {
+  id: string;
+  by?: string;
+}
+
 interface Handlers {
   join: (p: RemotePlayerState) => void;
   leave: (id: string) => void;
   move: (e: MoveEvent) => void;
   blockEdit: (e: BlockEditEvent) => void;
+  dropItem: (e: DropItemEvent) => void;
+  pickupItem: (e: PickupItemEvent) => void;
 }
 
 export interface LessonClaim {
@@ -120,6 +133,8 @@ export class NetworkClient {
         else if (msg.type === 'leave') this.handlers.leave?.(msg.id as string);
         else if (msg.type === 'move') this.handlers.move?.(msg as unknown as MoveEvent);
         else if (msg.type === 'blockEdit') this.handlers.blockEdit?.(msg as unknown as BlockEditEvent);
+        else if (msg.type === 'dropItem') this.handlers.dropItem?.(msg as unknown as DropItemEvent);
+        else if (msg.type === 'pickupItem') this.handlers.pickupItem?.(msg as unknown as PickupItemEvent);
       });
 
       ws.addEventListener('close', () => {
@@ -152,6 +167,16 @@ export class NetworkClient {
   sendBlockEdit(x: number, y: number, z: number, blockId: number): void {
     if (!this.connected || !this.ws) return;
     this.ws.send(JSON.stringify({ type: 'blockEdit', x, y, z, blockId }));
+  }
+
+  sendDropItem(data: DroppedItemData): void {
+    if (!this.connected || !this.ws) return;
+    this.ws.send(JSON.stringify({ type: 'dropItem', ...data }));
+  }
+
+  sendPickupItem(id: string): void {
+    if (!this.connected || !this.ws) return;
+    this.ws.send(JSON.stringify({ type: 'pickupItem', id }));
   }
 
   // Asks the server for exclusive use of a lesson. Resolves ok:false with the

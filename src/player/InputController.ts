@@ -26,6 +26,7 @@ export class InputController {
   private hotbarListeners: ((slot: number) => void)[] = [];
   private scrollListeners: ((delta: number) => void)[] = [];
   private flyToggleListeners: (() => void)[] = [];
+  private dropListeners: (() => void)[] = [];
   private inventoryToggleListeners: (() => void)[] = [];
   private helpToggleListeners: (() => void)[] = [];
   private touchModeListeners: ((active: boolean) => void)[] = [];
@@ -67,6 +68,7 @@ export class InputController {
       if (!this.active) return;
       this.keys.add(e.code);
       if (e.code === 'KeyF') this.flyToggleListeners.forEach((fn) => fn());
+      if (e.code === 'KeyQ') this.dropListeners.forEach((fn) => fn());
       if (e.code.startsWith('Digit')) {
         const n = Number(e.code.slice(5));
         if (n >= 1 && n <= 9) this.hotbarListeners.forEach((fn) => fn(n - 1));
@@ -162,6 +164,9 @@ export class InputController {
   triggerFlyToggle(): void {
     this.flyToggleListeners.forEach((fn) => fn());
   }
+  triggerDrop(): void {
+    this.dropListeners.forEach((fn) => fn());
+  }
   triggerInventoryToggle(): void {
     this.inventoryToggleListeners.forEach((fn) => fn());
   }
@@ -180,6 +185,9 @@ export class InputController {
   }
   onFlyToggle(fn: () => void): void {
     this.flyToggleListeners.push(fn);
+  }
+  onDrop(fn: () => void): void {
+    this.dropListeners.push(fn);
   }
   onInventoryToggle(fn: () => void): void {
     this.inventoryToggleListeners.push(fn);

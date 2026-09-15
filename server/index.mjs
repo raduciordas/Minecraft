@@ -47,6 +47,9 @@ function colorFromName(name) {
 const players = new Map(); // id -> { ws, name, color, x, y, z, yaw }
 let nextId = 1;
 
+// Map of active dropped items: id -> { id, itemId, count, x, y, z, vx, vy, vz }
+const droppedItems = new Map();
+
 // One lesson, one player at a time: whoever opens a Tabla de Blocuri holds it
 // until they close it, go quiet for a minute, or drop off.
 const LESSON_IDLE_MS = 60_000;
@@ -122,6 +125,7 @@ wss.on('connection', (ws) => {
           players: [...players.entries()]
             .filter(([pid]) => pid !== id)
             .map(([pid, p]) => ({ id: pid, name: p.name, color: p.color, x: p.x, y: p.y, z: p.z, yaw: p.yaw })),
+          droppedItems: Array.from(droppedItems.values()),
         }),
       );
       broadcast({ type: 'join', id, name, color, x: 0.5, y: 40, z: 0.5, yaw: 0 }, id);
@@ -157,6 +161,24 @@ wss.on('connection', (ws) => {
       else chunkEdits.push([index, blockId]);
       scheduleSave();
       broadcast({ type: 'blockEdit', x, y, z, blockId, by: id }, id);
+      return;
+    }
+
+    if (msg.type === 'dropItem') {
+      const { id: itemIdStr, itemId, count, x, y, z, vx, vy, vz } = msg;
+      if (!itemIdStr || !Number.isFinite(itemId)) return;
+      const itemData = { id: String(itemIdStr), itemId, count: count || 1, x, y, z, vx, vy, vz };
+      droppedItems.set(itemData.id, itemData);
+      broadcast({ type: 'dropItem', ...itemData, by: id }, id);
+      return;
+    }
+
+    if (msg.type === 'pickupItem') {
+      const itemIdStr = String(msg.id || '');
+      if (droppedItems.has(itemIdStr)) {
+        droppedItems.delete(itemIdStr);
+        broadcast({ type: 'pickupItem', id: itemIdStr, by: id });
+      }
       return;
     }
 
