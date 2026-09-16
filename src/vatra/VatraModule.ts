@@ -487,6 +487,7 @@ function buildSheep(): THREE.Group {
   const SKIN = 0x4a4038;
   box(sheep, 0.85, 0.55, 0.42, WOOL, 0, 0.72, 0); // fleecy body
   const head = box(sheep, 0.28, 0.3, 0.26, SKIN, 0.53, 0.82, 0);
+  head.name = 'sheep-head';
   box(head, 0.3, 0.16, 0.28, WOOL, -0.04, 0.14, 0); // woolly forehead
   for (const [dx, dz] of [
     [-0.28, -0.14],
@@ -498,6 +499,32 @@ function buildSheep(): THREE.Group {
   }
   box(sheep, 0.1, 0.16, 0.1, WOOL, -0.45, 0.78, 0); // tail
   return sheep;
+}
+
+function buildGrazingSheep(): THREE.Group {
+  const sheep = buildSheep();
+  const head = sheep.getObjectByName('sheep-head');
+  if (head) {
+    head.rotation.z = 0.62;
+    head.position.y -= 0.14;
+  }
+  return sheep;
+}
+
+function buildWolf(): THREE.Group {
+  const wolf = new THREE.Group();
+  const FUR = 0x6a625b;
+  const DARK = 0x2a2522;
+  box(wolf, 0.9, 0.48, 0.38, FUR, 0, 0.72, 0);
+  const head = box(wolf, 0.38, 0.34, 0.32, FUR, 0.57, 0.86, 0);
+  for (const dz of [-0.1, 0.1]) box(head, 0.12, 0.18, 0.1, DARK, 0.02, 0.24, dz);
+  box(head, 0.18, 0.12, 0.16, DARK, 0.27, -0.04, 0);
+  for (const [dx, dz] of [[-0.28, -0.13], [-0.28, 0.13], [0.28, -0.13], [0.28, 0.13]] as const) {
+    box(wolf, 0.1, 0.42, 0.1, DARK, dx, 0.22, dz);
+  }
+  const tail = box(wolf, 0.52, 0.12, 0.12, FUR, -0.62, 0.9, 0);
+  tail.rotation.z = -0.45;
+  return wolf;
 }
 
 // The mill's paddle wheel, which starts turning for good once the "while"
@@ -616,6 +643,9 @@ export class VatraModule {
   private tallyBoard: THREE.Mesh | null = null;
   private tallyValues = new Map<string, number>();
   private penSheepProps: THREE.Group[] = [];
+  private countedSheepProps: THREE.Group[] = [];
+  private grazingSheepProps: THREE.Group[] = [];
+  private wolfProp: THREE.Group | null = null;
 
   constructor(
     private scene: THREE.Scene,
@@ -670,6 +700,9 @@ export class VatraModule {
     if (this.done.has('gard')) this.setSheepProps(true);
     if (this.done.has('moara')) this.setMillWheelProp(true);
     if (this.done.has('tarcul')) this.setPenSheepProps(true);
+    if (this.done.has('oile_la_numarat')) this.setCountedSheepProps(true);
+    if (this.done.has('drumul_oilor')) this.setGrazingSheepProps(true);
+    if (this.done.has('capcana')) this.setWolfProp(true);
   }
 
   // Baba Dochia: the old shepherdess of the nine sheepskin coats, standing
@@ -702,7 +735,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('stana', npc.position.x, zone.gy + 1.9, npc.position.z);
 
-    const nameSign = makeSign('Baba Dochia', 1.6);
+    const nameSign = makeSign('4. Baba Dochia', 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -759,6 +792,66 @@ export class VatraModule {
     }
   }
 
+  // The seven sheep remain by the gate after the counting lesson is solved.
+  private setCountedSheepProps(show: boolean): void {
+    if (!show) {
+      for (const sheep of this.countedSheepProps) {
+        this.scene.remove(sheep);
+        disposeModel(sheep);
+      }
+      this.countedSheepProps = [];
+      return;
+    }
+    if (this.countedSheepProps.length > 0) return;
+    const zone = this.zones.get('stana')!;
+    for (const dx of COUNT_DX) {
+      const sheep = buildSheep();
+      sheep.position.set(zone.ox + dx + 0.5, zone.gy + 1, zone.oz + GATE_DZ + 2.5);
+      sheep.rotation.y = Math.PI / 2;
+      this.scene.add(sheep);
+      this.countedSheepProps.push(sheep);
+    }
+  }
+
+  // A small flock lowers its heads in the meadow at the end of the road.
+  private setGrazingSheepProps(show: boolean): void {
+    if (!show) {
+      for (const sheep of this.grazingSheepProps) {
+        this.scene.remove(sheep);
+        disposeModel(sheep);
+      }
+      this.grazingSheepProps = [];
+      return;
+    }
+    if (this.grazingSheepProps.length > 0) return;
+    const zone = this.zones.get('stana')!;
+    const spots: [number, number][] = [[-7, -13], [-8, -15], [-6, -16], [-9, -14]];
+    for (const [dx, dz] of spots) {
+      const sheep = buildGrazingSheep();
+      sheep.position.set(zone.ox + dx + 0.5, zone.gy + 1, zone.oz + dz + 0.5);
+      sheep.rotation.y = (dx * 0.7 + dz) % (Math.PI * 2);
+      this.scene.add(sheep);
+      this.grazingSheepProps.push(sheep);
+    }
+  }
+
+  private setWolfProp(show: boolean): void {
+    if (!show) {
+      if (this.wolfProp) {
+        this.scene.remove(this.wolfProp);
+        disposeModel(this.wolfProp);
+      }
+      this.wolfProp = null;
+      return;
+    }
+    if (this.wolfProp) return;
+    const wolf = buildWolf();
+    wolf.position.set(this.pox + 13.5, this.paduGroundY + 1, this.poz - 7.5);
+    wolf.rotation.y = Math.PI / 2;
+    this.scene.add(wolf);
+    this.wolfProp = wolf;
+  }
+
   // Baciul Luncii: the shepherd who teaches loops, standing in the meadow
   // between the fence line and the field. Clickable, like Bunicul.
   private buildBaciul(): void {
@@ -786,7 +879,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('lunca', npc.position.x, this.lunGroundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('Baciul Luncii', 1.6);
+    const nameSign = makeSign('2. Baciul Luncii', 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -817,7 +910,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('padurea', npc.position.x, this.paduGroundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('Muma Pădurii', 1.6);
+    const nameSign = makeSign('3. Muma Pădurii', 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.5, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -844,7 +937,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('vatra', npc.position.x, this.groundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('Bunicul Fierar', 1.6);
+    const nameSign = makeSign('1. Bunicul Fierar', 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -1493,8 +1586,13 @@ export class VatraModule {
     if (puzzleId === 'capite') this.spawnFlyingBits(this.lox - 10 + 0.5, this.lunGroundY + 3, this.loz + HAYSTACK_DZ + 0.5, 0xd9c27a, 4, this.lunGroundY);
     if (puzzleId === 'poteca') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2.2, this.poz - 6 + 0.5, 0xffe14d, 2, this.paduGroundY);
     if (puzzleId === 'pod') this.spawnFlyingBits(this.pox + 0.5, this.paduGroundY + 2, this.poz + 3 + 0.5, 0x8a6a3a, 2, this.paduGroundY);
-    if (puzzleId === 'capcana') this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
+    if (puzzleId === 'capcana') {
+      this.setWolfProp(true);
+      this.spawnFlyingBits(this.pox + 13 + 0.5, this.paduGroundY + 1.3, this.poz - 4 + 0.5, 0xd9c27a, 2, this.paduGroundY);
+    }
     if (puzzleId === 'tarcul') this.setPenSheepProps(true);
+    if (puzzleId === 'oile_la_numarat') this.setCountedSheepProps(true);
+    if (puzzleId === 'drumul_oilor') this.setGrazingSheepProps(true);
     if (this.zoneOf(puzzleId) === 'stana') {
       const zone = this.zones.get('stana')!;
       this.spawnFlyingBits(zone.ox + 0.5, zone.gy + 2.5, zone.oz + 3.5, 0xe8e0cc, 3, zone.gy);
@@ -1539,6 +1637,9 @@ export class VatraModule {
     if (puzzleId === 'gard') this.setSheepProps(false);
     if (puzzleId === 'moara') this.setMillWheelProp(false);
     if (puzzleId === 'tarcul') this.setPenSheepProps(false);
+    if (puzzleId === 'oile_la_numarat') this.setCountedSheepProps(false);
+    if (puzzleId === 'drumul_oilor') this.setGrazingSheepProps(false);
+    if (puzzleId === 'capcana') this.setWolfProp(false);
     this.done.delete(puzzleId);
     this.save();
   }

@@ -23,7 +23,7 @@ export class TouchControls {
         'Tap to play<br /><br />' +
         'Left stick — move &nbsp;|&nbsp; drag screen — look<br />' +
         '⛏ break &nbsp;|&nbsp; ⬜ place &nbsp;|&nbsp; ⤒ jump / swim &nbsp;|&nbsp; ⤓ descend<br />' +
-        '✈ zbor (cu Aripile Zmeului) &nbsp;|&nbsp; 🎒 inventory &nbsp;|&nbsp; tap hotbar to select<br />' +
+        '✈ zbor (cu Aripile Zmeului) &nbsp;|&nbsp; ↧ aruncă &nbsp;|&nbsp; 🎒 inventory &nbsp;|&nbsp; tap hotbar to select<br />' +
         'Progress is saved automatically in your browser.';
     }
 
@@ -197,6 +197,7 @@ export class TouchControls {
       },
       stopRepeat,
     );
+    button('btn-drop', '↧', () => input.triggerDrop());
     button('btn-fly', '✈', () => input.triggerFlyToggle());
     button('btn-inv', '🎒', () => input.triggerInventoryToggle());
     button('btn-pause', '❚❚', () => input.setTouchActive(false));

@@ -74,8 +74,9 @@ import { THROWABLES, THROWABLE_IDS, ThrowableId, isThrowable } from './items/Thr
 import { TOOLS, ToolId, isTool } from './items/Tool';
 import { buildHeldItem, disposeModel } from './items/HeldItem';
 import { NetworkClient, resolveServerUrl } from './net/NetworkClient';
-import type { BlockEditEvent, MoveEvent, RemotePlayerState } from './net/NetworkClient';
+import type { BlockEditEvent, DropItemEvent, MoveEvent, PickupGrantedEvent, RemotePlayerState } from './net/NetworkClient';
 import { RemotePlayerManager } from './net/RemotePlayer';
+import { DroppedItemManager, type DroppedItemData } from './items/DroppedItem';
 
 const THROWABLE_STARTER_STOCK = 20;
 
@@ -214,6 +215,7 @@ export class Game {
   private playerName: string;
   private network = new NetworkClient();
   private remotePlayers: RemotePlayerManager;
+  private droppedItems: DroppedItemManager;
   private multiplayer = false;
   private heldLesson: string | null = null;
   private lessonIdleTimer: number | null = null;
@@ -305,6 +307,7 @@ export class Game {
     this.mobManager = new MobManager(this.scene, this.world);
     this.projectiles = new ProjectileManager(this.scene);
     this.remotePlayers = new RemotePlayerManager(this.scene);
+    this.droppedItems = new DroppedItemManager(this.scene, this.atlas);
     this.mpStatusEl = document.getElementById('mp-status')!;
     new TouchControls(this.input);
 
@@ -381,6 +384,7 @@ export class Game {
     this.input.onScroll((delta) => this.hotbar.scroll(delta));
     this.input.onBreak(() => this.attack());
     this.input.onPlace(() => this.placeBlock());
+    this.input.onDrop(() => this.dropSelectedItem());
     this.input.onInventoryToggle(() => this.toggleInventoryPanel());
     this.input.onHelpToggle(() => this.toggleHelpPanel());
 
@@ -429,6 +433,8 @@ export class Game {
       if (THROWABLES[id].notStarterStock) continue;
       this.inventory.ensureAtLeast(id as unknown as BlockType, THROWABLE_STARTER_STOCK);
     }
+    // Harta este un instrument de orientare, nu o recompensă de lecție.
+    this.inventory.ensureAtLeast(ToolId.Harta, 1);
     for (const [id, lesson] of LESSON_ONLY_STOCK) {
       if (!this.vatra.isDone(lesson)) this.inventory.remove(id, this.inventory.count(id));
     }
@@ -472,9 +478,13 @@ export class Game {
       this.remotePlayers.applyMove(e.id, e.x, e.y, e.z, e.yaw, e.moving);
     });
     this.network.on('blockEdit', (e: BlockEditEvent) => this.applyRemoteBlockEdit(e));
+    this.network.on('dropItem', (e: DropItemEvent) => this.droppedItems.addDroppedItem(e));
+    this.network.on('pickupItem', (id: string) => this.droppedItems.removeDroppedItem(id));
+    this.network.on('pickupGranted', (e: PickupGrantedEvent) => this.inventory.add(e.item.itemId, e.item.count));
     this.network.onDisconnect(() => {
       this.multiplayer = false;
       this.remotePlayers.clear();
+      this.droppedItems.clear();
       this.updateMpStatus();
       console.warn('[CUBURIA] Lost connection to the multiplayer server — continuing solo.');
     });
@@ -498,6 +508,7 @@ export class Game {
     }
     this.dayNight.setNetworkEpoch(init.epoch);
     for (const p of init.players) this.remotePlayers.add(p);
+    for (const item of init.droppedItems ?? []) this.droppedItems.addDroppedItem(item, 0);
     this.updateMpStatus();
   }
 
@@ -584,6 +595,10 @@ export class Game {
           mob.hit(damage, (dx / len) * 4, (dz / len) * 4);
           if (mob.dying) this.sound.mobDeath();
           else this.sound.hitMob();
+        });
+        this.droppedItems.update(PHYSICS_STEP, this.world, this.player.body, (item) => {
+          if (this.multiplayer) this.network.sendPickupItem(item.id);
+          else this.inventory.add(item.itemId, item.count);
         });
         this.accumulator -= PHYSICS_STEP;
         steps++;
@@ -744,6 +759,32 @@ export class Game {
   // Free-stock weapons are always usable; the earned ones need one in the pack
   private ownsWeapon(id: number): boolean {
     return !WEAPONS[id]?.notStarterStock || this.owns(id);
+  }
+
+  private dropSelectedItem(): void {
+    if (this.health.dead) return;
+    const itemId = this.hotbar.selectedItem;
+    if (!isKnownItem(itemId) || !this.inventory.remove(itemId)) {
+      this.sound.clink();
+      return;
+    }
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const body = this.player.body;
+    const data: DroppedItemData = {
+      id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      itemId,
+      count: 1,
+      x: body.x + dir.x * 0.8,
+      y: body.y + 1,
+      z: body.z + dir.z * 0.8,
+      vx: dir.x * 3,
+      vy: 2.5,
+      vz: dir.z * 3,
+    };
+    this.droppedItems.addDroppedItem(data);
+    if (this.multiplayer) this.network.sendDropItem(data);
+    this.sound.place();
   }
 
   private attack(): void {
@@ -1003,19 +1044,8 @@ export class Game {
 
   private async openTabla(puzzleId: string): Promise<void> {
     if (this.tablaLoading) return;
-    if (this.heldLesson && this.heldLesson !== puzzleId) this.releaseLesson();
-    // One tabla per lesson across the whole server: ask before opening, so
-    // two children can't drag blocks into the same lesson at once.
-    if (this.multiplayer) {
-      const claim = await this.network.claimLesson(puzzleId);
-      if (!claim.ok) {
-        this.showToast(`${claim.byName ?? 'Alt jucător'} lucrează acum la lecția asta — așteaptă să termine.`);
-        this.sound.clink();
-        return;
-      }
-    }
-    this.heldLesson = puzzleId;
-    this.noteLessonActivity();
+    // Lecțiile sunt independente pentru fiecare jucător: mai mulți copii pot
+    // programa aceeași provocare în paralel, fără să își blocheze tabla.
     const host = document.getElementById('tabla')!;
     this.input.setInventoryOpen(true);
     if (!this.input.isTouchDevice) document.exitPointerLock();

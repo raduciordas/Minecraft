@@ -79,7 +79,7 @@ export class HelpPanel {
     lead.className = 'help-lead';
     lead.textContent =
       'Click stânga sparge un cub și ți-l pune în traistă; click dreapta îl pune la loc. ' +
-      'Apeși E ca să-ți vezi toată traista, iar H închide pagina asta.';
+      'Apeși G ca să arunci ce ții în mână; E îți arată toată traista, iar H închide pagina asta.';
     panel.appendChild(lead);
 
     for (const section of buildHelpSections()) {

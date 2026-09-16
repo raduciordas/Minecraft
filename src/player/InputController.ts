@@ -23,6 +23,7 @@ export class InputController {
   private keys = new Set<string>();
   private breakListeners: (() => void)[] = [];
   private placeListeners: (() => void)[] = [];
+  private dropListeners: (() => void)[] = [];
   private hotbarListeners: ((slot: number) => void)[] = [];
   private scrollListeners: ((delta: number) => void)[] = [];
   private flyToggleListeners: (() => void)[] = [];
@@ -67,6 +68,7 @@ export class InputController {
       if (!this.active) return;
       this.keys.add(e.code);
       if (e.code === 'KeyF') this.flyToggleListeners.forEach((fn) => fn());
+      if (e.code === 'KeyG' && !e.repeat) this.dropListeners.forEach((fn) => fn());
       if (e.code.startsWith('Digit')) {
         const n = Number(e.code.slice(5));
         if (n >= 1 && n <= 9) this.hotbarListeners.forEach((fn) => fn(n - 1));
@@ -159,6 +161,9 @@ export class InputController {
   triggerPlace(): void {
     this.placeListeners.forEach((fn) => fn());
   }
+  triggerDrop(): void {
+    this.dropListeners.forEach((fn) => fn());
+  }
   triggerFlyToggle(): void {
     this.flyToggleListeners.forEach((fn) => fn());
   }
@@ -171,6 +176,9 @@ export class InputController {
   }
   onPlace(fn: () => void): void {
     this.placeListeners.push(fn);
+  }
+  onDrop(fn: () => void): void {
+    this.dropListeners.push(fn);
   }
   onHotbarSelect(fn: (slot: number) => void): void {
     this.hotbarListeners.push(fn);

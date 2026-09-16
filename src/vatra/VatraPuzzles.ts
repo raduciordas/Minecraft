@@ -1421,9 +1421,9 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     intro:
       'BABA DOCHIA: „Asta-i cea mai grea, copile. Două cutiuțe: «lapte» și «branza», amândouă pe zero. Mulgi patru oi, și la fiecare pui doi litri în «lapte». Apoi, CÂT TIMP mai e lapte, faci un caș: scazi doi din lapte și adaugi unu la brânză. La urmă îmi spui câte cașuri au ieșit. Socotește bine — o cutiuță o umple pe cealaltă!"',
     success:
-      'PATRU CAȘURI din opt litri, și amândouă cutiuțele au ieșit la socoteală! Ai pus o cutiuță să hrănească pe cealaltă. Dochia îți dă harta ei. (+1 hartă)',
-    rewardItems: [{ id: ToolId.Harta, count: 1 }],
-    reward: '1 hartă — ține-o în mână și vezi harta locului, cu zonele și casa însemnate',
+      'PATRU CAȘURI din opt litri, și amândouă cutiuțele au ieșit la socoteală! Ai pus o cutiuță să hrănească pe cealaltă. Dochia îți dă zece sticle de socată fermentată. (+10 socată fermentată)',
+    rewardItems: [{ id: ThrowableId.SocataBottle, count: 10 }],
+    reward: '10 sticle de socată fermentată — le poți arunca pentru a speria monștrii',
     actions: [
       { id: 'mulge_o_oaie', label: 'Mulge o oaie' },
       { id: 'fa_un_cas', label: 'Fă un caș' },

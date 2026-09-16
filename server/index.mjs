@@ -45,6 +45,8 @@ function colorFromName(name) {
 }
 
 const players = new Map(); // id -> { ws, name, color, x, y, z, yaw }
+const droppedItems = new Map(); // id -> item data; the server decides the single winner of each pickup
+const MAX_DROPPED_ITEMS = 512;
 let nextId = 1;
 
 // One lesson, one player at a time: whoever opens a Tabla de Blocuri holds it
@@ -122,6 +124,7 @@ wss.on('connection', (ws) => {
           players: [...players.entries()]
             .filter(([pid]) => pid !== id)
             .map(([pid, p]) => ({ id: pid, name: p.name, color: p.color, x: p.x, y: p.y, z: p.z, yaw: p.yaw })),
+          droppedItems: [...droppedItems.values()],
         }),
       );
       broadcast({ type: 'join', id, name, color, x: 0.5, y: 40, z: 0.5, yaw: 0 }, id);
@@ -157,6 +160,34 @@ wss.on('connection', (ws) => {
       else chunkEdits.push([index, blockId]);
       scheduleSave();
       broadcast({ type: 'blockEdit', x, y, z, blockId, by: id }, id);
+      return;
+    }
+
+    if (msg.type === 'dropItem') {
+      const { id: itemId, itemId: droppedItemId, count, x, y, z, vx, vy, vz } = msg;
+      if (typeof itemId !== 'string' || itemId.length === 0 || itemId.length > 80) return;
+      if (![droppedItemId, count, x, y, z, vx, vy, vz].every(Number.isFinite)) return;
+      if (!Number.isInteger(droppedItemId) || count !== 1 || droppedItems.has(itemId)) return;
+      if (droppedItems.size >= MAX_DROPPED_ITEMS) return;
+      // A client may only drop close to its current position; inventory itself
+      // stays client-owned, but shared-world placement cannot be teleported.
+      if (Math.hypot(x - player.x, y - player.y, z - player.z) > 8) return;
+      const item = { id: itemId, itemId: droppedItemId, count, x, y, z, vx, vy, vz };
+      droppedItems.set(itemId, item);
+      broadcast({ type: 'dropItem', ...item, by: id }, id);
+      return;
+    }
+
+    if (msg.type === 'pickupItem') {
+      const itemId = String(msg.id || '');
+      const item = droppedItems.get(itemId);
+      if (!item) return;
+      if (Math.hypot(item.x - player.x, item.y - player.y, item.z - player.z) > 8) return;
+      // Delete before either message goes out: concurrent pickup messages now
+      // see no item, so exactly one player receives it.
+      droppedItems.delete(itemId);
+      ws.send(JSON.stringify({ type: 'pickupGranted', item }));
+      broadcast({ type: 'pickupItem', id: itemId, by: id }, id);
       return;
     }
 

@@ -3,7 +3,7 @@ import { CHUNK_HEIGHT } from '../config';
 import type { World } from '../world/World';
 
 const SPAN = 96; // blocks across, centred on the player
-const PIXELS = 192; // canvas size; two screen pixels per block
+const PIXELS = 224; // canvas size; two screen pixels per block
 const SCALE = PIXELS / SPAN;
 const REDRAW_MS = 250; // the terrain hardly moves; no need to redraw every frame
 
