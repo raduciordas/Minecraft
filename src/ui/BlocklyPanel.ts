@@ -324,6 +324,7 @@ export class BlocklyPanel {
   // one with categories, so we remember which kind is up and re-inject when
   // the next lesson needs the other one.
   private toolboxKind: string | null = null;
+  private savedWorkspaces = new Map<string, ReturnType<typeof Blockly.serialization.workspaces.save>>();
 
   constructor(
     container: HTMLElement,
@@ -344,9 +345,30 @@ export class BlocklyPanel {
     title.className = 'tabla-title';
     this.titleText = document.createElement('span');
     title.appendChild(this.titleText);
-    const close = document.createElement('span');
+
+    const dockControls = document.createElement('div');
+    dockControls.className = 'tabla-dock-controls';
+    for (const [side, symbol, label] of [
+      ['left', '←', 'Mută tabla în stânga'],
+      ['right', '→', 'Mută tabla în dreapta'],
+    ] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tabla-dock-btn';
+      button.textContent = symbol;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.addEventListener('click', () => this.dockPanel(side));
+      dockControls.appendChild(button);
+    }
+    title.appendChild(dockControls);
+
+    const close = document.createElement('button');
+    close.type = 'button';
     close.className = 'tabla-close';
     close.textContent = '✕';
+    close.title = 'Închide tabla';
+    close.setAttribute('aria-label', 'Închide tabla');
     close.addEventListener('click', () => {
       if (!this.running) this.cb.onRequestClose();
     });
@@ -409,6 +431,7 @@ export class BlocklyPanel {
       this.cb.onActivity();
       if (this.running || !this.puzzle) return;
       this.cb.onResetLesson(this.puzzle.id);
+      this.savedWorkspaces.delete(this.puzzle.id);
       this.clearWorkspace();
       this.status = { text: 'Lecția a fost resetată — poți s-o iei de la capăt, ca prima dată!', ok: true };
       this.refresh();
@@ -423,7 +446,23 @@ export class BlocklyPanel {
     this.root.appendChild(this.panel);
   }
 
+  private dockPanel(side: 'left' | 'right'): void {
+    this.root.classList.toggle('tabla-docked-left', side === 'left');
+    this.root.classList.toggle('tabla-docked-right', side === 'right');
+    requestAnimationFrame(() => {
+      if (this.workspace) Blockly.svgResize(this.workspace);
+    });
+  }
+
+  private saveCurrentWorkspace(): void {
+    if (!this.puzzle || !this.workspace) return;
+    this.savedWorkspaces.set(this.puzzle.id, Blockly.serialization.workspaces.save(this.workspace));
+  }
+
   open(puzzle: VatraPuzzle): void {
+    const previousPuzzleId = this.puzzle?.id;
+    const samePuzzle = previousPuzzleId === puzzle.id;
+    if (previousPuzzleId && !samePuzzle) this.saveCurrentWorkspace();
     this.puzzle = puzzle;
     this.running = false;
     this.status = null;
@@ -446,13 +485,16 @@ export class BlocklyPanel {
     const narrow = window.innerWidth < 720;
     const toolbox = this.buildToolbox(puzzle);
     const kind = (toolbox as { kind: string }).kind;
+    let rebuiltWorkspace = false;
     if (this.workspace && kind !== this.toolboxKind) {
       this.workspace.dispose();
       this.workspace = null;
       this.blocklyDiv.innerHTML = '';
+      rebuiltWorkspace = true;
     }
     this.toolboxKind = kind;
     if (!this.workspace) {
+      rebuiltWorkspace = true;
       this.workspace = Blockly.inject(this.blocklyDiv, {
         toolbox,
         theme: VATRA_THEME,
@@ -482,8 +524,16 @@ export class BlocklyPanel {
       this.workspace.updateToolbox(toolbox);
       this.workspace.setScale(narrow ? 0.65 : 0.95);
     }
-    this.clearWorkspace();
-    if (puzzle.starterProgram) this.loadProgram(puzzle.starterProgram);
+    if (!samePuzzle || rebuiltWorkspace) {
+      const saved = this.savedWorkspaces.get(puzzle.id);
+      if (saved && this.workspace) {
+        this.workspace.clear();
+        Blockly.serialization.workspaces.load(saved, this.workspace);
+      } else {
+        this.clearWorkspace();
+        if (puzzle.starterProgram) this.loadProgram(puzzle.starterProgram);
+      }
+    }
     // The container was display:none until now, so Blockly measured it as 0×0
     requestAnimationFrame(() => {
       if (this.workspace) Blockly.svgResize(this.workspace);
@@ -492,6 +542,7 @@ export class BlocklyPanel {
   }
 
   close(): void {
+    this.saveCurrentWorkspace();
     this.isOpen = false;
     this.running = false;
     this.root.classList.add('hidden');

@@ -130,6 +130,17 @@
         z-index: 16; font-family: monospace;
       }
       #tabla.hidden { display: none; }
+      #tabla.tabla-docked-left,
+      #tabla.tabla-docked-right {
+        padding: 10px; box-sizing: border-box;
+        background: rgba(0, 0, 0, 0.14);
+      }
+      #tabla.tabla-docked-left { justify-content: flex-start; }
+      #tabla.tabla-docked-right { justify-content: flex-end; }
+      #tabla.tabla-docked-left .tabla-panel,
+      #tabla.tabla-docked-right .tabla-panel {
+        width: min(680px, 52vw); max-height: calc(100vh - 20px);
+      }
       .tabla-panel {
         position: relative; /* the block-name dialog overlays the panel */
         background: linear-gradient(#b08249, #8a5f33);
@@ -143,12 +154,19 @@
       }
       .tabla-title {
         font-weight: bold; font-size: 15px;
-        display: flex; align-items: center; gap: 10px;
+        display: flex; align-items: center; gap: 8px;
       }
+      .tabla-title > span:first-child { flex: 1; min-width: 0; }
+      .tabla-dock-controls { display: flex; gap: 4px; margin-left: auto; }
+      .tabla-dock-btn,
       .tabla-close {
-        margin-left: auto; cursor: pointer;
-        border: 2px solid #4a2f16; border-radius: 4px; padding: 2px 8px;
+        width: 32px; height: 28px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; color: #2b1808; background: rgba(255, 240, 200, 0.18);
+        border: 2px solid #4a2f16; border-radius: 4px;
+        font: bold 17px/1 monospace;
       }
+      .tabla-dock-btn:hover,
       .tabla-close:hover { background: rgba(58, 36, 16, 0.2); }
       .tabla-intro {
         font-size: 12px; line-height: 1.5;
@@ -169,6 +187,15 @@
       .tabla-workspace {
         height: 48vh; min-height: 280px;
         border: 3px solid #4a2f16; border-radius: 4px; overflow: hidden;
+      }
+      @media (max-width: 900px) {
+        #tabla.tabla-docked-left,
+        #tabla.tabla-docked-right {
+          justify-content: center; padding: 0; background: rgba(0, 0, 0, 0.55);
+        }
+        #tabla.tabla-docked-left .tabla-panel,
+        #tabla.tabla-docked-right .tabla-panel { width: 95vw; max-height: 92vh; }
+        .tabla-dock-controls { display: none; }
       }
       @media (max-width: 720px) {
         .tabla-workspace { height: 52vh; min-height: 240px; }
