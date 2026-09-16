@@ -14,6 +14,7 @@ export interface StructureTemplate {
   surface: BlockType; // top block used when flattening the footprint
   clearAbove: number; // height cleared to air above ground, for overhead rock/canopy
   pad: number; // extra flattened margin around the block bounding box
+  levelOrigin?: { x: number; z: number }; // optional terrain point whose elevation this structure shares
   blocks: StructureBlock[];
 }
 
@@ -453,6 +454,7 @@ export function buildBuclaZone(originX: number, originZ: number): StructureTempl
     surface: BlockType.Grass,
     clearAbove: 8,
     pad: 4,
+    levelOrigin: PADUREA_ORIGIN,
     blocks,
   };
 }
@@ -473,6 +475,7 @@ export function buildBuclaBridge(originX: number, originZ: number): StructureTem
     surface: BlockType.Grass,
     clearAbove: 8,
     pad: 1,
+    levelOrigin: PADUREA_ORIGIN,
     blocks,
   };
 }

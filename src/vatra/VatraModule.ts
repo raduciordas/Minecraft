@@ -274,6 +274,7 @@ export interface ZoneDef {
   origin: { x: number; z: number };
   puzzles: string[];
   protect: [x0: number, x1: number, z0: number, z1: number, y0: number, y1: number]; // relative to origin/ground
+  levelOrigin?: { x: number; z: number };
 }
 export const ZONE_DEFS: ZoneDef[] = [
   {
@@ -311,6 +312,7 @@ export const ZONE_DEFS: ZoneDef[] = [
       'tup_la_stup', 'tup_pe_coasta', 'tup_acasa',
     ],
     protect: [-16, 18, -24, 16, 0, 9],
+    levelOrigin: PADUREA_ORIGIN,
   },
   {
     id: 'stana',
@@ -759,7 +761,8 @@ export class VatraModule {
     private setBlock: (x: number, y: number, z: number, id: number) => void,
   ) {
     for (const def of ZONE_DEFS) {
-      const gy = world.generator.heightAt(def.origin.x, def.origin.z);
+      const levelOrigin = def.levelOrigin ?? def.origin;
+      const gy = world.generator.heightAt(levelOrigin.x, levelOrigin.z);
       this.zones.set(def.id, { def, ox: def.origin.x, oz: def.origin.z, gy, effectsApplied: false });
       for (const puzzleId of def.puzzles) this.zoneOfPuzzle.set(puzzleId, def.id);
     }
@@ -911,7 +914,7 @@ export class VatraModule {
     for (const side of [-1, 1]) {
       box(head, 0.06, 0.06, 0.04, 0x252018, side * 0.1, 0.02, -0.22);
     }
-    npc.position.set(zone.ox + 7.5, zone.gy + 1, zone.oz + 12.5);
+    npc.position.set(zone.ox + 15.5, zone.gy + 1, zone.oz + 9.5);
     npc.rotation.y = Math.PI;
     this.scene.add(npc);
     this.registerGuide('bucla', npc.position.x, zone.gy + 1.8, npc.position.z);

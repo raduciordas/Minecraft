@@ -106,9 +106,10 @@ export class TerrainGenerator {
       minZ = Math.min(minZ, b.dz);
       maxZ = Math.max(maxZ, b.dz);
     }
+    const levelOrigin = t.levelOrigin ?? { x: t.originX, z: t.originZ };
     return {
       ...t,
-      groundY: this.heightAt(t.originX, t.originZ),
+      groundY: this.heightAt(levelOrigin.x, levelOrigin.z),
       minX: t.originX + minX - t.pad,
       maxX: t.originX + maxX + t.pad,
       minZ: t.originZ + minZ - t.pad,

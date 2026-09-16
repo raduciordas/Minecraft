@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flattenActions, VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
 import { BlockType } from '../src/world/Block.ts';
+import { ZONE_DEFS } from '../src/vatra/VatraModule.ts';
 import {
   BUCLA_ORIGIN,
   LOOP_RECAP_ROUTES,
   MUNTE_ORIGIN,
+  PADUREA_ORIGIN,
   buildBuclaBridge,
   buildBuclaZone,
   mountainRouteStates,
@@ -64,4 +66,7 @@ test('the lower meadow clears the orphaned tree corridor and bridges back uphill
   assert.equal(bridge.blocks.filter((block) => block.block === BlockType.Plank).length, 24);
   assert.ok(zone.clearAbove >= 8);
   assert.ok(bridge.clearAbove >= 8);
+  assert.deepEqual(zone.levelOrigin, PADUREA_ORIGIN);
+  assert.deepEqual(bridge.levelOrigin, PADUREA_ORIGIN);
+  assert.deepEqual(ZONE_DEFS.find((item) => item.id === 'bucla').levelOrigin, PADUREA_ORIGIN);
 });
