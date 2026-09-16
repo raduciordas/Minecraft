@@ -270,6 +270,83 @@ export function buildVladCastle(originX: number, originZ: number): StructureTemp
   };
 }
 
+// Zona 5: Creasta Iedului, a calm sequence-practice plateau on the
+// mountain nearest Bunicul Fierar. The same routes drive terrain markers,
+// lesson solutions, and the animated goat, so they cannot drift apart.
+export const MUNTE_ORIGIN = { x: -58, z: 52 };
+export type MountainDirection = 'nord' | 'sud' | 'est' | 'vest';
+export interface MountainRoute {
+  start: [number, number];
+  steps: MountainDirection[];
+}
+export const MOUNTAIN_ROUTES: Record<string, MountainRoute> = {
+  iedul_la_izvor: {
+    start: [-10, 1],
+    steps: ['est', 'est', 'nord', 'nord', 'est', 'sud', 'est', 'est'],
+  },
+  iedul_printre_stanci: {
+    start: [-2, 5],
+    steps: ['nord', 'nord', 'est', 'est', 'sud', 'est', 'nord', 'est', 'est', 'sud', 'est'],
+  },
+  iedul_pe_creasta: {
+    start: [10, 6],
+    steps: ['vest', 'vest', 'nord', 'est', 'nord', 'nord', 'vest', 'vest', 'nord', 'est', 'est', 'nord', 'est', 'est'],
+  },
+};
+
+export function mountainRoutePoints(route: MountainRoute): [number, number][] {
+  let [x, z] = route.start;
+  const points: [number, number][] = [[x, z]];
+  for (const step of route.steps) {
+    if (step === 'nord') z--;
+    else if (step === 'sud') z++;
+    else if (step === 'est') x++;
+    else x--;
+    points.push([x, z]);
+  }
+  return points;
+}
+
+export function buildMunteZone(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+  const placed = new Set<string>();
+
+  for (const route of Object.values(MOUNTAIN_ROUTES)) {
+    const points = mountainRoutePoints(route);
+    points.forEach(([x, z], index) => {
+      const key = `${x},${z}`;
+      if (placed.has(key)) return;
+      placed.add(key);
+      const isStart = index === 0;
+      const isGoal = index === points.length - 1;
+      B(x, 0, z, isStart ? BlockType.Snow : isGoal ? BlockType.DacianGold : BlockType.RiverStone);
+    });
+  }
+
+  // A small mountain refuge behind Moș Căliman, plus cairns that frame the
+  // practice area without obscuring the routes.
+  for (let x = -2; x <= 2; x++) {
+    for (let z = 8; z <= 10; z++) B(x, 0, z, BlockType.Cobblestone);
+  }
+  for (const x of [-2, 2]) for (let y = 1; y <= 3; y++) B(x, y, 9, BlockType.Log);
+  for (let x = -2; x <= 2; x++) B(x, 4, 9, BlockType.Plank);
+  for (const [x, z] of [[-12, -2], [13, 0], [7, 7]] as const) {
+    B(x, 1, z, BlockType.Cobblestone);
+    B(x, 2, z, BlockType.Cobblestone);
+  }
+
+  return {
+    name: 'Creasta Iedului',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 7,
+    pad: 2,
+    blocks,
+  };
+}
+
 // Where the Satul Codat learning module lives — shared between terrain
 // generation (structure stamping) and VatraModule (puzzle interactions).
 export const VATRA_ORIGIN = { x: -20, z: 16 };

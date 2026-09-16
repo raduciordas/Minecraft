@@ -1495,4 +1495,85 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
     ],
   },
+  // ---- Zona 5 — Creasta Iedului (recapitulare de secvențe). The routes are
+  // deliberately longer than the first Vatra lessons, but use only four
+  // concrete movement commands: no loops, variables, or conditions.
+  iedul_la_izvor: {
+    id: 'iedul_la_izvor',
+    title: 'Iedul la izvor — pași pe potecă',
+    intro:
+      'MOȘ CĂLIMAN: „Iedul Pistrui s-a oprit pe lespedea albă. Du-l până la piatra aurie: EST, EST, NORD, NORD, EST, SUD, EST, EST. Pune fiecare pas în ordine și privește-l cum merge."',
+    success:
+      'Pistrui a ajuns la izvor fără să calce în afara potecii! Ai ținut minte o secvență lungă, pas cu pas. (+8 piatră de râu)',
+    rewardItems: [{ id: BlockType.RiverStone, count: 8 }],
+    reward: '8 pietre de râu — bune pentru poteci și temelii',
+    actions: [
+      { id: 'nord', label: 'Mergi un pas spre NORD' },
+      { id: 'sud', label: 'Mergi un pas spre SUD' },
+      { id: 'est', label: 'Mergi un pas spre EST' },
+      { id: 'vest', label: 'Mergi un pas spre VEST' },
+    ],
+    solution: [A('est'), A('est'), A('nord'), A('nord'), A('est'), A('sud'), A('est'), A('est')],
+    fails: [
+      {
+        text: 'Pistrui a coborât de pe pietre. Citește traseul de la lespedea albă până la piatra aurie și așază din nou pașii în ordine.',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  iedul_printre_stanci: {
+    id: 'iedul_printre_stanci',
+    title: 'Iedul printre stânci — cot după cot',
+    intro:
+      'MOȘ CĂLIMAN: „A doua potecă are mai multe coturi, dar poruncile sunt aceleași. De la lespedea albă: NORD, NORD, EST, EST, SUD, EST, NORD, EST, EST, SUD, EST. Nu te grăbi; fiecare bloc îl pregătește pe următorul."',
+    success:
+      'Pistrui a trecut printre stânci și n-a răsturnat niciun bolovan! Secvența a avut unsprezece pași și fiecare a fost la locul lui. (+5 cristale)',
+    rewardItems: [{ id: BlockType.Crystal, count: 5 }],
+    reward: '5 cristale culese de pe munte',
+    actions: [
+      { id: 'nord', label: 'Mergi un pas spre NORD' },
+      { id: 'sud', label: 'Mergi un pas spre SUD' },
+      { id: 'est', label: 'Mergi un pas spre EST' },
+      { id: 'vest', label: 'Mergi un pas spre VEST' },
+    ],
+    solution: [
+      A('nord'), A('nord'), A('est'), A('est'), A('sud'), A('est'),
+      A('nord'), A('est'), A('est'), A('sud'), A('est'),
+    ],
+    fails: [
+      {
+        text: 'Un cot a venit prea devreme și Pistrui s-a oprit lângă o stâncă. Urmărește pietrele una câte una, de la alb la auriu.',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  },
+  iedul_pe_creasta: {
+    id: 'iedul_pe_creasta',
+    title: 'Iedul pe creastă — drumul cel lung',
+    intro:
+      'MOȘ CĂLIMAN: „Ultima potecă e lungă, dar nu ascunde nimic nou. De la lespedea albă: VEST, VEST, NORD, EST, NORD, NORD, VEST, VEST, NORD, EST, EST, NORD, EST, EST. Împarte drumul cu privirea în bucăți și leagă toate poruncile."',
+    success:
+      'Pistrui a urcat pe creastă! Paisprezece porunci simple au devenit un drum întreg fiindcă le-ai pus în ordinea potrivită. (+3 comori dacice)',
+    rewardItems: [{ id: BlockType.DacianGold, count: 3 }],
+    reward: '3 comori dacice găsite sub piatra din vârf',
+    actions: [
+      { id: 'nord', label: 'Mergi un pas spre NORD' },
+      { id: 'sud', label: 'Mergi un pas spre SUD' },
+      { id: 'est', label: 'Mergi un pas spre EST' },
+      { id: 'vest', label: 'Mergi un pas spre VEST' },
+    ],
+    solution: [
+      A('vest'), A('vest'), A('nord'), A('est'), A('nord'), A('nord'), A('vest'),
+      A('vest'), A('nord'), A('est'), A('est'), A('nord'), A('est'), A('est'),
+    ],
+    fails: [
+      {
+        text: 'Pistrui n-a ajuns încă pe piatra aurie. Uită-te la următoarea lespede înainte să adaugi fiecare bloc; drumul e lung, dar pașii rămân simpli.',
+        anim: 'none',
+        matches: () => true,
+      },
+    ],
+  }
 };

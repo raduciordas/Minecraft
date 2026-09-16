@@ -26,6 +26,8 @@ import { Chunk } from './Chunk';
 import {
   buildStanaZone,
   STANA_ORIGIN,
+  buildMunteZone,
+  MUNTE_ORIGIN,
   buildVladCastle,
   buildVatraSatului,
   VATRA_ORIGIN,
@@ -83,6 +85,7 @@ export class TerrainGenerator {
     // Castelul lui Vlad Tepes crowns a peak on the ring itself.
     this.structures = [
       buildStanaZone(STANA_ORIGIN.x, STANA_ORIGIN.z),
+      buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z),
       buildVladCastle(80, 0),
       buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
       buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),

@@ -17,6 +17,10 @@ import {
   CROSS_Z,
   TORCH_POST,
   STANA_ORIGIN,
+  MUNTE_ORIGIN,
+  MOUNTAIN_ROUTES,
+  mountainRoutePoints,
+  type MountainDirection,
   COAT_DX,
   COAT_DZ,
   GATE_DZ,
@@ -167,6 +171,9 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   tarcul: { dx: 8, dz: -10.5, label: 'Țarcul' },
   drumul_oilor: { dx: 2.5, dz: -14, label: 'Drumul oilor', yaw: Math.PI / 2 },
   socoteala_stanii: { dx: -5, dz: 8, label: 'Socoteala stânii', yaw: Math.PI / 2 },
+  iedul_la_izvor: { dx: -7, dz: 2, label: 'Poteca izvorului' },
+  iedul_printre_stanci: { dx: 2, dz: 6, label: 'Printre stânci' },
+  iedul_pe_creasta: { dx: 10, dz: 7, label: 'Drumul crestei' },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -277,6 +284,12 @@ export const ZONE_DEFS: ZoneDef[] = [
     protect: [-11, 17, -9, 8, 0, 8],
   },
   {
+    id: 'munte',
+    origin: MUNTE_ORIGIN,
+    puzzles: ['iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta'],
+    protect: [-14, 14, -3, 11, 0, 8],
+  },
+  {
     id: 'stana',
     origin: STANA_ORIGIN,
     puzzles: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
@@ -308,6 +321,9 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   tarcul: [4, 13, -19, -10],
   drumul_oilor: [-9, 2, -17, -14],
   socoteala_stanii: [-12, -4, 6, 11],
+  iedul_la_izvor: [-11, -3, -2, 2],
+  iedul_printre_stanci: [-3, 6, 2, 6],
+  iedul_pe_creasta: [7, 12, 0, 7],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -527,6 +543,26 @@ function buildWolf(): THREE.Group {
   return wolf;
 }
 
+// Pistrui, the young mountain goat programmed in the sequence recap zone.
+// His long axis points east (+X); stepMountainGoat rotates him before moving.
+function buildMountainGoat(): THREE.Group {
+  const goat = new THREE.Group();
+  const FUR = 0xe8e2d4;
+  const PATCH = 0x9a7654;
+  const HOOF = 0x2e2925;
+  const HORN = 0xd8c89a;
+  box(goat, 0.78, 0.46, 0.38, FUR, 0, 0.68, 0);
+  const head = box(goat, 0.34, 0.36, 0.32, PATCH, 0.52, 0.86, 0);
+  box(head, 0.12, 0.2, 0.08, HORN, -0.05, 0.25, -0.1);
+  box(head, 0.12, 0.2, 0.08, HORN, -0.05, 0.25, 0.1);
+  box(head, 0.13, 0.09, 0.34, FUR, 0.08, -0.03, 0);
+  for (const [dx, dz] of [[-0.25, -0.13], [-0.25, 0.13], [0.25, -0.13], [0.25, 0.13]] as const) {
+    box(goat, 0.1, 0.4, 0.1, HOOF, dx, 0.2, dz);
+  }
+  box(goat, 0.16, 0.22, 0.12, PATCH, -0.45, 0.82, 0);
+  return goat;
+}
+
 // The mill's paddle wheel, which starts turning for good once the "while"
 // loop is solved — the moment the endless loop becomes visible. Its axle
 // runs along X, so it turns in the Y-Z plane (rotation about X).
@@ -574,6 +610,9 @@ export class VatraModule {
 
   // Each lesson's step animation, by lesson id (see performStep)
   private readonly stepHandlers: Record<string, (blockId: string, arg?: number) => void> = {
+    iedul_la_izvor: this.stepIedulLaIzvor,
+    iedul_printre_stanci: this.stepIedulPrintreStanci,
+    iedul_pe_creasta: this.stepIedulPeCreasta,
     fantana: this.stepFantana,
     cuptor: this.stepCuptor,
     ulita: this.stepUlita,
@@ -646,6 +685,8 @@ export class VatraModule {
   private countedSheepProps: THREE.Group[] = [];
   private grazingSheepProps: THREE.Group[] = [];
   private wolfProp: THREE.Group | null = null;
+  private mountainGoats = new Map<string, THREE.Group>();
+  private mountainGoatSteps = new Map<string, { x: number; z: number }>();
 
   constructor(
     private scene: THREE.Scene,
@@ -692,6 +733,8 @@ export class VatraModule {
     this.buildBaciul();
     this.buildMumaPadurii();
     this.buildBabaDochia();
+    this.buildMosCaliman();
+    this.buildMountainGoats();
     this.buildTallyBoard();
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
@@ -703,6 +746,84 @@ export class VatraModule {
     if (this.done.has('oile_la_numarat')) this.setCountedSheepProps(true);
     if (this.done.has('drumul_oilor')) this.setGrazingSheepProps(true);
     if (this.done.has('capcana')) this.setWolfProp(true);
+  }
+
+  // Moș Căliman keeps the easy practice paths on the mountain. He is the
+  // fifth programming guide and introduces Pistrui, the goat the child moves.
+  private buildMosCaliman(): void {
+    const zone = this.zones.get('munte')!;
+    const npc = new THREE.Group();
+    const COJOC = 0x70543b;
+    const SHIRT = 0xe8e0cc;
+    box(npc, 0.52, 0.72, 0.34, SHIRT, 0, 1.02, 0);
+    box(npc, 0.58, 0.48, 0.38, COJOC, 0, 1.12, 0);
+    const head = box(npc, 0.42, 0.42, 0.42, 0xd2a276, 0, 1.65, 0);
+    box(head, 0.46, 0.18, 0.46, 0x5a4634, 0, 0.2, 0);
+    box(head, 0.5, 0.07, 0.5, 0x5a4634, 0, 0.1, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.07, 0.07, 0.04, 0xf8f2e5, side * 0.1, 0.03, -0.21);
+      box(head, 0.035, 0.035, 0.04, 0x252018, side * 0.1, 0.03, -0.23);
+      box(npc, 0.13, 0.55, 0.13, SHIRT, side * 0.33, 0.88, 0);
+    }
+    box(npc, 0.09, 1.8, 0.09, 0x654321, 0.48, 0.9, 0.1);
+    npc.position.set(zone.ox + 0.5, zone.gy + 1, zone.oz + 9.5);
+    npc.rotation.y = Math.PI;
+    this.scene.add(npc);
+    this.registerGuide('munte', npc.position.x, zone.gy + 1.9, npc.position.z);
+
+    const nameSign = makeSign('5. Moș Căliman', 1.6);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
+    this.scene.add(nameSign);
+  }
+
+  private buildMountainGoats(): void {
+    for (const puzzleId of Object.keys(MOUNTAIN_ROUTES)) {
+      const goat = buildMountainGoat();
+      this.scene.add(goat);
+      this.mountainGoats.set(puzzleId, goat);
+      this.resetMountainGoat(puzzleId, this.done.has(puzzleId));
+    }
+  }
+
+  private resetMountainGoat(puzzleId: string, atGoal: boolean): void {
+    const route = MOUNTAIN_ROUTES[puzzleId];
+    const goat = this.mountainGoats.get(puzzleId);
+    const zone = this.zones.get('munte');
+    if (!route || !goat || !zone) return;
+    const points = mountainRoutePoints(route);
+    const [x, z] = atGoal ? points[points.length - 1] : route.start;
+    this.mountainGoatSteps.set(puzzleId, { x, z });
+    goat.position.set(zone.ox + x + 0.5, zone.gy + 1, zone.oz + z + 0.5);
+    goat.rotation.y = 0;
+  }
+
+  private stepMountainGoat(puzzleId: string, direction: string): void {
+    if (!(['nord', 'sud', 'est', 'vest'] as string[]).includes(direction)) {
+      this.sound.stepTick();
+      return;
+    }
+    const goat = this.mountainGoats.get(puzzleId);
+    const zone = this.zones.get('munte');
+    const current = this.mountainGoatSteps.get(puzzleId);
+    if (!goat || !zone || !current) return;
+    const next = { ...current };
+    if (direction === 'nord') {
+      next.z--;
+      goat.rotation.y = Math.PI / 2;
+    } else if (direction === 'sud') {
+      next.z++;
+      goat.rotation.y = -Math.PI / 2;
+    } else if (direction === 'est') {
+      next.x++;
+      goat.rotation.y = 0;
+    } else {
+      next.x--;
+      goat.rotation.y = Math.PI;
+    }
+    this.mountainGoatSteps.set(puzzleId, next);
+    goat.position.set(zone.ox + next.x + 0.5, zone.gy + 1, zone.oz + next.z + 0.5);
+    this.spawnFlyingBits(goat.position.x, goat.position.y + 0.15, goat.position.z, 0xd8c89a, 1, zone.gy);
+    this.sound.stepTick();
   }
 
   // Baba Dochia: the old shepherdess of the nine sheepskin coats, standing
@@ -1043,6 +1164,7 @@ export class VatraModule {
     if (puzzleId === 'tarcul') this.penIndex = 0;
     if (puzzleId === 'drumul_oilor') this.stepIndex = 0;
     if (puzzleId === 'socoteala_stanii') this.cheeseIndex = 0;
+    if (MOUNTAIN_ROUTES[puzzleId]) this.resetMountainGoat(puzzleId, false);
     // The tally board starts each run blank, like a wiped slate
     this.tallyValues.clear();
     this.redrawTally();
@@ -1061,6 +1183,18 @@ export class VatraModule {
     const handler = this.stepHandlers[puzzleId];
     if (handler) handler.call(this, blockId, arg);
     else this.sound.stepTick();
+  }
+
+  private stepIedulLaIzvor(blockId: string): void {
+    this.stepMountainGoat('iedul_la_izvor', blockId as MountainDirection);
+  }
+
+  private stepIedulPrintreStanci(blockId: string): void {
+    this.stepMountainGoat('iedul_printre_stanci', blockId as MountainDirection);
+  }
+
+  private stepIedulPeCreasta(blockId: string): void {
+    this.stepMountainGoat('iedul_pe_creasta', blockId as MountainDirection);
   }
 
   private stepFantana(blockId: string, _arg?: number): void {
@@ -1640,6 +1774,7 @@ export class VatraModule {
     if (puzzleId === 'oile_la_numarat') this.setCountedSheepProps(false);
     if (puzzleId === 'drumul_oilor') this.setGrazingSheepProps(false);
     if (puzzleId === 'capcana') this.setWolfProp(false);
+    if (MOUNTAIN_ROUTES[puzzleId]) this.resetMountainGoat(puzzleId, false);
     this.done.delete(puzzleId);
     this.save();
   }
