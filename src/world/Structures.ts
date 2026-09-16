@@ -274,37 +274,63 @@ export function buildVladCastle(originX: number, originZ: number): StructureTemp
 // mountain nearest Bunicul Fierar. The same routes drive terrain markers,
 // lesson solutions, and the animated goat, so they cannot drift apart.
 export const MUNTE_ORIGIN = { x: -58, z: 52 };
-export type MountainDirection = 'nord' | 'sud' | 'est' | 'vest';
+export type MountainCommand = 'inainte' | 'inapoi' | 'stanga' | 'dreapta';
 export interface MountainRoute {
   start: [number, number];
-  steps: MountainDirection[];
+  steps: MountainCommand[];
+}
+export interface MountainPose {
+  x: number;
+  z: number;
+  heading: number; // 0=N, 1=E, 2=S, 3=W
 }
 export const MOUNTAIN_ROUTES: Record<string, MountainRoute> = {
   iedul_la_izvor: {
-    start: [-10, 1],
-    steps: ['est', 'est', 'nord', 'nord', 'est', 'sud', 'est', 'est'],
+    start: [-11, 3],
+    steps: ['inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte'],
   },
   iedul_printre_stanci: {
-    start: [-2, 5],
-    steps: ['nord', 'nord', 'est', 'est', 'sud', 'est', 'nord', 'est', 'est', 'sud', 'est'],
+    start: [-3, 6],
+    steps: ['inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'dreapta', 'inainte', 'stanga', 'inainte'],
   },
   iedul_pe_creasta: {
-    start: [10, 6],
-    steps: ['vest', 'vest', 'nord', 'est', 'nord', 'nord', 'vest', 'vest', 'nord', 'est', 'est', 'nord', 'est', 'est'],
+    start: [7, 6],
+    steps: ['inainte', 'dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'stanga', 'inainte', 'dreapta', 'inainte', 'inainte', 'dreapta', 'inainte'],
+  },
+  iedul_la_sare: {
+    start: [-11, -5],
+    steps: ['dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'stanga', 'inapoi', 'stanga', 'inainte', 'inainte'],
+  },
+  iedul_la_refugiu: {
+    start: [-1, -5],
+    steps: ['inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'dreapta', 'inapoi', 'stanga', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte'],
+  },
+  iedul_la_clopot: {
+    start: [9, -5],
+    steps: ['inainte', 'stanga', 'dreapta', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'stanga', 'inapoi', 'dreapta', 'inainte'],
   },
 };
 
-export function mountainRoutePoints(route: MountainRoute): [number, number][] {
+export function mountainRouteStates(route: MountainRoute): MountainPose[] {
   let [x, z] = route.start;
-  const points: [number, number][] = [[x, z]];
+  let heading = 0;
+  const states: MountainPose[] = [{ x, z, heading }];
+  const vectors: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
   for (const step of route.steps) {
-    if (step === 'nord') z--;
-    else if (step === 'sud') z++;
-    else if (step === 'est') x++;
-    else x--;
-    points.push([x, z]);
+    if (step === 'stanga') heading = (heading + 3) % 4;
+    else if (step === 'dreapta') heading = (heading + 1) % 4;
+    else {
+      const direction = step === 'inainte' ? 1 : -1;
+      x += vectors[heading][0] * direction;
+      z += vectors[heading][1] * direction;
+    }
+    states.push({ x, z, heading });
   }
-  return points;
+  return states;
+}
+
+export function mountainRoutePoints(route: MountainRoute): [number, number][] {
+  return mountainRouteStates(route).map(({ x, z }) => [x, z]);
 }
 
 export function buildMunteZone(originX: number, originZ: number): StructureTemplate {

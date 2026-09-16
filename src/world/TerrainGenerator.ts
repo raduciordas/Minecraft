@@ -236,6 +236,14 @@ export class TerrainGenerator {
       for (let lz = 2; lz <= CHUNK_SIZE - 3; lz++) {
         const wx = baseX + lx;
         const wz = baseZ + lz;
+        // A trunk just outside the flattened mountain platform used to lose
+        // its base while leaving its canopy suspended above a lesson.
+        const shadowsMountainZone = this.structures.some((s) =>
+          s.name === 'Creasta Iedului' &&
+          wx >= s.minX - 2 && wx <= s.maxX + 2 &&
+          wz >= s.minZ - 2 && wz <= s.maxZ + 2
+        );
+        if (shadowsMountainZone) continue;
         if (hash2D(wx, wz, this.seed) >= TREE_PROBABILITY) continue;
 
         const ground = this.heightAt(wx, wz);

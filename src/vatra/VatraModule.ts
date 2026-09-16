@@ -19,8 +19,8 @@ import {
   STANA_ORIGIN,
   MUNTE_ORIGIN,
   MOUNTAIN_ROUTES,
-  mountainRoutePoints,
-  type MountainDirection,
+  mountainRouteStates,
+  type MountainCommand,
   COAT_DX,
   COAT_DZ,
   GATE_DZ,
@@ -171,9 +171,12 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   tarcul: { dx: 8, dz: -10.5, label: 'Țarcul' },
   drumul_oilor: { dx: 2.5, dz: -14, label: 'Drumul oilor', yaw: Math.PI / 2 },
   socoteala_stanii: { dx: -5, dz: 8, label: 'Socoteala stânii', yaw: Math.PI / 2 },
-  iedul_la_izvor: { dx: -7, dz: 2, label: 'Poteca izvorului' },
-  iedul_printre_stanci: { dx: 2, dz: 6, label: 'Printre stânci' },
-  iedul_pe_creasta: { dx: 10, dz: 7, label: 'Drumul crestei' },
+  iedul_la_izvor: { dx: -10, dz: 4, label: 'Poteca izvorului', yaw: Math.PI },
+  iedul_printre_stanci: { dx: -2, dz: 7, label: 'Printre stânci', yaw: Math.PI },
+  iedul_pe_creasta: { dx: 8, dz: 7, label: 'Drumul crestei', yaw: Math.PI },
+  iedul_la_sare: { dx: -10, dz: -4, label: 'Drumul sării', yaw: Math.PI },
+  iedul_la_refugiu: { dx: -1, dz: -4, label: 'Drumul refugiului', yaw: Math.PI },
+  iedul_la_clopot: { dx: 10, dz: -4, label: 'Drumul clopotului', yaw: Math.PI },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -286,8 +289,11 @@ export const ZONE_DEFS: ZoneDef[] = [
   {
     id: 'munte',
     origin: MUNTE_ORIGIN,
-    puzzles: ['iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta'],
-    protect: [-14, 14, -3, 11, 0, 8],
+    puzzles: [
+      'iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta',
+      'iedul_la_sare', 'iedul_la_refugiu', 'iedul_la_clopot',
+    ],
+    protect: [-15, 15, -20, 11, 0, 8],
   },
   {
     id: 'stana',
@@ -321,9 +327,12 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   tarcul: [4, 13, -19, -10],
   drumul_oilor: [-9, 2, -17, -14],
   socoteala_stanii: [-12, -4, 6, 11],
-  iedul_la_izvor: [-11, -3, -2, 2],
-  iedul_printre_stanci: [-3, 6, 2, 6],
-  iedul_pe_creasta: [7, 12, 0, 7],
+  iedul_la_izvor: [-12, -8, -2, 4],
+  iedul_printre_stanci: [-4, 1, 1, 7],
+  iedul_pe_creasta: [6, 10, 0, 7],
+  iedul_la_sare: [-12, -8, -15, -4],
+  iedul_la_refugiu: [-3, 2, -17, -4],
+  iedul_la_clopot: [8, 13, -19, -4],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -613,6 +622,9 @@ export class VatraModule {
     iedul_la_izvor: this.stepIedulLaIzvor,
     iedul_printre_stanci: this.stepIedulPrintreStanci,
     iedul_pe_creasta: this.stepIedulPeCreasta,
+    iedul_la_sare: this.stepIedulLaSare,
+    iedul_la_refugiu: this.stepIedulLaRefugiu,
+    iedul_la_clopot: this.stepIedulLaClopot,
     fantana: this.stepFantana,
     cuptor: this.stepCuptor,
     ulita: this.stepUlita,
@@ -686,7 +698,7 @@ export class VatraModule {
   private grazingSheepProps: THREE.Group[] = [];
   private wolfProp: THREE.Group | null = null;
   private mountainGoats = new Map<string, THREE.Group>();
-  private mountainGoatSteps = new Map<string, { x: number; z: number }>();
+  private mountainGoatSteps = new Map<string, { x: number; z: number; heading: number }>();
 
   constructor(
     private scene: THREE.Scene,
@@ -767,7 +779,7 @@ export class VatraModule {
     }
     box(npc, 0.09, 1.8, 0.09, 0x654321, 0.48, 0.9, 0.1);
     npc.position.set(zone.ox + 0.5, zone.gy + 1, zone.oz + 9.5);
-    npc.rotation.y = Math.PI;
+    npc.rotation.y = 0;
     this.scene.add(npc);
     this.registerGuide('munte', npc.position.x, zone.gy + 1.9, npc.position.z);
 
@@ -790,39 +802,36 @@ export class VatraModule {
     const goat = this.mountainGoats.get(puzzleId);
     const zone = this.zones.get('munte');
     if (!route || !goat || !zone) return;
-    const points = mountainRoutePoints(route);
-    const [x, z] = atGoal ? points[points.length - 1] : route.start;
-    this.mountainGoatSteps.set(puzzleId, { x, z });
-    goat.position.set(zone.ox + x + 0.5, zone.gy + 1, zone.oz + z + 0.5);
-    goat.rotation.y = 0;
+    const states = mountainRouteStates(route);
+    const state = atGoal ? states[states.length - 1] : states[0];
+    this.mountainGoatSteps.set(puzzleId, { ...state });
+    goat.position.set(zone.ox + state.x + 0.5, zone.gy + 1, zone.oz + state.z + 0.5);
+    goat.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][state.heading];
   }
 
-  private stepMountainGoat(puzzleId: string, direction: string): void {
-    if (!(['nord', 'sud', 'est', 'vest'] as string[]).includes(direction)) {
-      this.sound.stepTick();
-      return;
-    }
+  private stepMountainGoat(puzzleId: string, command: MountainCommand): void {
     const goat = this.mountainGoats.get(puzzleId);
     const zone = this.zones.get('munte');
     const current = this.mountainGoatSteps.get(puzzleId);
     if (!goat || !zone || !current) return;
     const next = { ...current };
-    if (direction === 'nord') {
-      next.z--;
-      goat.rotation.y = Math.PI / 2;
-    } else if (direction === 'sud') {
-      next.z++;
-      goat.rotation.y = -Math.PI / 2;
-    } else if (direction === 'est') {
-      next.x++;
-      goat.rotation.y = 0;
+    let moved = false;
+    if (command === 'stanga') next.heading = (next.heading + 3) % 4;
+    else if (command === 'dreapta') next.heading = (next.heading + 1) % 4;
+    else if (command === 'inainte' || command === 'inapoi') {
+      const vectors: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+      const direction = command === 'inainte' ? 1 : -1;
+      next.x += vectors[next.heading][0] * direction;
+      next.z += vectors[next.heading][1] * direction;
+      moved = true;
     } else {
-      next.x--;
-      goat.rotation.y = Math.PI;
+      this.sound.stepTick();
+      return;
     }
     this.mountainGoatSteps.set(puzzleId, next);
     goat.position.set(zone.ox + next.x + 0.5, zone.gy + 1, zone.oz + next.z + 0.5);
-    this.spawnFlyingBits(goat.position.x, goat.position.y + 0.15, goat.position.z, 0xd8c89a, 1, zone.gy);
+    goat.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][next.heading];
+    if (moved) this.spawnFlyingBits(goat.position.x, goat.position.y + 0.15, goat.position.z, 0xd8c89a, 1, zone.gy);
     this.sound.stepTick();
   }
 
@@ -1186,15 +1195,27 @@ export class VatraModule {
   }
 
   private stepIedulLaIzvor(blockId: string): void {
-    this.stepMountainGoat('iedul_la_izvor', blockId as MountainDirection);
+    this.stepMountainGoat('iedul_la_izvor', blockId as MountainCommand);
   }
 
   private stepIedulPrintreStanci(blockId: string): void {
-    this.stepMountainGoat('iedul_printre_stanci', blockId as MountainDirection);
+    this.stepMountainGoat('iedul_printre_stanci', blockId as MountainCommand);
   }
 
   private stepIedulPeCreasta(blockId: string): void {
-    this.stepMountainGoat('iedul_pe_creasta', blockId as MountainDirection);
+    this.stepMountainGoat('iedul_pe_creasta', blockId as MountainCommand);
+  }
+
+  private stepIedulLaSare(blockId: string): void {
+    this.stepMountainGoat('iedul_la_sare', blockId as MountainCommand);
+  }
+
+  private stepIedulLaRefugiu(blockId: string): void {
+    this.stepMountainGoat('iedul_la_refugiu', blockId as MountainCommand);
+  }
+
+  private stepIedulLaClopot(blockId: string): void {
+    this.stepMountainGoat('iedul_la_clopot', blockId as MountainCommand);
   }
 
   private stepFantana(blockId: string, _arg?: number): void {

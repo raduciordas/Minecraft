@@ -1495,85 +1495,115 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       },
     ],
   },
-  // ---- Zona 5 — Creasta Iedului (recapitulare de secvențe). The routes are
-  // deliberately longer than the first Vatra lessons, but use only four
-  // concrete movement commands: no loops, variables, or conditions.
+  // ---- Zona 5 — Creasta Iedului (recapitulare de secvențe). Pistrui
+  // starts facing north. Turns change his orientation; forward/backward use
+  // that orientation, just like moving a character in a beginner game.
   iedul_la_izvor: {
     id: 'iedul_la_izvor',
-    title: 'Iedul la izvor — pași pe potecă',
+    title: 'Iedul la izvor — înainte și coturi',
     intro:
-      'MOȘ CĂLIMAN: „Iedul Pistrui s-a oprit pe lespedea albă. Du-l până la piatra aurie: EST, EST, NORD, NORD, EST, SUD, EST, EST. Pune fiecare pas în ordine și privește-l cum merge."',
-    success:
-      'Pistrui a ajuns la izvor fără să calce în afara potecii! Ai ținut minte o secvență lungă, pas cu pas. (+8 piatră de râu)',
+      'MOȘ CĂLIMAN: „Pistrui pornește cu botul înainte. Du-l de la lespedea albă la piatra aurie: ÎNAINTE, ÎNAINTE, DREAPTA, ÎNAINTE, ÎNAINTE, STÂNGA, ÎNAINTE, ÎNAINTE."',
+    success: 'Pistrui a ajuns la izvor! Ai legat opt comenzi în ordinea potrivită. (+8 piatră de râu)',
     rewardItems: [{ id: BlockType.RiverStone, count: 8 }],
     reward: '8 pietre de râu — bune pentru poteci și temelii',
     actions: [
-      { id: 'nord', label: 'Mergi un pas spre NORD' },
-      { id: 'sud', label: 'Mergi un pas spre SUD' },
-      { id: 'est', label: 'Mergi un pas spre EST' },
-      { id: 'vest', label: 'Mergi un pas spre VEST' },
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
-    solution: [A('est'), A('est'), A('nord'), A('nord'), A('est'), A('sud'), A('est'), A('est')],
-    fails: [
-      {
-        text: 'Pistrui a coborât de pe pietre. Citește traseul de la lespedea albă până la piatra aurie și așază din nou pașii în ordine.',
-        anim: 'none',
-        matches: () => true,
-      },
-    ],
+    solution: [A('inainte'), A('inainte'), A('dreapta'), A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte')],
+    fails: [{ text: 'Pistrui a coborât de pe pietre. Urmărește traseul de la alb la auriu și verifică ordinea coturilor.', anim: 'none', matches: () => true }],
   },
   iedul_printre_stanci: {
     id: 'iedul_printre_stanci',
-    title: 'Iedul printre stânci — cot după cot',
+    title: 'Iedul printre stânci — privește unde e întors',
     intro:
-      'MOȘ CĂLIMAN: „A doua potecă are mai multe coturi, dar poruncile sunt aceleași. De la lespedea albă: NORD, NORD, EST, EST, SUD, EST, NORD, EST, EST, SUD, EST. Nu te grăbi; fiecare bloc îl pregătește pe următorul."',
-    success:
-      'Pistrui a trecut printre stânci și n-a răsturnat niciun bolovan! Secvența a avut unsprezece pași și fiecare a fost la locul lui. (+5 cristale)',
+      'MOȘ CĂLIMAN: „Acum drumul are mai multe coturi: ÎNAINTE, ÎNAINTE, DREAPTA, ÎNAINTE, ÎNAINTE, STÂNGA, ÎNAINTE, DREAPTA, ÎNAINTE, STÂNGA, ÎNAINTE."',
+    success: 'Pistrui a trecut printre stânci! Unsprezece comenzi simple au făcut un drum întreg. (+5 cristale)',
     rewardItems: [{ id: BlockType.Crystal, count: 5 }],
     reward: '5 cristale culese de pe munte',
     actions: [
-      { id: 'nord', label: 'Mergi un pas spre NORD' },
-      { id: 'sud', label: 'Mergi un pas spre SUD' },
-      { id: 'est', label: 'Mergi un pas spre EST' },
-      { id: 'vest', label: 'Mergi un pas spre VEST' },
+      { id: 'inainte', label: 'Mergi ÎNAINTE' }, { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' }, { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
-    solution: [
-      A('nord'), A('nord'), A('est'), A('est'), A('sud'), A('est'),
-      A('nord'), A('est'), A('est'), A('sud'), A('est'),
-    ],
-    fails: [
-      {
-        text: 'Un cot a venit prea devreme și Pistrui s-a oprit lângă o stâncă. Urmărește pietrele una câte una, de la alb la auriu.',
-        anim: 'none',
-        matches: () => true,
-      },
-    ],
+    solution: [A('inainte'), A('inainte'), A('dreapta'), A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('dreapta'), A('inainte'), A('stanga'), A('inainte')],
+    fails: [{ text: 'Un cot a venit prea devreme. Ține minte: întoarcerea schimbă unde privește Pistrui, iar următorul pas merge în acea direcție.', anim: 'none', matches: () => true }],
   },
   iedul_pe_creasta: {
     id: 'iedul_pe_creasta',
-    title: 'Iedul pe creastă — drumul cel lung',
+    title: 'Iedul pe creastă — drumul de paisprezece',
     intro:
-      'MOȘ CĂLIMAN: „Ultima potecă e lungă, dar nu ascunde nimic nou. De la lespedea albă: VEST, VEST, NORD, EST, NORD, NORD, VEST, VEST, NORD, EST, EST, NORD, EST, EST. Împarte drumul cu privirea în bucăți și leagă toate poruncile."',
-    success:
-      'Pistrui a urcat pe creastă! Paisprezece porunci simple au devenit un drum întreg fiindcă le-ai pus în ordinea potrivită. (+3 comori dacice)',
+      'MOȘ CĂLIMAN: „Leagă drumul lung: ÎNAINTE, DREAPTA, ÎNAINTE, ÎNAINTE, STÂNGA, ÎNAINTE, ÎNAINTE, STÂNGA, ÎNAINTE, DREAPTA, ÎNAINTE, ÎNAINTE, DREAPTA, ÎNAINTE."',
+    success: 'Pistrui a urcat pe creastă! Ai păstrat ordinea tuturor celor paisprezece comenzi. (+3 comori dacice)',
     rewardItems: [{ id: BlockType.DacianGold, count: 3 }],
     reward: '3 comori dacice găsite sub piatra din vârf',
     actions: [
-      { id: 'nord', label: 'Mergi un pas spre NORD' },
-      { id: 'sud', label: 'Mergi un pas spre SUD' },
-      { id: 'est', label: 'Mergi un pas spre EST' },
-      { id: 'vest', label: 'Mergi un pas spre VEST' },
+      { id: 'inainte', label: 'Mergi ÎNAINTE' }, { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' }, { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
     solution: [
-      A('vest'), A('vest'), A('nord'), A('est'), A('nord'), A('nord'), A('vest'),
-      A('vest'), A('nord'), A('est'), A('est'), A('nord'), A('est'), A('est'),
+      A('inainte'), A('dreapta'), A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte'),
+      A('stanga'), A('inainte'), A('dreapta'), A('inainte'), A('inainte'), A('dreapta'), A('inainte'),
     ],
-    fails: [
-      {
-        text: 'Pistrui n-a ajuns încă pe piatra aurie. Uită-te la următoarea lespede înainte să adaugi fiecare bloc; drumul e lung, dar pașii rămân simpli.',
-        anim: 'none',
-        matches: () => true,
-      },
+    fails: [{ text: 'Pistrui n-a ajuns încă pe piatra aurie. Împarte traseul în bucăți scurte și verifică fiecare întoarcere.', anim: 'none', matches: () => true }],
+  },
+  iedul_la_sare: {
+    id: 'iedul_la_sare',
+    title: 'Drumul sării — primul pas înapoi',
+    intro:
+      'MOȘ CĂLIMAN: „La bulgărele de sare sunt șaptesprezece comenzi. Pune: DREAPTA, ÎNAINTE, ÎNAINTE, STÂNGA, apoi șapte pași ÎNAINTE, STÂNGA, STÂNGA, ÎNAPOI, STÂNGA, ÎNAINTE, ÎNAINTE."',
+    success: 'Pistrui a găsit sarea muntelui și a învățat să pășească și înapoi fără să se întoarcă. (+10 sare de stâncă)',
+    rewardItems: [{ id: BlockType.RockSalt, count: 10 }],
+    reward: '10 sare de stâncă — material existent, bun de păstrat și construit',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' }, { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' }, { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
-  }
+    solution: [
+      A('dreapta'), A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte'), A('inainte'),
+      A('inainte'), A('inainte'), A('inainte'), A('inainte'), A('stanga'), A('stanga'), A('inapoi'),
+      A('stanga'), A('inainte'), A('inainte'),
+    ],
+    fails: [{ text: 'Pistrui a ratat bulgărele de sare. Blocul ÎNAPOI îl mută fără să-i schimbe direcția.', anim: 'none', matches: () => true }],
+  },
+  iedul_la_refugiu: {
+    id: 'iedul_la_refugiu',
+    title: 'Drumul refugiului — douăzeci de comenzi',
+    intro:
+      'MOȘ CĂLIMAN: „Urmează poteca lungă spre refugiu. Sunt douăzeci de comenzi; citește lespezile pe porțiuni și nu uita că două întoarceri la dreapta îl fac pe Pistrui să privească înapoi."',
+    success: 'Pistrui a ajuns la refugiu după douăzeci de comenzi bine așezate! (+6 obsidian)',
+    rewardItems: [{ id: BlockType.Obsidian, count: 6 }],
+    reward: '6 obsidian — material existent și rezistent',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' }, { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' }, { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    solution: [
+      A('inainte'), A('inainte'), A('inainte'), A('inainte'), A('inainte'), A('dreapta'), A('dreapta'),
+      A('inapoi'), A('stanga'), A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte'),
+      A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte'), A('inainte'),
+    ],
+    fails: [{ text: 'Refugiul e aproape, dar o întoarcere e în locul greșit. Verifică traseul în grupuri de câte patru sau cinci blocuri.', anim: 'none', matches: () => true }],
+  },
+  iedul_la_clopot: {
+    id: 'iedul_la_clopot',
+    title: 'Drumul clopotului — secvența cea mare',
+    intro:
+      'MOȘ CĂLIMAN: „Ultimul drum are douăzeci și patru de comenzi. E lung, nu greu: înainte și întoarcerile desenează poteca, iar un singur pas înapoi îl trece pe Pistrui de ultima stâncă."',
+    success: 'Clopotul de pe vârf răsună! Ai dus o secvență de douăzeci și patru de comenzi până la capăt. (+4 comori dacice)',
+    rewardItems: [{ id: BlockType.DacianGold, count: 4 }],
+    reward: '4 comori dacice — material existent și rar',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' }, { id: 'inapoi', label: 'Mergi ÎNAPOI' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' }, { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    solution: [
+      A('inainte'), A('stanga'), A('dreapta'), A('inainte'), A('inainte'), A('inainte'),
+      A('inainte'), A('inainte'), A('inainte'), A('inainte'), A('dreapta'), A('inainte'),
+      A('inainte'), A('inainte'), A('stanga'), A('inainte'), A('inainte'), A('inainte'),
+      A('inainte'), A('stanga'), A('stanga'), A('inapoi'), A('dreapta'), A('inainte'),
+    ],
+    fails: [{ text: 'Clopotul încă nu se aude. Drumul este lung, dar fiecare bloc face un singur lucru; verifică-l de la început până la capăt.', anim: 'none', matches: () => true }],
+  },
 };

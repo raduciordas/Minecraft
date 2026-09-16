@@ -39,10 +39,14 @@ export const ZONES: Record<string, ZoneInfo> = {
     guide: '🐐 Moș Căliman',
     concept:
       '<b>Recapitulăm secvențele.</b> Pe munte, o poruncă greșită îl scoate pe Pistrui de pe potecă. ' +
-      'Folosești doar patru pași simpli — nord, sud, est și vest — dar îi legi în drumuri tot mai lungi. ' +
-      'Pornește de la lespedea albă, urmărește pietrele și ajungi la piatra aurie. Nu ai nevoie de bucle ' +
+      'Folosești doar patru porunci simple — înainte, înapoi, stânga și dreapta — dar le legi în drumuri tot mai lungi. ' +
+      'Întoarcerile schimbă direcția în care privește Pistrui, iar pașii îl mută față de acea direcție. ' +
+      'Pornește de la lespedea albă și ajungi la piatra aurie. Nu ai nevoie de bucle ' +
       'sau condiții aici: doar citește traseul cu răbdare și păstrează ordinea.',
-    lessons: ['iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta'],
+    lessons: [
+      'iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta',
+      'iedul_la_sare', 'iedul_la_refugiu', 'iedul_la_clopot',
+    ],
   },
   stana: {
     guide: '🧣 Baba Dochia',

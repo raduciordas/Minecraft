@@ -1,39 +1,64 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flattenActions, programEquivalent, VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
-import { MOUNTAIN_ROUTES, mountainRoutePoints } from '../src/world/Structures.ts';
+import { MOUNTAIN_ROUTES, mountainRouteStates } from '../src/world/Structures.ts';
 
-const LESSONS = ['iedul_la_izvor', 'iedul_printre_stanci', 'iedul_pe_creasta'];
+const LESSONS = [
+  'iedul_la_izvor',
+  'iedul_printre_stanci',
+  'iedul_pe_creasta',
+  'iedul_la_sare',
+  'iedul_la_refugiu',
+  'iedul_la_clopot',
+];
 
-test('mountain sequence lessons grow gradually and use only direction actions', () => {
-  assert.deepEqual(LESSONS.map((id) => MOUNTAIN_ROUTES[id].steps.length), [8, 11, 14]);
+test('mountain sequence lessons grow gradually and use only relative movement commands', () => {
+  assert.deepEqual(LESSONS.map((id) => MOUNTAIN_ROUTES[id].steps.length), [8, 11, 14, 17, 20, 24]);
+  const allowed = new Set(['inainte', 'inapoi', 'stanga', 'dreapta']);
   for (const id of LESSONS) {
     const puzzle = VATRA_PUZZLES[id];
     assert.ok(puzzle);
     assert.deepEqual(flattenActions(puzzle.solution), MOUNTAIN_ROUTES[id].steps);
-    assert.equal(puzzle.solution.every((node) => node.kind === 'action'), true);
+    assert.equal(puzzle.solution.every((node) => node.kind === 'action' && allowed.has(node.id)), true);
     assert.equal(puzzle.allowRepeat, undefined);
     assert.equal(puzzle.allowIf, undefined);
     assert.equal(puzzle.allowWhile, undefined);
   }
 });
 
-test('every mountain route starts on white marker and ends at a distinct goal', () => {
+test('turns change orientation while forward and backward move relative to it', () => {
+  const states = mountainRouteStates({
+    start: [0, 0],
+    steps: ['dreapta', 'inainte', 'stanga', 'inapoi'],
+  });
+  assert.deepEqual(states, [
+    { x: 0, z: 0, heading: 0 },
+    { x: 0, z: 0, heading: 1 },
+    { x: 1, z: 0, heading: 1 },
+    { x: 1, z: 0, heading: 0 },
+    { x: 1, z: 1, heading: 0 },
+  ]);
+});
+
+test('all mountain routes end at distinct goals and new lessons use every command', () => {
   const goals = new Set();
   for (const id of LESSONS) {
     const route = MOUNTAIN_ROUTES[id];
-    const points = mountainRoutePoints(route);
-    assert.equal(points.length, route.steps.length + 1);
-    const goal = points.at(-1);
-    goals.add(goal.join(','));
+    const states = mountainRouteStates(route);
+    const goal = states.at(-1);
+    goals.add(`${goal.x},${goal.z}`);
   }
   assert.equal(goals.size, LESSONS.length);
+
+  for (const id of LESSONS.slice(3)) {
+    assert.deepEqual(new Set(MOUNTAIN_ROUTES[id].steps), new Set(['inainte', 'inapoi', 'stanga', 'dreapta']));
+  }
 });
 
-test('changing one direction no longer matches the lesson solution', () => {
+test('changing one command no longer matches the lesson solution', () => {
   const puzzle = VATRA_PUZZLES.iedul_la_izvor;
   const wrong = puzzle.solution.map((node, index) =>
-    index === 0 ? { kind: 'action', id: 'vest' } : node,
+    index === 0 ? { kind: 'action', id: 'inapoi' } : node,
   );
   assert.equal(programEquivalent(wrong, puzzle.solution), false);
 });
