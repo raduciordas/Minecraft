@@ -301,15 +301,15 @@ export const MOUNTAIN_ROUTES: Record<string, MountainRoute> = {
   },
   iedul_la_sare: {
     start: [-11, -5],
-    steps: ['dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'stanga', 'inapoi', 'stanga', 'inainte', 'inainte'],
+    steps: ['dreapta', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'dreapta', 'inainte', 'inainte'],
   },
   iedul_la_refugiu: {
     start: [-1, -5],
-    steps: ['inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'dreapta', 'inapoi', 'stanga', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte'],
+    steps: ['inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte'],
   },
   iedul_la_clopot: {
     start: [9, -5],
-    steps: ['inainte', 'stanga', 'dreapta', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'stanga', 'inapoi', 'dreapta', 'inainte'],
+    steps: ['inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'stanga', 'inainte', 'inainte', 'inainte', 'inainte', 'dreapta', 'inainte'],
   },
 };
 

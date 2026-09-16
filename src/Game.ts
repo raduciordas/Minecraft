@@ -322,7 +322,13 @@ export class Game {
     // The Tabla de Blocuri (Blockly) is loaded on first use — it is a large
     // chunk and nobody needs it until they open their first lesson.
     this.tablaCallbacks = {
-      onRunStart: (pz: string) => this.vatra.beginRun(pz),
+      onRunStart: (pz: string) => {
+        this.vatra.beginRun(pz);
+        // The editor hides for the animation; return control to the player
+        // so every lesson can be watched from a useful angle.
+        this.input.setInventoryOpen(false);
+        if (!this.input.isTouchDevice) void this.renderer.domElement.requestPointerLock();
+      },
       // Each scenario starts from a clean mechanism, under the sky it
       // describes — a "Noaptea" run really is shown at night
       onScenario: (pz: string, label: string) => {
@@ -337,6 +343,10 @@ export class Game {
       onVar: (pz: string, name: string, value: number) => this.vatra.performVar(pz, name, value),
       onRunEnd: () => {
         this.dayNight.preview = null;
+        this.input.setInventoryOpen(true);
+        if (!this.input.isTouchDevice && document.pointerLockElement === this.renderer.domElement) {
+          document.exitPointerLock();
+        }
       },
       onFinish: (pz: string, program: ProgramNode[]) => this.vatra.finish(pz, program),
       onRequestClose: () => this.closeTabla(),

@@ -821,7 +821,6 @@ export class VatraModule {
     const current = this.mountainGoatSteps.get(puzzleId);
     if (!goat || !zone || !current) return;
     const next = { ...current };
-    let moved = false;
     if (command === 'stanga') next.heading = (next.heading + 3) % 4;
     else if (command === 'dreapta') next.heading = (next.heading + 1) % 4;
     else if (command === 'inainte' || command === 'inapoi') {
@@ -829,7 +828,6 @@ export class VatraModule {
       const direction = command === 'inainte' ? 1 : -1;
       next.x += vectors[next.heading][0] * direction;
       next.z += vectors[next.heading][1] * direction;
-      moved = true;
     } else {
       this.sound.stepTick();
       return;
@@ -837,7 +835,6 @@ export class VatraModule {
     this.mountainGoatSteps.set(puzzleId, next);
     goat.position.set(zone.ox + next.x + 0.5, zone.gy + 1, zone.oz + next.z + 0.5);
     goat.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][next.heading];
-    if (moved) this.spawnFlyingBits(goat.position.x, goat.position.y + 0.15, goat.position.z, 0xd8c89a, 1, zone.gy);
     this.sound.stepTick();
   }
 

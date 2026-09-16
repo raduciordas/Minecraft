@@ -40,7 +40,7 @@ test('turns change orientation while forward and backward move relative to it', 
   ]);
 });
 
-test('all mountain routes end at distinct goals and new lessons use every command', () => {
+test('all mountain routes end at distinct goals and the final routes never step backward', () => {
   const goals = new Set();
   for (const id of LESSONS) {
     const route = MOUNTAIN_ROUTES[id];
@@ -51,7 +51,8 @@ test('all mountain routes end at distinct goals and new lessons use every comman
   assert.equal(goals.size, LESSONS.length);
 
   for (const id of LESSONS.slice(3)) {
-    assert.deepEqual(new Set(MOUNTAIN_ROUTES[id].steps), new Set(['inainte', 'inapoi', 'stanga', 'dreapta']));
+    assert.equal(MOUNTAIN_ROUTES[id].steps.includes('inapoi'), false);
+    assert.deepEqual(new Set(MOUNTAIN_ROUTES[id].steps), new Set(['inainte', 'stanga', 'dreapta']));
   }
 });
 
