@@ -767,6 +767,12 @@ export class VatraModule {
     const npc = new THREE.Group();
     const COJOC = 0x70543b;
     const SHIRT = 0xe8e0cc;
+    const PANTS = 0x3f4a3c;
+    const BOOTS = 0x2b2118;
+    for (const side of [-1, 1]) {
+      box(npc, 0.17, 0.62, 0.18, PANTS, side * 0.15, 0.36, 0);
+      box(npc, 0.2, 0.18, 0.28, BOOTS, side * 0.15, 0.1, -0.04);
+    }
     box(npc, 0.52, 0.72, 0.34, SHIRT, 0, 1.02, 0);
     box(npc, 0.58, 0.48, 0.38, COJOC, 0, 1.12, 0);
     const head = box(npc, 0.42, 0.42, 0.42, 0xd2a276, 0, 1.65, 0);

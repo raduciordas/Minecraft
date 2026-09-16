@@ -273,7 +273,9 @@ export function buildVladCastle(originX: number, originZ: number): StructureTemp
 // Zona 5: Creasta Iedului, a calm sequence-practice plateau on the
 // mountain nearest Bunicul Fierar. The same routes drive terrain markers,
 // lesson solutions, and the animated goat, so they cannot drift apart.
-export const MUNTE_ORIGIN = { x: -58, z: 52 };
+// On the inner mountain slope: visibly beside the massif, but well below
+// the high shelf used by the first version of the lesson platform.
+export const MUNTE_ORIGIN = { x: -40, z: 50 };
 export type MountainCommand = 'inainte' | 'inapoi' | 'stanga' | 'dreapta';
 export interface MountainRoute {
   start: [number, number];

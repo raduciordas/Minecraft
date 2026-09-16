@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flattenActions, programEquivalent, VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
-import { MOUNTAIN_ROUTES, mountainRouteStates } from '../src/world/Structures.ts';
+import { MOUNTAIN_ROUTES, MUNTE_ORIGIN, VATRA_ORIGIN, mountainRouteStates } from '../src/world/Structures.ts';
 
 const LESSONS = [
   'iedul_la_izvor',
@@ -61,4 +61,10 @@ test('changing one command no longer matches the lesson solution', () => {
     index === 0 ? { kind: 'action', id: 'inapoi' } : node,
   );
   assert.equal(programEquivalent(wrong, puzzle.solution), false);
+});
+
+
+test('mountain practice platform sits on the lower inner slope near Bunicul', () => {
+  assert.ok(Math.hypot(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z) < 70);
+  assert.ok(Math.hypot(MUNTE_ORIGIN.x - VATRA_ORIGIN.x, MUNTE_ORIGIN.z - VATRA_ORIGIN.z) < 45);
 });
