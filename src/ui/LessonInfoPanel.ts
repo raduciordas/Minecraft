@@ -48,6 +48,17 @@ export const ZONES: Record<string, ZoneInfo> = {
       'iedul_la_sare', 'iedul_la_refugiu', 'iedul_la_clopot',
     ],
   },
+  bucla: {
+    guide: '🐇 Ciobănașul Codrin',
+    concept:
+      '<b>Recapitulăm buclele.</b> Țup merge pe poteci desenate în bucăți care se repetă. ' +
+      'Construiește o singură bucată corectă și pune-o în blocul «repetă», în loc să așezi fiecare pas separat. ' +
+      'Traseele devin treptat mai lungi, iar ultima lecție folosește o buclă în altă buclă.',
+    lessons: [
+      'tup_la_morcovi', 'tup_la_pod', 'tup_in_poiana',
+      'tup_la_stup', 'tup_pe_coasta', 'tup_acasa',
+    ],
+  },
   stana: {
     guide: '🧣 Baba Dochia',
     concept:

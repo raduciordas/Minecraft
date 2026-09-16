@@ -375,6 +375,108 @@ export function buildMunteZone(originX: number, originZ: number): StructureTempl
   };
 }
 
+// Zona 6: Poiana Iepurașului, below Moș Căliman and across the small
+// lake. These routes expand the loop programs into the exact stones that Țup
+// follows, keeping the lesson solution and the visible path in sync.
+export const BUCLA_ORIGIN = { x: -47, z: 17 };
+export const LOOP_RECAP_ROUTES: Record<string, MountainRoute> = {
+  tup_la_morcovi: {
+    start: [-12, 7],
+    steps: ['inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte'],
+  },
+  tup_la_pod: {
+    start: [-5, 7],
+    steps: [
+      'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte',
+      'inainte', 'inainte', 'inainte', 'inainte', 'inainte', 'inainte',
+    ],
+  },
+  tup_in_poiana: {
+    start: [3, 7],
+    steps: [
+      'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'inainte', 'inainte',
+    ],
+  },
+  tup_la_stup: {
+    start: [11, 7],
+    steps: [
+      'inainte', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'inainte', 'dreapta',
+      'inainte', 'inainte', 'inainte', 'inainte',
+    ],
+  },
+  tup_pe_coasta: {
+    start: [-10, -8],
+    steps: [
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+    ],
+  },
+  tup_acasa: {
+    start: [2, -8],
+    steps: [
+      'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+    ],
+  },
+};
+
+export function buildBuclaZone(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+  const placed = new Set<string>();
+
+  for (const route of Object.values(LOOP_RECAP_ROUTES)) {
+    mountainRoutePoints(route).forEach(([x, z], index, points) => {
+      const key = `${x},${z}`;
+      if (placed.has(key)) return;
+      placed.add(key);
+      B(x, 0, z, index === 0 ? BlockType.Snow : index === points.length - 1 ? BlockType.DacianGold : BlockType.RiverStone);
+    });
+  }
+
+  return {
+    name: 'Poiana Iepurașului',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 4,
+    blocks,
+  };
+}
+
+export function buildBuclaBridge(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  for (let z = 8; z <= 15; z++) {
+    for (let x = -1; x <= 1; x++) blocks.push({ dx: x, dy: 1, dz: z, block: BlockType.Plank });
+  }
+  for (const z of [8, 15]) {
+    blocks.push({ dx: -2, dy: 1, dz: z, block: BlockType.Log });
+    blocks.push({ dx: 2, dy: 1, dz: z, block: BlockType.Log });
+  }
+  return {
+    name: 'Podețul Buclei',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 1,
+    blocks,
+  };
+}
+
 // Where the Satul Codat learning module lives — shared between terrain
 // generation (structure stamping) and VatraModule (puzzle interactions).
 export const VATRA_ORIGIN = { x: -20, z: 16 };

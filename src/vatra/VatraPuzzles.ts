@@ -1610,4 +1610,117 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     ],
     fails: [{ text: 'Clopotul încă nu se aude. Drumul este lung, dar fiecare bloc face un singur lucru; verifică-l de la început până la capăt.', anim: 'none', matches: () => true }],
   },
+  tup_la_morcovi: {
+    id: 'tup_la_morcovi',
+    title: 'Țup și rândul de morcovi — prima buclă',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Țup are opt lespezi până la morcovi. Pune mersul înainte într-o buclă și alege de câte ori trebuie repetat."',
+    success: 'Țup a găsit morcovii dintr-o singură buclă! (+1 Storm Sword)',
+    rewardItems: [{ id: WeaponId.StormSword, count: 1 }],
+    reward: '1 Storm Sword',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [REPEAT(8, [A('inainte')])],
+    fails: [{ text: 'Țup nu a ajuns la morcovi. Numără lespezile și verifică numărul buclei.', anim: 'none', matches: () => true }],
+  },
+  tup_la_pod: {
+    id: 'tup_la_pod',
+    title: 'Țup la podeț — doi pași odată',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Drumul spre podeț se repetă în perechi de pași. Pune doi pași înainte în buclă și numără câte perechi vezi."',
+    success: 'Țup a trecut podețul repetând aceeași pereche de pași! (+1 Crystal Sword)',
+    rewardItems: [{ id: WeaponId.CrystalSword, count: 1 }],
+    reward: '1 Crystal Sword',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [REPEAT(6, [A('inainte'), A('inainte')])],
+    fails: [{ text: 'Țup s-a oprit înainte de podeț. Verifică perechea din buclă și numărul repetărilor.', anim: 'none', matches: () => true }],
+  },
+  tup_in_poiana: {
+    id: 'tup_in_poiana',
+    title: 'Țup în poiană — pas, pas și cot',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Aceeași bucată de drum apare de patru ori: doi pași și o întoarcere. După ea, poteca mai continuă drept. Grupează singur pietrele în cele două bucle."',
+    success: 'Țup a înconjurat poiana și a continuat până la piatra aurie! (+1 Magma Hammer)',
+    rewardItems: [{ id: WeaponId.MagmaHammer, count: 1 }],
+    reward: '1 Magma Hammer',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [
+      REPEAT(4, [A('inainte'), A('inainte'), A('dreapta')]),
+      REPEAT(4, [A('inainte')]),
+    ],
+    fails: [{ text: 'Țup a ieșit dintre lespezi. Citește o singură latură, apoi verifică ambele bucle.', anim: 'none', matches: () => true }],
+  },
+  tup_la_stup: {
+    id: 'tup_la_stup',
+    title: 'Țup la stup — buclă și drum drept',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Poteca are o bucată care se repetă, apoi continuă drept până la stup. Descoperă singur ce intră în buclă și ce rămâne după ea."',
+    success: 'Țup a ocolit florile și a ajuns la stup! (+1 Ice Spear)',
+    rewardItems: [{ id: WeaponId.IceSpear, count: 1 }],
+    reward: '1 Ice Spear',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [
+      REPEAT(4, [A('inainte'), A('inainte'), A('inainte'), A('dreapta')]),
+      REPEAT(4, [A('inainte')]),
+    ],
+    fails: [{ text: 'Țup nu a găsit stupul. Separă porțiunea repetată de ultimii pași ai traseului.', anim: 'none', matches: () => true }],
+  },
+  tup_pe_coasta: {
+    id: 'tup_pe_coasta',
+    title: 'Țup pe coastă — treapta repetată',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Lespezile urcă în trepte egale. Construiește o singură treaptă din pași și întoarceri, apoi repet-o până la piatra aurie."',
+    success: 'Țup a urcat coasta cu șase trepte identice! (+1 bâta ciobanului)',
+    rewardItems: [{ id: WeaponId.BataCiobanului, count: 1 }],
+    reward: '1 bâta ciobanului',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [REPEAT(6, [A('inainte'), A('dreapta'), A('inainte'), A('stanga')])],
+    fails: [{ text: 'Treapta lui Țup nu se potrivește cu pietrele. Verifică ordinea celor două întoarceri.', anim: 'none', matches: () => true }],
+  },
+  tup_acasa: {
+    id: 'tup_acasa',
+    title: 'Țup acasă — bucla din buclă',
+    intro:
+      'CIOBĂNAȘUL CODRIN: „Ultima potecă are cinci trepte la fel, iar fiecare începe cu trei pași identici. Folosește o buclă mică în bucla mare."',
+    success: 'Țup a ajuns acasă folosind o buclă în altă buclă! (+1 arc cu 20 de săgeți)',
+    rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
+    reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
+    actions: [
+      { id: 'inainte', label: 'Mergi ÎNAINTE' },
+      { id: 'stanga', label: 'Întoarce-te la STÂNGA' },
+      { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
+    ],
+    allowRepeat: true,
+    solution: [
+      REPEAT(5, [
+        REPEAT(3, [A('inainte')]),
+        A('dreapta'), A('inainte'), A('stanga'),
+      ]),
+    ],
+    fails: [{ text: 'Țup încă nu e acasă. Bucla mică face cei trei pași, iar bucla mare repetă treapta întreagă.', anim: 'none', matches: () => true }],
+  }
 };

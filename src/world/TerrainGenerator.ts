@@ -28,6 +28,9 @@ import {
   STANA_ORIGIN,
   buildMunteZone,
   MUNTE_ORIGIN,
+  buildBuclaZone,
+  buildBuclaBridge,
+  BUCLA_ORIGIN,
   buildVladCastle,
   buildVatraSatului,
   VATRA_ORIGIN,
@@ -86,6 +89,8 @@ export class TerrainGenerator {
     this.structures = [
       buildStanaZone(STANA_ORIGIN.x, STANA_ORIGIN.z),
       buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z),
+      buildBuclaZone(BUCLA_ORIGIN.x, BUCLA_ORIGIN.z),
+      buildBuclaBridge(BUCLA_ORIGIN.x, BUCLA_ORIGIN.z),
       buildVladCastle(80, 0),
       buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
       buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),
@@ -240,8 +245,8 @@ export class TerrainGenerator {
         // its base while leaving its canopy suspended above a lesson.
         const shadowsMountainZone = this.structures.some((s) =>
           s.name === 'Creasta Iedului' &&
-          wx >= s.minX - 2 && wx <= s.maxX + 2 &&
-          wz >= s.minZ - 2 && wz <= s.maxZ + 2
+          wx >= s.minX - 4 && wx <= s.maxX + 4 &&
+          wz >= s.minZ - 4 && wz <= s.maxZ + 4
         );
         if (shadowsMountainZone) continue;
         if (hash2D(wx, wz, this.seed) >= TREE_PROBABILITY) continue;

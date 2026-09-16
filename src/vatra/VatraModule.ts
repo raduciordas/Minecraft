@@ -19,6 +19,8 @@ import {
   STANA_ORIGIN,
   MUNTE_ORIGIN,
   MOUNTAIN_ROUTES,
+  BUCLA_ORIGIN,
+  LOOP_RECAP_ROUTES,
   mountainRouteStates,
   type MountainCommand,
   COAT_DX,
@@ -177,6 +179,12 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   iedul_la_sare: { dx: -10, dz: -4, label: 'Drumul sării', yaw: Math.PI },
   iedul_la_refugiu: { dx: -1, dz: -4, label: 'Drumul refugiului', yaw: Math.PI },
   iedul_la_clopot: { dx: 10, dz: -4, label: 'Drumul clopotului', yaw: Math.PI },
+  tup_la_morcovi: { dx: -12, dz: 8, label: 'Rândul de morcovi', yaw: Math.PI },
+  tup_la_pod: { dx: -5, dz: 8, label: 'Drumul podețului', yaw: Math.PI },
+  tup_in_poiana: { dx: 4, dz: 8, label: 'Coturile poienii', yaw: Math.PI },
+  tup_la_stup: { dx: 12, dz: 8, label: 'Drumul stupului', yaw: Math.PI },
+  tup_pe_coasta: { dx: -9, dz: -7, label: 'Treptele coastei', yaw: Math.PI },
+  tup_acasa: { dx: 3, dz: -7, label: 'Drumul spre casă', yaw: Math.PI },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -296,6 +304,15 @@ export const ZONE_DEFS: ZoneDef[] = [
     protect: [-15, 15, -20, 11, 0, 8],
   },
   {
+    id: 'bucla',
+    origin: BUCLA_ORIGIN,
+    puzzles: [
+      'tup_la_morcovi', 'tup_la_pod', 'tup_in_poiana',
+      'tup_la_stup', 'tup_pe_coasta', 'tup_acasa',
+    ],
+    protect: [-16, 18, -24, 16, 0, 9],
+  },
+  {
     id: 'stana',
     origin: STANA_ORIGIN,
     puzzles: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
@@ -333,6 +350,12 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   iedul_la_sare: [-12, -8, -15, -4],
   iedul_la_refugiu: [-3, 2, -17, -4],
   iedul_la_clopot: [8, 13, -19, -4],
+  tup_la_morcovi: [-13, -11, -2, 8],
+  tup_la_pod: [-6, -4, -6, 8],
+  tup_in_poiana: [2, 6, 2, 8],
+  tup_la_stup: [10, 15, 2, 8],
+  tup_pe_coasta: [-11, -3, -15, -7],
+  tup_acasa: [1, 9, -24, -7],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -572,6 +595,26 @@ function buildMountainGoat(): THREE.Group {
   return goat;
 }
 
+// Țup, the rabbit used by the loop recap. His body points east (+X),
+// matching the heading convention shared by both route systems.
+function buildLoopRabbit(): THREE.Group {
+  const rabbit = new THREE.Group();
+  const FUR = 0xb8875f;
+  const BELLY = 0xe7d6c5;
+  const PAW = 0x6f4f38;
+  box(rabbit, 0.66, 0.42, 0.38, FUR, 0, 0.48, 0);
+  const head = box(rabbit, 0.38, 0.4, 0.36, FUR, 0.42, 0.72, 0);
+  box(head, 0.1, 0.42, 0.11, FUR, -0.04, 0.36, -0.11);
+  box(head, 0.1, 0.42, 0.11, FUR, -0.04, 0.36, 0.11);
+  box(head, 0.13, 0.1, 0.18, BELLY, 0.2, -0.04, 0);
+  for (const z of [-0.13, 0.13]) {
+    box(rabbit, 0.22, 0.12, 0.13, PAW, -0.2, 0.16, z);
+    box(rabbit, 0.18, 0.1, 0.12, PAW, 0.24, 0.14, z);
+  }
+  box(rabbit, 0.2, 0.2, 0.2, BELLY, -0.42, 0.58, 0);
+  return rabbit;
+}
+
 // The mill's paddle wheel, which starts turning for good once the "while"
 // loop is solved — the moment the endless loop becomes visible. Its axle
 // runs along X, so it turns in the Y-Z plane (rotation about X).
@@ -625,6 +668,12 @@ export class VatraModule {
     iedul_la_sare: this.stepIedulLaSare,
     iedul_la_refugiu: this.stepIedulLaRefugiu,
     iedul_la_clopot: this.stepIedulLaClopot,
+    tup_la_morcovi: this.stepTupLaMorcovi,
+    tup_la_pod: this.stepTupLaPod,
+    tup_in_poiana: this.stepTupInPoiana,
+    tup_la_stup: this.stepTupLaStup,
+    tup_pe_coasta: this.stepTupPeCoasta,
+    tup_acasa: this.stepTupAcasa,
     fantana: this.stepFantana,
     cuptor: this.stepCuptor,
     ulita: this.stepUlita,
@@ -699,6 +748,8 @@ export class VatraModule {
   private wolfProp: THREE.Group | null = null;
   private mountainGoats = new Map<string, THREE.Group>();
   private mountainGoatSteps = new Map<string, { x: number; z: number; heading: number }>();
+  private loopRabbits = new Map<string, THREE.Group>();
+  private loopRabbitSteps = new Map<string, { x: number; z: number; heading: number }>();
 
   constructor(
     private scene: THREE.Scene,
@@ -747,6 +798,8 @@ export class VatraModule {
     this.buildBabaDochia();
     this.buildMosCaliman();
     this.buildMountainGoats();
+    this.buildCiobanasCodrin();
+    this.buildLoopRabbits();
     this.buildTallyBoard();
     this.buildSigns();
     if (this.done.has('fierarie')) this.setPickaxeProp(true);
@@ -836,6 +889,103 @@ export class VatraModule {
     goat.position.set(zone.ox + next.x + 0.5, zone.gy + 1, zone.oz + next.z + 0.5);
     goat.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][next.heading];
     this.sound.stepTick();
+  }
+
+  // Codrin watches over the lower loop-practice meadow.
+  private buildCiobanasCodrin(): void {
+    const zone = this.zones.get('bucla')!;
+    const npc = new THREE.Group();
+    const SHIRT = 0xe8e0cc;
+    const VEST = 0x3f6d52;
+    const PANTS = 0x514336;
+    const BOOTS = 0x2b2118;
+    for (const side of [-1, 1]) {
+      box(npc, 0.16, 0.58, 0.17, PANTS, side * 0.14, 0.34, 0);
+      box(npc, 0.19, 0.16, 0.27, BOOTS, side * 0.14, 0.09, -0.04);
+      box(npc, 0.12, 0.5, 0.12, SHIRT, side * 0.31, 0.82, 0);
+    }
+    box(npc, 0.48, 0.68, 0.32, SHIRT, 0, 0.96, 0);
+    box(npc, 0.52, 0.5, 0.35, VEST, 0, 1.02, 0);
+    const head = box(npc, 0.4, 0.4, 0.4, 0xd2a276, 0, 1.55, 0);
+    box(head, 0.44, 0.18, 0.44, 0x8b3f2f, 0, 0.2, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.06, 0.06, 0.04, 0x252018, side * 0.1, 0.02, -0.22);
+    }
+    npc.position.set(zone.ox + 7.5, zone.gy + 1, zone.oz + 12.5);
+    npc.rotation.y = Math.PI;
+    this.scene.add(npc);
+    this.registerGuide('bucla', npc.position.x, zone.gy + 1.8, npc.position.z);
+
+    const nameSign = makeSign('6. Ciobănașul Codrin', 1.8);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.2, npc.position.z);
+    this.scene.add(nameSign);
+  }
+
+  private buildLoopRabbits(): void {
+    for (const puzzleId of Object.keys(LOOP_RECAP_ROUTES)) {
+      const rabbit = buildLoopRabbit();
+      this.scene.add(rabbit);
+      this.loopRabbits.set(puzzleId, rabbit);
+      this.resetLoopRabbit(puzzleId, this.done.has(puzzleId));
+    }
+  }
+
+  private resetLoopRabbit(puzzleId: string, atGoal: boolean): void {
+    const route = LOOP_RECAP_ROUTES[puzzleId];
+    const rabbit = this.loopRabbits.get(puzzleId);
+    const zone = this.zones.get('bucla');
+    if (!route || !rabbit || !zone) return;
+    const states = mountainRouteStates(route);
+    const state = atGoal ? states[states.length - 1] : states[0];
+    this.loopRabbitSteps.set(puzzleId, { ...state });
+    rabbit.position.set(zone.ox + state.x + 0.5, zone.gy + 1, zone.oz + state.z + 0.5);
+    rabbit.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][state.heading];
+  }
+
+  private stepLoopRabbit(puzzleId: string, command: MountainCommand): void {
+    const rabbit = this.loopRabbits.get(puzzleId);
+    const zone = this.zones.get('bucla');
+    const current = this.loopRabbitSteps.get(puzzleId);
+    if (!rabbit || !zone || !current) return;
+    const next = { ...current };
+    if (command === 'stanga') next.heading = (next.heading + 3) % 4;
+    else if (command === 'dreapta') next.heading = (next.heading + 1) % 4;
+    else if (command === 'inainte') {
+      const vectors: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+      next.x += vectors[next.heading][0];
+      next.z += vectors[next.heading][1];
+    } else {
+      this.sound.stepTick();
+      return;
+    }
+    this.loopRabbitSteps.set(puzzleId, next);
+    rabbit.position.set(zone.ox + next.x + 0.5, zone.gy + 1, zone.oz + next.z + 0.5);
+    rabbit.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][next.heading];
+    this.sound.stepTick();
+  }
+
+  private stepTupLaMorcovi(blockId: string): void {
+    this.stepLoopRabbit('tup_la_morcovi', blockId as MountainCommand);
+  }
+
+  private stepTupLaPod(blockId: string): void {
+    this.stepLoopRabbit('tup_la_pod', blockId as MountainCommand);
+  }
+
+  private stepTupInPoiana(blockId: string): void {
+    this.stepLoopRabbit('tup_in_poiana', blockId as MountainCommand);
+  }
+
+  private stepTupLaStup(blockId: string): void {
+    this.stepLoopRabbit('tup_la_stup', blockId as MountainCommand);
+  }
+
+  private stepTupPeCoasta(blockId: string): void {
+    this.stepLoopRabbit('tup_pe_coasta', blockId as MountainCommand);
+  }
+
+  private stepTupAcasa(blockId: string): void {
+    this.stepLoopRabbit('tup_acasa', blockId as MountainCommand);
   }
 
   // Baba Dochia: the old shepherdess of the nine sheepskin coats, standing
@@ -1177,6 +1327,7 @@ export class VatraModule {
     if (puzzleId === 'drumul_oilor') this.stepIndex = 0;
     if (puzzleId === 'socoteala_stanii') this.cheeseIndex = 0;
     if (MOUNTAIN_ROUTES[puzzleId]) this.resetMountainGoat(puzzleId, false);
+    if (LOOP_RECAP_ROUTES[puzzleId]) this.resetLoopRabbit(puzzleId, false);
     // The tally board starts each run blank, like a wiped slate
     this.tallyValues.clear();
     this.redrawTally();
@@ -1799,6 +1950,7 @@ export class VatraModule {
     if (puzzleId === 'drumul_oilor') this.setGrazingSheepProps(false);
     if (puzzleId === 'capcana') this.setWolfProp(false);
     if (MOUNTAIN_ROUTES[puzzleId]) this.resetMountainGoat(puzzleId, false);
+    if (LOOP_RECAP_ROUTES[puzzleId]) this.resetLoopRabbit(puzzleId, false);
     this.done.delete(puzzleId);
     this.save();
   }
