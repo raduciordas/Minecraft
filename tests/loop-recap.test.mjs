@@ -5,6 +5,7 @@ import { BlockType } from '../src/world/Block.ts';
 import { ZONE_DEFS } from '../src/vatra/VatraModule.ts';
 import {
   BUCLA_ORIGIN,
+  BUCLA_HOME_TREE_ORIGIN,
   LOOP_RECAP_ROUTES,
   MUNTE_ORIGIN,
   PADUREA_ORIGIN,
@@ -13,6 +14,7 @@ import {
   buildPadureaZone,
   buildVatraSatului,
   buildBuclaBridge,
+  buildBuclaHomeTree,
   buildBuclaZone,
   mountainRouteStates,
 } from '../src/world/Structures.ts';
@@ -75,7 +77,7 @@ test('Bunicul and Caliman platforms use deep soil facings', () => {
   const munte = buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z);
   assert.ok(vatra.edgeSoilDepth >= 6);
   assert.ok(munte.edgeSoilDepth >= 6);
-  assert.ok(vatra.edgeTerraceDepth >= 6);
+  assert.ok(vatra.edgeTerraceDepth >= 12);
   assert.ok(munte.edgeTerraceDepth >= 12);
   assert.equal(munte.pad, 4);
   assert.equal(vatra.naturalClearance, 8);
@@ -129,10 +131,42 @@ test('the lower meadow clears the orphaned tree corridor and bridges back uphill
   assert.ok(Math.hypot(BUCLA_ORIGIN.x, BUCLA_ORIGIN.z) < Math.hypot(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z));
   const zone = buildBuclaZone(BUCLA_ORIGIN.x, BUCLA_ORIGIN.z);
   const bridge = buildBuclaBridge(BUCLA_ORIGIN.x, BUCLA_ORIGIN.z);
+  const homeTree = buildBuclaHomeTree(BUCLA_HOME_TREE_ORIGIN.x, BUCLA_HOME_TREE_ORIGIN.z);
   assert.equal(bridge.blocks.filter((block) => block.block === BlockType.Plank).length, 24);
   assert.ok(zone.clearAbove >= 8);
+  assert.equal(zone.naturalClearance, 8);
   assert.ok(bridge.clearAbove >= 8);
+  assert.equal(bridge.pad, 0);
+
+  const [turnX, turnZ] = LOOP_RECAP_ROUTES.tup_in_poiana.start;
+  assert.ok(zone.blocks.some((block) =>
+    block.dx === turnX && block.dz === turnZ && block.dy === 0 && block.block === BlockType.Snow
+  ));
+  assert.ok(zone.blocks.some((block) =>
+    block.dx === turnX && block.dz === turnZ - 1 && block.dy === 0 && block.block === BlockType.RiverStone
+  ));
+  const bridgeMinX = Math.min(...bridge.blocks.map((block) => block.dx)) - bridge.pad;
+  const bridgeMaxX = Math.max(...bridge.blocks.map((block) => block.dx)) + bridge.pad;
+  const bridgeMinZ = Math.min(...bridge.blocks.map((block) => block.dz)) - bridge.pad;
+  const bridgeMaxZ = Math.max(...bridge.blocks.map((block) => block.dz)) + bridge.pad;
+  assert.equal(
+    turnX >= bridgeMinX && turnX <= bridgeMaxX && turnZ >= bridgeMinZ && turnZ <= bridgeMaxZ,
+    false,
+  );
+
+  const trunk = homeTree.blocks.filter((block) =>
+    block.dx === 0 && block.dz === 0 && block.block === BlockType.Log
+  );
+  assert.deepEqual(trunk.map((block) => block.dy), [1, 2, 3, 4, 5]);
+  const homeGoal = mountainRouteStates(LOOP_RECAP_ROUTES.tup_acasa).at(-1);
+  assert.equal(
+    Math.abs(BUCLA_HOME_TREE_ORIGIN.x - BUCLA_ORIGIN.x - homeGoal.x) +
+      Math.abs(BUCLA_HOME_TREE_ORIGIN.z - BUCLA_ORIGIN.z - homeGoal.z),
+    4,
+  );
+
   assert.deepEqual(zone.levelOrigin, PADUREA_ORIGIN);
   assert.deepEqual(bridge.levelOrigin, PADUREA_ORIGIN);
+  assert.deepEqual(homeTree.levelOrigin, PADUREA_ORIGIN);
   assert.deepEqual(ZONE_DEFS.find((item) => item.id === 'bucla').levelOrigin, PADUREA_ORIGIN);
 });

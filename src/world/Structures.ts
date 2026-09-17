@@ -465,6 +465,44 @@ export function buildBuclaZone(originX: number, originZ: number): StructureTempl
     clearAbove: 8,
     pad: 4,
     levelOrigin: PADUREA_ORIGIN,
+    naturalClearance: 8,
+    blocks,
+  };
+}
+
+// The procedural tree at the end of "Drumul spre casă" stood exactly on the
+// lowered meadow edge, where its old trunk was cleared but its crown survived.
+// Rebuild it as its own small landmark so it keeps its position without
+// enlarging the footprint of every loop lesson.
+export const BUCLA_HOME_TREE_ORIGIN = {
+  x: BUCLA_ORIGIN.x - 25,
+  z: BUCLA_ORIGIN.z - 23,
+};
+
+export function buildBuclaHomeTree(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  for (let y = 1; y <= 5; y++) B(0, y, 0, BlockType.Log);
+  for (let dy = 0; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        if (dy === 0 && dx === 0 && dz === 0) continue;
+        B(dx, 5 + dy, dz, BlockType.Leaves);
+      }
+    }
+  }
+  B(0, 7, 0, BlockType.Leaves);
+
+  return {
+    name: 'Stejarul Drumului spre casă',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 0,
+    levelOrigin: PADUREA_ORIGIN,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -484,7 +522,8 @@ export function buildBuclaBridge(originX: number, originZ: number): StructureTem
     originZ,
     surface: BlockType.Grass,
     clearAbove: 8,
-    pad: 1,
+    // Keep the bridge's flattening away from the white start stone at (3, 7).
+    pad: 0,
     levelOrigin: PADUREA_ORIGIN,
     blocks,
   };
@@ -619,7 +658,8 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     clearAbove: 8,
     pad: 2,
     edgeSoilDepth: 6,
-    edgeTerraceDepth: 6,
+    // Continue the high front edge into long grass steps instead of a cut wall.
+    edgeTerraceDepth: 12,
     naturalClearance: 8,
     blocks,
   };
