@@ -210,7 +210,8 @@ export class NetworkClient {
   }
 }
 
-export function resolveServerUrl(defaultUrl: string): string {
+export function resolveServerUrl(defaultUrl: string): string | null {
   const override = new URLSearchParams(window.location.search).get('server');
+  if (override === 'off') return null;
   return override || defaultUrl;
 }

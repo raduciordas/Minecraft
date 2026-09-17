@@ -1091,6 +1091,15 @@ export class Game {
     return this.tabla.runForTest(program ?? VATRA_PUZZLES[puzzleId].solution);
   }
 
+  // Browser-test hook: prepare the real Blockly panel, then let Playwright
+  // press its visible Run button so the hide/animate/reopen flow is exercised.
+  async prepareLesson(puzzleId: string, program?: ProgramNode[]): Promise<boolean> {
+    await this.openTabla(puzzleId);
+    if (!this.tabla?.isOpen) return false;
+    this.tabla.loadProgram(program ?? VATRA_PUZZLES[puzzleId].solution);
+    return true;
+  }
+
   private closeTabla(): void {
     if (!this.tabla?.isOpen) return;
     this.tabla.close();

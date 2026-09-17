@@ -13,6 +13,33 @@ npm run build    # build de producție în dist/
 npm run preview  # servește build-ul de producție
 ```
 
+## Teste automate
+
+Prima dată instalează browserul folosit de Playwright:
+
+```bash
+npx playwright install chromium
+```
+
+Apoi poți rula testele astfel:
+
+```bash
+npm test                 # testele rapide Node
+npm run test:e2e         # testele Playwright în Chromium
+npm run test:e2e:headed  # aceleași teste cu browserul vizibil
+npm run test:e2e:ui      # interfața interactivă Playwright
+npm run test:e2e:report  # deschide ultimul raport HTML
+```
+
+Implicit, Playwright pornește singur jocul local. Pentru a testa un deploy existent din PowerShell:
+
+```powershell
+$env:BASE_URL='https://adresa-jocului.vercel.app'
+npm run test:e2e
+```
+
+Testele de browser rulează automat și în GitHub Actions la fiecare push sau pull request. Raportul și capturile pentru eventualele erori rămân disponibile ca artifact al rulării timp de 14 zile.
+
 ## Multiplayer
 
 La pornire, jocul îți cere un nume de explorator, apoi încearcă să se conecteze la un server multiplayer. Dacă serverul nu răspunde, continuă automat solo, cu salvarea locală obișnuită (în browser) — nimic nu se blochează.

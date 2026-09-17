@@ -2,3 +2,10 @@ node_modules/
 dist/
 *.log
 server/data/*.json
+playwright-report/
+test-results/
+.pw-browsers/
+.pnpm-store/
+.pnpm-cache/
+.pnpm-home/
+.localappdata/
