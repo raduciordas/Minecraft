@@ -15,6 +15,7 @@ export interface StructureTemplate {
   clearAbove: number; // height cleared to air above ground, for overhead rock/canopy
   pad: number; // extra flattened margin around the block bounding box
   levelOrigin?: { x: number; z: number }; // optional terrain point whose elevation this structure shares
+  edgeSoilDepth?: number; // dirt facing below the grass hides sheer exposed stone walls
   blocks: StructureBlock[];
 }
 
@@ -372,6 +373,7 @@ export function buildMunteZone(originX: number, originZ: number): StructureTempl
     surface: BlockType.Grass,
     clearAbove: 7,
     pad: 2,
+    edgeSoilDepth: 6,
     blocks,
   };
 }
@@ -395,19 +397,19 @@ export const LOOP_RECAP_ROUTES: Record<string, MountainRoute> = {
   tup_in_poiana: {
     start: [3, 7],
     steps: [
-      'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'dreapta', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'inainte', 'inainte',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'dreapta', 'inainte', 'stanga',
     ],
   },
   tup_la_stup: {
     start: [11, 7],
     steps: [
-      'inainte', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'inainte', 'dreapta',
-      'inainte', 'inainte', 'inainte', 'inainte',
+      'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
+      'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
     ],
   },
   tup_pe_coasta: {
@@ -595,6 +597,7 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     surface: BlockType.Grass,
     clearAbove: 8,
     pad: 2,
+    edgeSoilDepth: 6,
     blocks,
   };
 }

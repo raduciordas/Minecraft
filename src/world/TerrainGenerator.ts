@@ -217,7 +217,10 @@ export class TerrainGenerator {
           // ground+clearAbove — clear past whichever is taller so no
           // leftover rock/spire is stranded floating over the flattened pad.
           const clearTop = Math.max(s.groundY + s.clearAbove, this.heightAt(wx, wz) + 2);
-          for (let y = 1; y < s.groundY; y++) chunk.setBlock(lx, y, lz, BlockType.Stone);
+          const soilStart = Math.max(1, s.groundY - (s.edgeSoilDepth ?? 0));
+          for (let y = 1; y < s.groundY; y++) {
+            chunk.setBlock(lx, y, lz, y >= soilStart ? BlockType.Dirt : BlockType.Stone);
+          }
           chunk.setBlock(lx, s.groundY, lz, s.surface);
           for (let y = s.groundY + 1; y <= clearTop; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
         }

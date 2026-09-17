@@ -8,6 +8,9 @@ import {
   LOOP_RECAP_ROUTES,
   MUNTE_ORIGIN,
   PADUREA_ORIGIN,
+  VATRA_ORIGIN,
+  buildMunteZone,
+  buildVatraSatului,
   buildBuclaBridge,
   buildBuclaZone,
   mountainRouteStates,
@@ -43,6 +46,32 @@ test('loop recap routes match their expanded lesson programs', () => {
 test('the six rabbit routes finish at distinct golden stones', () => {
   const goals = LESSONS.map((id) => mountainRouteStates(LOOP_RECAP_ROUTES[id]).at(-1));
   assert.equal(new Set(goals.map((goal) => `${goal.x},${goal.z}`)).size, LESSONS.length);
+});
+
+test('the clarified routes never retrace a movement stone', () => {
+  for (const id of ['tup_in_poiana', 'tup_la_stup', 'tup_acasa']) {
+    const route = LOOP_RECAP_ROUTES[id];
+    let [x, z] = route.start;
+    let heading = 0;
+    const vectors = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const visited = new Set([`${x},${z}`]);
+    for (const step of route.steps) {
+      if (step === 'stanga') heading = (heading + 3) % 4;
+      else if (step === 'dreapta') heading = (heading + 1) % 4;
+      else {
+        x += vectors[heading][0];
+        z += vectors[heading][1];
+        const key = `${x},${z}`;
+        assert.equal(visited.has(key), false, `${id} retraces ${key}`);
+        visited.add(key);
+      }
+    }
+  }
+});
+
+test('Bunicul and Caliman platforms use deep soil facings', () => {
+  assert.ok(buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z).edgeSoilDepth >= 6);
+  assert.ok(buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z).edgeSoilDepth >= 6);
 });
 
 test('the final rabbit lesson contains a nested loop', () => {

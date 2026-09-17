@@ -1646,10 +1646,10 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   },
   tup_in_poiana: {
     id: 'tup_in_poiana',
-    title: 'Țup în poiană — pas, pas și cot',
+    title: 'Țup în poiană — treapta cu două coturi',
     intro:
-      'CIOBĂNAȘUL CODRIN: „Aceeași bucată de drum apare de patru ori: doi pași și o întoarcere. După ea, poteca mai continuă drept. Grupează singur pietrele în cele două bucle."',
-    success: 'Țup a înconjurat poiana și a continuat până la piatra aurie! (+1 Magma Hammer)',
+      'CIOBĂNAȘUL CODRIN: „Poteca are patru trepte identice. Pune într-o buclă de 4 ori, în această ordine: ÎNAINTE, DREAPTA, ÎNAINTE, STÂNGA. Fiecare repetare îl lasă pe Țup orientat corect pentru treapta următoare."',
+    success: 'Țup a trecut prin toate coturile și a ajuns la piatra aurie! (+1 Magma Hammer)',
     rewardItems: [{ id: WeaponId.MagmaHammer, count: 1 }],
     reward: '1 Magma Hammer',
     actions: [
@@ -1658,17 +1658,14 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
     allowRepeat: true,
-    solution: [
-      REPEAT(4, [A('inainte'), A('inainte'), A('dreapta')]),
-      REPEAT(4, [A('inainte')]),
-    ],
-    fails: [{ text: 'Țup a ieșit dintre lespezi. Citește o singură latură, apoi verifică ambele bucle.', anim: 'none', matches: () => true }],
+    solution: [REPEAT(4, [A('inainte'), A('dreapta'), A('inainte'), A('stanga')])],
+    fails: [{ text: 'Țup a ieșit dintre lespezi. În bucla de 4 ori pune: ÎNAINTE, DREAPTA, ÎNAINTE, STÂNGA.', anim: 'none', matches: () => true }],
   },
   tup_la_stup: {
     id: 'tup_la_stup',
     title: 'Țup la stup — buclă și drum drept',
     intro:
-      'CIOBĂNAȘUL CODRIN: „Poteca are o bucată care se repetă, apoi continuă drept până la stup. Descoperă singur ce intră în buclă și ce rămâne după ea."',
+      'CIOBĂNAȘUL CODRIN: „Până la stup se repetă de 4 ori aceeași treaptă: ÎNAINTE, ÎNAINTE, DREAPTA, ÎNAINTE, STÂNGA. Pune toate cele cinci comenzi în interiorul aceleiași bucle."',
     success: 'Țup a ocolit florile și a ajuns la stup! (+1 Ice Spear)',
     rewardItems: [{ id: WeaponId.IceSpear, count: 1 }],
     reward: '1 Ice Spear',
@@ -1678,11 +1675,8 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       { id: 'dreapta', label: 'Întoarce-te la DREAPTA' },
     ],
     allowRepeat: true,
-    solution: [
-      REPEAT(4, [A('inainte'), A('inainte'), A('inainte'), A('dreapta')]),
-      REPEAT(4, [A('inainte')]),
-    ],
-    fails: [{ text: 'Țup nu a găsit stupul. Separă porțiunea repetată de ultimii pași ai traseului.', anim: 'none', matches: () => true }],
+    solution: [REPEAT(4, [A('inainte'), A('inainte'), A('dreapta'), A('inainte'), A('stanga')])],
+    fails: [{ text: 'Țup nu a găsit stupul. Bucla de 4 ori trebuie să conțină: doi pași, DREAPTA, un pas, STÂNGA.', anim: 'none', matches: () => true }],
   },
   tup_pe_coasta: {
     id: 'tup_pe_coasta',
@@ -1705,7 +1699,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'tup_acasa',
     title: 'Țup acasă — bucla din buclă',
     intro:
-      'CIOBĂNAȘUL CODRIN: „Ultima potecă are cinci trepte la fel, iar fiecare începe cu trei pași identici. Folosește o buclă mică în bucla mare."',
+      'CIOBĂNAȘUL CODRIN: „Folosește o buclă mare de 5 ori. În ea pune: o buclă mică de 3 ori cu ÎNAINTE, apoi DREAPTA, ÎNAINTE și STÂNGA. Așa obții fiecare treaptă fără să scrii de trei ori același pas."',
     success: 'Țup a ajuns acasă folosind o buclă în altă buclă! (+1 arc cu 20 de săgeți)',
     rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
     reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
@@ -1721,6 +1715,6 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
         A('dreapta'), A('inainte'), A('stanga'),
       ]),
     ],
-    fails: [{ text: 'Țup încă nu e acasă. Bucla mică face cei trei pași, iar bucla mare repetă treapta întreagă.', anim: 'none', matches: () => true }],
+    fails: [{ text: 'Țup încă nu e acasă. În REPETĂ 5 ori pune REPETĂ 3 ori cu ÎNAINTE, apoi DREAPTA, ÎNAINTE și STÂNGA.', anim: 'none', matches: () => true }],
   }
 };

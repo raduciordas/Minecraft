@@ -354,8 +354,8 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   iedul_la_clopot: [8, 13, -19, -4],
   tup_la_morcovi: [-13, -11, -2, 8],
   tup_la_pod: [-6, -4, -6, 8],
-  tup_in_poiana: [2, 6, 2, 8],
-  tup_la_stup: [10, 15, 2, 8],
+  tup_in_poiana: [2, 8, 2, 8],
+  tup_la_stup: [10, 16, -2, 8],
   tup_pe_coasta: [-11, -3, -15, -7],
   tup_acasa: [1, 9, -24, -7],
 };
@@ -914,8 +914,8 @@ export class VatraModule {
     for (const side of [-1, 1]) {
       box(head, 0.06, 0.06, 0.04, 0x252018, side * 0.1, 0.02, -0.22);
     }
-    npc.position.set(zone.ox + 15.5, zone.gy + 1, zone.oz + 9.5);
-    npc.rotation.y = Math.PI;
+    npc.position.set(zone.ox + 0.5, zone.gy + 1, zone.oz + 0.5);
+    npc.rotation.y = 0;
     this.scene.add(npc);
     this.registerGuide('bucla', npc.position.x, zone.gy + 1.8, npc.position.z);
 
