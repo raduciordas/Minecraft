@@ -69,6 +69,10 @@ interface PlacedStructure extends StructureTemplate {
   maxX: number;
   minZ: number;
   maxZ: number;
+  flatMinX: number;
+  flatMaxX: number;
+  flatMinZ: number;
+  flatMaxZ: number;
 }
 
 export class TerrainGenerator {
@@ -107,13 +111,22 @@ export class TerrainGenerator {
       maxZ = Math.max(maxZ, b.dz);
     }
     const levelOrigin = t.levelOrigin ?? { x: t.originX, z: t.originZ };
+    const flatMinX = t.originX + minX - t.pad;
+    const flatMaxX = t.originX + maxX + t.pad;
+    const flatMinZ = t.originZ + minZ - t.pad;
+    const flatMaxZ = t.originZ + maxZ + t.pad;
+    const terrace = t.edgeTerraceDepth ?? 0;
     return {
       ...t,
       groundY: this.heightAt(levelOrigin.x, levelOrigin.z),
-      minX: t.originX + minX - t.pad,
-      maxX: t.originX + maxX + t.pad,
-      minZ: t.originZ + minZ - t.pad,
-      maxZ: t.originZ + maxZ + t.pad,
+      flatMinX,
+      flatMaxX,
+      flatMinZ,
+      flatMaxZ,
+      minX: flatMinX - terrace,
+      maxX: flatMaxX + terrace,
+      minZ: flatMinZ - terrace,
+      maxZ: flatMaxZ + terrace,
     };
   }
 
@@ -212,17 +225,40 @@ export class TerrainGenerator {
         for (let wz = z0; wz <= z1; wz++) {
           const lx = wx - baseX;
           const lz = wz - baseZ;
-          // On jagged terrain (mountain peaks especially), a column's own
-          // natural height can rise above the pad's single reference
-          // ground+clearAbove — clear past whichever is taller so no
-          // leftover rock/spire is stranded floating over the flattened pad.
-          const clearTop = Math.max(s.groundY + s.clearAbove, this.heightAt(wx, wz) + 2);
-          const soilStart = Math.max(1, s.groundY - (s.edgeSoilDepth ?? 0));
-          for (let y = 1; y < s.groundY; y++) {
+          const insideFlat =
+            wx >= s.flatMinX && wx <= s.flatMaxX &&
+            wz >= s.flatMinZ && wz <= s.flatMaxZ;
+          let targetY = s.groundY;
+          let clearAbove = s.clearAbove;
+
+          if (!insideFlat) {
+            // Never let one platform's descending skirt cover another lesson.
+            const belongsToAnotherPlatform = this.structures.some((other) =>
+              other !== s &&
+              wx >= other.flatMinX && wx <= other.flatMaxX &&
+              wz >= other.flatMinZ && wz <= other.flatMaxZ
+            );
+            if (belongsToAnotherPlatform) continue;
+
+            const ringX = wx < s.flatMinX ? s.flatMinX - wx : wx > s.flatMaxX ? wx - s.flatMaxX : 0;
+            const ringZ = wz < s.flatMinZ ? s.flatMinZ - wz : wz > s.flatMaxZ ? wz - s.flatMaxZ : 0;
+            const ring = Math.max(ringX, ringZ);
+            const naturalY = this.heightAt(wx, wz);
+            targetY = naturalY < s.groundY
+              ? Math.max(naturalY, s.groundY - ring)
+              : Math.min(naturalY, s.groundY + ring);
+            clearAbove = 3;
+          }
+
+          // On jagged terrain, clear past the old column so no rock or canopy
+          // remains suspended above the new flat or its grass-topped steps.
+          const clearTop = Math.max(targetY + clearAbove, this.heightAt(wx, wz) + 2);
+          const soilStart = Math.max(1, targetY - (s.edgeSoilDepth ?? 0));
+          for (let y = 1; y < targetY; y++) {
             chunk.setBlock(lx, y, lz, y >= soilStart ? BlockType.Dirt : BlockType.Stone);
           }
-          chunk.setBlock(lx, s.groundY, lz, s.surface);
-          for (let y = s.groundY + 1; y <= clearTop; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
+          chunk.setBlock(lx, targetY, lz, s.surface);
+          for (let y = targetY + 1; y <= clearTop; y++) chunk.setBlock(lx, y, lz, BlockType.Air);
         }
       }
 

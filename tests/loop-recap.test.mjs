@@ -70,8 +70,25 @@ test('the clarified routes never retrace a movement stone', () => {
 });
 
 test('Bunicul and Caliman platforms use deep soil facings', () => {
-  assert.ok(buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z).edgeSoilDepth >= 6);
-  assert.ok(buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z).edgeSoilDepth >= 6);
+  const vatra = buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z);
+  const munte = buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z);
+  assert.ok(vatra.edgeSoilDepth >= 6);
+  assert.ok(munte.edgeSoilDepth >= 6);
+  assert.ok(vatra.edgeTerraceDepth >= 6);
+  assert.ok(munte.edgeTerraceDepth >= 6);
+});
+
+test('the home route stays outside Muma Padurii crossroads', () => {
+  const route = LOOP_RECAP_ROUTES.tup_acasa;
+  const states = mountainRouteStates(route);
+  for (const state of states) {
+    const wx = BUCLA_ORIGIN.x + state.x;
+    const wz = BUCLA_ORIGIN.z + state.z;
+    const insideCrossroads =
+      wx >= PADUREA_ORIGIN.x + 5 && wx <= PADUREA_ORIGIN.x + 17 &&
+      wz >= PADUREA_ORIGIN.z && wz <= PADUREA_ORIGIN.z + 7;
+    assert.equal(insideCrossroads, false, `home route overlaps crossroads at ${wx},${wz}`);
+  }
 });
 
 test('the final rabbit lesson contains a nested loop', () => {

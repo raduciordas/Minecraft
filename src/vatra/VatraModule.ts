@@ -184,7 +184,7 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   tup_in_poiana: { dx: 4, dz: 8, label: 'Coturile poienii', yaw: Math.PI },
   tup_la_stup: { dx: 12, dz: 8, label: 'Drumul stupului', yaw: Math.PI },
   tup_pe_coasta: { dx: -9, dz: -7, label: 'Treptele coastei', yaw: Math.PI },
-  tup_acasa: { dx: 3, dz: -7, label: 'Drumul spre casă', yaw: Math.PI },
+  tup_acasa: { dx: -18, dz: -7, label: 'Drumul spre casă', yaw: Math.PI },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -311,7 +311,7 @@ export const ZONE_DEFS: ZoneDef[] = [
       'tup_la_morcovi', 'tup_la_pod', 'tup_in_poiana',
       'tup_la_stup', 'tup_pe_coasta', 'tup_acasa',
     ],
-    protect: [-16, 18, -24, 16, 0, 9],
+    protect: [-26, 18, -24, 16, 0, 9],
     levelOrigin: PADUREA_ORIGIN,
   },
   {
@@ -357,7 +357,7 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   tup_in_poiana: [2, 8, 2, 8],
   tup_la_stup: [10, 16, -2, 8],
   tup_pe_coasta: [-11, -3, -15, -7],
-  tup_acasa: [1, 9, -24, -7],
+  tup_acasa: [-22, -15, -24, -7],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -929,7 +929,7 @@ export class VatraModule {
       const rabbit = buildLoopRabbit();
       this.scene.add(rabbit);
       this.loopRabbits.set(puzzleId, rabbit);
-      this.resetLoopRabbit(puzzleId, this.done.has(puzzleId));
+      this.resetLoopRabbit(puzzleId, false);
     }
   }
 

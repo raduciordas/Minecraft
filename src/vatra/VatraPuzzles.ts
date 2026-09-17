@@ -1699,7 +1699,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     id: 'tup_acasa',
     title: 'Țup acasă — bucla din buclă',
     intro:
-      'CIOBĂNAȘUL CODRIN: „Folosește o buclă mare de 5 ori. În ea pune: o buclă mică de 3 ori cu ÎNAINTE, apoi DREAPTA, ÎNAINTE și STÂNGA. Așa obții fiecare treaptă fără să scrii de trei ori același pas."',
+      'CIOBĂNAȘUL CODRIN: „Drumul a fost mutat spre vest, departe de Răscruce. Folosește o buclă mare de 5 ori. În ea pune: o buclă mică de 3 ori cu ÎNAINTE, apoi STÂNGA, ÎNAINTE și DREAPTA."',
     success: 'Țup a ajuns acasă folosind o buclă în altă buclă! (+1 arc cu 20 de săgeți)',
     rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
     reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
@@ -1712,9 +1712,9 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
     solution: [
       REPEAT(5, [
         REPEAT(3, [A('inainte')]),
-        A('dreapta'), A('inainte'), A('stanga'),
+        A('stanga'), A('inainte'), A('dreapta'),
       ]),
     ],
-    fails: [{ text: 'Țup încă nu e acasă. În REPETĂ 5 ori pune REPETĂ 3 ori cu ÎNAINTE, apoi DREAPTA, ÎNAINTE și STÂNGA.', anim: 'none', matches: () => true }],
+    fails: [{ text: 'Țup încă nu e acasă. În REPETĂ 5 ori pune REPETĂ 3 ori cu ÎNAINTE, apoi STÂNGA, ÎNAINTE și DREAPTA.', anim: 'none', matches: () => true }],
   }
 };
