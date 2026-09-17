@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Chunk, blockIndex } from '../src/world/Chunk.ts';
 import { SpecialBlockIndex } from '../src/world/SpecialBlockIndex.ts';
+import { World } from '../src/world/World.ts';
+import { SAFE_SPAWN } from '../src/world/Structures.ts';
 import { BlockType } from '../src/world/Block.ts';
-import { CHUNK_HEIGHT, CHUNK_SIZE } from '../src/config.ts';
+import { CHUNK_HEIGHT, CHUNK_SIZE, WORLD_SEED } from '../src/config.ts';
 
 test('chunk indexing maps each voxel to a unique array slot', () => {
   const indexes = new Set();
@@ -50,3 +52,15 @@ test('special block index handles negative chunk coordinates', () => {
   assert.equal(index.anyNear(BlockType.WolfTrap, -0.5, -31.5, 2), false);
 });
 
+
+
+test('safe spawn is clear and follows the highest saved solid block', () => {
+  const world = new World(WORLD_SEED);
+  const ground = world.highestSolidY(SAFE_SPAWN.x, SAFE_SPAWN.z);
+  assert.equal(world.getBlock(SAFE_SPAWN.x, ground, SAFE_SPAWN.z), BlockType.Grass);
+  assert.equal(world.getBlock(SAFE_SPAWN.x, ground + 1, SAFE_SPAWN.z), BlockType.Air);
+  assert.equal(world.getBlock(SAFE_SPAWN.x, ground + 2, SAFE_SPAWN.z), BlockType.Air);
+
+  world.setBlock(SAFE_SPAWN.x, ground + 2, SAFE_SPAWN.z, BlockType.Stone);
+  assert.equal(world.highestSolidY(SAFE_SPAWN.x, SAFE_SPAWN.z), ground + 2);
+});

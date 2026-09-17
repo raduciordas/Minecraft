@@ -16,6 +16,7 @@ import {
   MOVE_SEND_INTERVAL,
 } from './config';
 import { World, worldToChunk, chunkKey } from './world/World';
+import { SAFE_SPAWN } from './world/Structures';
 import type { Chunk } from './world/Chunk';
 import { BlockType, isWater, isSolid, isDoor, isClimbable, toggleDoorId, PLACEABLE_BLOCKS, BLOCKS } from './world/Block';
 import { SpecialBlockIndex } from './world/SpecialBlockIndex';
@@ -57,7 +58,7 @@ const PUZZLE_CHECK = { evaluate, tracesEqual, programEquivalent, normalise, grad
 const ZONE_MARKS = [
   ...ZONE_DEFS.map((z) => ({ x: z.origin.x, z: z.origin.z, label: ZONES[z.id]?.guide.replace(/^\S+\s/, '') ?? z.id })),
   { x: 80, z: 0, label: 'Castelul' },
-  { x: 0, z: 0, label: 'Acasă' },
+  { x: SAFE_SPAWN.x, z: SAFE_SPAWN.z, label: 'Acasă' },
 ];
 import type { BlocklyCallbacks, BlocklyPanel } from './ui/BlocklyPanel';
 import { TouchControls } from './ui/TouchControls';
@@ -115,6 +116,7 @@ const LESSON_ONLY_STOCK: [BlockType, string][] = [
 // already have a world — and only once, so a pile they later mine or earn
 // back is theirs to keep.
 const STOCK_REV = 1;
+const SPAWN_REV = 1;
 const STOCK_REV_1_REMOVED: BlockType[] = [
   BlockType.Leaves,
   BlockType.Crystal,
@@ -421,17 +423,20 @@ export class Game {
       this.inventory.load(save.inventory);
       if (save.hotbar) this.hotbar.setLayout(save.hotbar);
       this.hotbar.select(save.selectedSlot);
-      this.player.body.x = save.player.x;
-      this.player.body.y = save.player.y;
-      this.player.body.z = save.player.z;
+      if ((save.spawnRev ?? 0) < SPAWN_REV) {
+        this.spawnAtSafePoint();
+      } else {
+        this.player.body.x = save.player.x;
+        this.player.body.y = save.player.y;
+        this.player.body.z = save.player.z;
+      }
       this.input.yaw = save.player.yaw;
       this.input.pitch = save.player.pitch;
       if (save.time !== undefined) this.dayNight.time = save.time;
       if (save.maxHp !== undefined) this.health.setMaxHp(save.maxHp);
       if (save.hp !== undefined) this.health.setHp(save.hp);
     } else {
-      const spawnHeight = this.world.generator.heightAt(0, 0);
-      this.player.spawnAt(0.5, 0.5, spawnHeight);
+      this.spawnAtSafePoint();
     }
     // Every session starts with a healthy stock of each material — except
     // blocks that must be crafted at a Crafting Table (Țiglă, Boltar, Cărămidă)
@@ -956,9 +961,13 @@ export class Game {
     this.sound.fireballCast();
   }
 
+  private spawnAtSafePoint(): void {
+    const groundHeight = this.world.highestSolidY(SAFE_SPAWN.x, SAFE_SPAWN.z);
+    this.player.spawnAt(SAFE_SPAWN.x + 0.5, SAFE_SPAWN.z + 0.5, groundHeight);
+  }
+
   private respawn(): void {
-    const spawnHeight = this.world.generator.heightAt(0, 0);
-    this.player.spawnAt(0.5, 0.5, spawnHeight);
+    this.spawnAtSafePoint();
     this.player.flying = false;
     this.health.respawn();
     this.healthHud.hideDeath();
@@ -987,6 +996,7 @@ export class Game {
       selectedSlot: this.hotbar.selectedIndex,
       hotbar: this.hotbar.getLayout(),
       stockRev: STOCK_REV,
+      spawnRev: SPAWN_REV,
       edits: this.world.serializeEdits(),
     });
   }

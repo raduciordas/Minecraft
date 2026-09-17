@@ -15,6 +15,8 @@ export interface SaveData {
   // one-off cleanup runs once per save instead of wiping the player's
   // hard-won pile on every load.
   stockRev?: number;
+  // Older saves are moved once from the obsolete world-origin spawn.
+  spawnRev?: number;
   edits: EditsData;
 }
 

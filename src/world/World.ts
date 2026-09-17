@@ -1,5 +1,5 @@
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../config';
-import { BlockType } from './Block';
+import { BlockType, isSolid } from './Block';
 import { Chunk, blockIndex } from './Chunk';
 import { TerrainGenerator } from './TerrainGenerator';
 
@@ -62,6 +62,17 @@ export class World {
     const chunk = this.getChunk(worldToChunk(wx), worldToChunk(wz));
     if (!chunk) return BlockType.Air;
     return chunk.getBlock(worldToLocal(wx), wy, worldToLocal(wz));
+  }
+
+  // Generate the column first so terrain, structures, and saved edits all
+  // participate. Spawning above its highest solid block cannot place the
+  // player's body inside a terrace or a cube they built in an earlier session.
+  highestSolidY(wx: number, wz: number): number {
+    this.generateChunk(worldToChunk(wx), worldToChunk(wz));
+    for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+      if (isSolid(this.getBlock(wx, y, wz))) return y;
+    }
+    return 0;
   }
 
   // Returns the chunks that need remeshing (the edited chunk plus any border

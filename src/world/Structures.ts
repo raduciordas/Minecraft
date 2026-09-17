@@ -533,6 +533,14 @@ export function buildBuclaBridge(originX: number, originZ: number): StructureTem
 // generation (structure stamping) and VatraModule (puzzle interactions).
 export const VATRA_ORIGIN = { x: -20, z: 16 };
 
+// A clear grass column inside Vatra's flattened platform. Fresh players and
+// one-time save migrations start here instead of on the shifting terrace at
+// the old world origin.
+export const SAFE_SPAWN = {
+  x: VATRA_ORIGIN.x + 4,
+  z: VATRA_ORIGIN.z + 5,
+};
+
 // Vatra Satului Codat: the phase-0 prototype square of the coding village —
 // a dry well with a trough, a bread oven, and a lane with 5 unlit lanterns.
 // Every mechanism starts broken/dark; the Tabla de Blocuri puzzles bring
