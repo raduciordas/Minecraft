@@ -18,6 +18,7 @@ import {
   TORCH_POST,
   STANA_ORIGIN,
   MUNTE_ORIGIN,
+  MUNTE_LEVEL_OFFSET,
   MOUNTAIN_ROUTES,
   BUCLA_ORIGIN,
   LOOP_RECAP_ROUTES,
@@ -275,6 +276,7 @@ export interface ZoneDef {
   puzzles: string[];
   protect: [x0: number, x1: number, z0: number, z1: number, y0: number, y1: number]; // relative to origin/ground
   levelOrigin?: { x: number; z: number };
+  levelOffset?: number;
 }
 export const ZONE_DEFS: ZoneDef[] = [
   {
@@ -303,6 +305,7 @@ export const ZONE_DEFS: ZoneDef[] = [
       'iedul_la_sare', 'iedul_la_refugiu', 'iedul_la_clopot',
     ],
     protect: [-15, 15, -20, 11, 0, 8],
+    levelOffset: MUNTE_LEVEL_OFFSET,
   },
   {
     id: 'bucla',
@@ -762,7 +765,7 @@ export class VatraModule {
   ) {
     for (const def of ZONE_DEFS) {
       const levelOrigin = def.levelOrigin ?? def.origin;
-      const gy = world.generator.heightAt(levelOrigin.x, levelOrigin.z);
+      const gy = Math.max(1, world.generator.heightAt(levelOrigin.x, levelOrigin.z) + (def.levelOffset ?? 0));
       this.zones.set(def.id, { def, ox: def.origin.x, oz: def.origin.z, gy, effectsApplied: false });
       for (const puzzleId of def.puzzles) this.zoneOfPuzzle.set(puzzleId, def.id);
     }

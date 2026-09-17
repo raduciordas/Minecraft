@@ -118,7 +118,7 @@ export class TerrainGenerator {
     const terrace = t.edgeTerraceDepth ?? 0;
     return {
       ...t,
-      groundY: this.heightAt(levelOrigin.x, levelOrigin.z),
+      groundY: Math.max(1, this.heightAt(levelOrigin.x, levelOrigin.z) + (t.levelOffset ?? 0)),
       flatMinX,
       flatMaxX,
       flatMinZ,

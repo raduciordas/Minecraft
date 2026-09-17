@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flattenActions, programEquivalent, VATRA_PUZZLES } from '../src/vatra/VatraPuzzles.ts';
-import { MOUNTAIN_ROUTES, MUNTE_ORIGIN, VATRA_ORIGIN, mountainRouteStates } from '../src/world/Structures.ts';
+import {
+  MOUNTAIN_ROUTES,
+  MUNTE_LEVEL_OFFSET,
+  MUNTE_ORIGIN,
+  VATRA_ORIGIN,
+  buildMunteZone,
+  mountainRouteStates,
+} from '../src/world/Structures.ts';
+import { ZONE_DEFS } from '../src/vatra/VatraModule.ts';
 
 const LESSONS = [
   'iedul_la_izvor',
@@ -65,7 +73,12 @@ test('changing one command no longer matches the lesson solution', () => {
 });
 
 
-test('mountain practice platform sits on the lower inner slope near Bunicul', () => {
+test('mountain practice platform sits five blocks lower and reconnects to the massif', () => {
+  assert.equal(MUNTE_LEVEL_OFFSET, -5);
+  assert.equal(ZONE_DEFS.find((zone) => zone.id === 'munte').levelOffset, MUNTE_LEVEL_OFFSET);
+  const platform = buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z);
+  assert.equal(platform.levelOffset, MUNTE_LEVEL_OFFSET);
+  assert.ok(platform.edgeTerraceDepth >= 10);
   assert.ok(Math.hypot(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z) < 70);
   assert.ok(Math.hypot(MUNTE_ORIGIN.x - VATRA_ORIGIN.x, MUNTE_ORIGIN.z - VATRA_ORIGIN.z) < 45);
 });

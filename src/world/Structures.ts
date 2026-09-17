@@ -15,6 +15,7 @@ export interface StructureTemplate {
   clearAbove: number; // height cleared to air above ground, for overhead rock/canopy
   pad: number; // extra flattened margin around the block bounding box
   levelOrigin?: { x: number; z: number }; // optional terrain point whose elevation this structure shares
+  levelOffset?: number; // vertical adjustment from the sampled terrain reference
   edgeSoilDepth?: number; // dirt facing below the grass hides sheer exposed stone walls
   edgeTerraceDepth?: number; // one-block contour steps blending a raised platform into terrain
   blocks: StructureBlock[];
@@ -279,6 +280,7 @@ export function buildVladCastle(originX: number, originZ: number): StructureTemp
 // On the inner mountain slope: visibly beside the massif, but well below
 // the high shelf used by the first version of the lesson platform.
 export const MUNTE_ORIGIN = { x: -40, z: 50 };
+export const MUNTE_LEVEL_OFFSET = -5;
 export type MountainCommand = 'inainte' | 'inapoi' | 'stanga' | 'dreapta';
 export interface MountainRoute {
   start: [number, number];
@@ -374,8 +376,10 @@ export function buildMunteZone(originX: number, originZ: number): StructureTempl
     surface: BlockType.Grass,
     clearAbove: 7,
     pad: 2,
+    levelOffset: MUNTE_LEVEL_OFFSET,
     edgeSoilDepth: 6,
-    edgeTerraceDepth: 6,
+    // Ten rising contour steps reconnect the lowered back edge to the massif.
+    edgeTerraceDepth: 10,
     blocks,
   };
 }
