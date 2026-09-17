@@ -78,7 +78,9 @@ test('mountain practice platform sits five blocks lower and reconnects to the ma
   assert.equal(ZONE_DEFS.find((zone) => zone.id === 'munte').levelOffset, MUNTE_LEVEL_OFFSET);
   const platform = buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z);
   assert.equal(platform.levelOffset, MUNTE_LEVEL_OFFSET);
-  assert.ok(platform.edgeTerraceDepth >= 10);
+  assert.ok(platform.edgeTerraceDepth >= 12);
+  assert.equal(platform.pad, 4);
+  assert.equal(platform.naturalClearance, 8);
   assert.ok(Math.hypot(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z) < 70);
   assert.ok(Math.hypot(MUNTE_ORIGIN.x - VATRA_ORIGIN.x, MUNTE_ORIGIN.z - VATRA_ORIGIN.z) < 45);
 });

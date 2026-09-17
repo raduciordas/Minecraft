@@ -10,6 +10,7 @@ import {
   PADUREA_ORIGIN,
   VATRA_ORIGIN,
   buildMunteZone,
+  buildPadureaZone,
   buildVatraSatului,
   buildBuclaBridge,
   buildBuclaZone,
@@ -75,7 +76,26 @@ test('Bunicul and Caliman platforms use deep soil facings', () => {
   assert.ok(vatra.edgeSoilDepth >= 6);
   assert.ok(munte.edgeSoilDepth >= 6);
   assert.ok(vatra.edgeTerraceDepth >= 6);
-  assert.ok(munte.edgeTerraceDepth >= 6);
+  assert.ok(munte.edgeTerraceDepth >= 12);
+  assert.equal(munte.pad, 4);
+  assert.equal(vatra.naturalClearance, 8);
+  assert.equal(munte.naturalClearance, 8);
+});
+
+test('Bunicul tree has a complete trunk and the crossroads front is filled', () => {
+  const vatra = buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z);
+  const trunk = vatra.blocks.filter((block) =>
+    block.dx === 13 && block.dz === 8 && block.block === BlockType.Log
+  );
+  assert.deepEqual(trunk.map((block) => block.dy), [1, 2, 3, 4, 5]);
+
+  const padurea = buildPadureaZone(PADUREA_ORIGIN.x, PADUREA_ORIGIN.z);
+  const apron = padurea.blocks.filter((block) =>
+    block.dx >= 5 && block.dx <= 17 &&
+    block.dz >= 4 && block.dz <= 8 &&
+    block.dy === 0 && block.block === BlockType.Grass
+  );
+  assert.equal(apron.length, 65);
 });
 
 test('the home route stays outside Muma Padurii crossroads', () => {

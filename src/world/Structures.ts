@@ -18,6 +18,7 @@ export interface StructureTemplate {
   levelOffset?: number; // vertical adjustment from the sampled terrain reference
   edgeSoilDepth?: number; // dirt facing below the grass hides sheer exposed stone walls
   edgeTerraceDepth?: number; // one-block contour steps blending a raised platform into terrain
+  naturalClearance?: number; // clears procedural trees/spires this far above their old ground
   blocks: StructureBlock[];
 }
 
@@ -375,11 +376,12 @@ export function buildMunteZone(originX: number, originZ: number): StructureTempl
     originZ,
     surface: BlockType.Grass,
     clearAbove: 7,
-    pad: 2,
+    pad: 4,
     levelOffset: MUNTE_LEVEL_OFFSET,
     edgeSoilDepth: 6,
-    // Ten rising contour steps reconnect the lowered back edge to the massif.
-    edgeTerraceDepth: 10,
+    // A broader twelve-step shoulder reconnects the lowered back edge.
+    edgeTerraceDepth: 12,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -596,6 +598,19 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
   B(6, 2, -5, BlockType.Log);
   for (let z = -8; z <= -5; z++) B(6, 3, z, BlockType.Plank); // clothesline bar
 
+  // Keep one real tree at the outer edge of Bunicul's platform. Procedural
+  // trees are cleared before stamping, so this complete trunk and canopy can
+  // never be left suspended by the flattened ground.
+  for (let y = 1; y <= 5; y++) B(13, y, 8, BlockType.Log);
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
+      if (dx !== 0 || dz !== 0) B(13 + dx, 5, 8 + dz, BlockType.Leaves);
+      if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) B(13 + dx, 6, 8 + dz, BlockType.Leaves);
+    }
+  }
+  B(13, 7, 8, BlockType.Leaves);
+
   return {
     name: 'Vatra Satului Codat',
     originX,
@@ -605,6 +620,7 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     pad: 2,
     edgeSoilDepth: 6,
     edgeTerraceDepth: 6,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -769,6 +785,12 @@ export function buildPadureaZone(originX: number, originZ: number): StructureTem
     }
   }
   B(14, 7, 0, BlockType.Leaves);
+
+  // A level grass apron closes the small terrain holes in front of the
+  // crossroads and carries the player cleanly to its lesson sign.
+  for (let x = 5; x <= 17; x++) {
+    for (let z = 4; z <= 8; z++) B(x, 0, z, BlockType.Grass);
+  }
 
   return {
     name: 'Pădurea',

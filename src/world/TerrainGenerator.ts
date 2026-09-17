@@ -252,7 +252,10 @@ export class TerrainGenerator {
 
           // On jagged terrain, clear past the old column so no rock or canopy
           // remains suspended above the new flat or its grass-topped steps.
-          const clearTop = Math.max(targetY + clearAbove, this.heightAt(wx, wz) + 2);
+          const clearTop = Math.max(
+            targetY + clearAbove,
+            this.heightAt(wx, wz) + (s.naturalClearance ?? 2),
+          );
           const soilStart = Math.max(1, targetY - (s.edgeSoilDepth ?? 0));
           for (let y = 1; y < targetY; y++) {
             chunk.setBlock(lx, y, lz, y >= soilStart ? BlockType.Dirt : BlockType.Stone);
