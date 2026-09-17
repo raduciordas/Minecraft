@@ -1,6 +1,7 @@
 import type { InputController } from '../player/InputController';
 
 const JOY_RADIUS = 44; // px of knob travel
+const JOY_DEAD_ZONE = 0.12;
 const TOUCH_LOOK_SENSITIVITY = 0.0035;
 const HOLD_REPEAT_MS = 280;
 
@@ -96,8 +97,16 @@ export class TouchControls {
         dy *= JOY_RADIUS / len;
       }
       knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      this.input.touchMoveX = dx / JOY_RADIUS;
-      this.input.touchMoveZ = -dy / JOY_RADIUS; // drag up = forward
+      const strength = Math.hypot(dx, dy) / JOY_RADIUS;
+      if (strength <= JOY_DEAD_ZONE) {
+        this.input.touchMoveX = 0;
+        this.input.touchMoveZ = 0;
+      } else {
+        const adjusted = (strength - JOY_DEAD_ZONE) / (1 - JOY_DEAD_ZONE);
+        const direction = Math.hypot(dx, dy) || 1;
+        this.input.touchMoveX = (dx / direction) * adjusted;
+        this.input.touchMoveZ = (-dy / direction) * adjusted; // drag up = forward
+      }
     };
     const reset = () => {
       touchId = null;
@@ -130,13 +139,19 @@ export class TouchControls {
       },
       { passive: false },
     );
+    const finishJoystickTouch = (e: TouchEvent) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === touchId) reset();
+      }
+    };
     for (const type of ['touchend', 'touchcancel'] as const) {
-      base.addEventListener(type, (e) => {
-        for (const t of e.changedTouches) {
-          if (t.identifier === touchId) reset();
-        }
-      });
+      base.addEventListener(type, finishJoystickTouch);
+      window.addEventListener(type, finishJoystickTouch);
     }
+    window.addEventListener('blur', reset);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') reset();
+    });
   }
 
   private buildButtons(root: HTMLElement): void {

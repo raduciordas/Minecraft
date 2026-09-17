@@ -45,8 +45,15 @@ export class InputController {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
-      if (!this.locked) this.keys.clear();
+      if (!this.locked) this.resetTransientInput();
       this.updateOverlay();
+    });
+
+    // Browsers can miss keyup/touchend while focus changes. Clear every held
+    // direction so returning to the game never continues the previous motion.
+    window.addEventListener('blur', () => this.resetTransientInput());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.resetTransientInput();
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -100,15 +107,17 @@ export class InputController {
     this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch));
   }
 
+  resetTransientInput(): void {
+    this.keys.clear();
+    this.touchMoveX = 0;
+    this.touchMoveZ = 0;
+    this.touchJump = false;
+    this.touchDown = false;
+  }
+
   setTouchActive(active: boolean): void {
     this.touchActive = active;
-    if (!active) {
-      this.keys.clear();
-      this.touchMoveX = 0;
-      this.touchMoveZ = 0;
-      this.touchJump = false;
-      this.touchDown = false;
-    }
+    if (!active) this.resetTransientInput();
     this.updateOverlay();
     this.touchModeListeners.forEach((fn) => fn(active));
   }

@@ -183,7 +183,7 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   tup_la_morcovi: { dx: -12, dz: 8, label: 'Rândul de morcovi', yaw: Math.PI },
   tup_la_pod: { dx: -5, dz: 8, label: 'Drumul podețului', yaw: Math.PI },
   tup_in_poiana: { dx: 4, dz: 8, label: 'Coturile poienii', yaw: Math.PI },
-  tup_la_stup: { dx: 12, dz: 8, label: 'Drumul stupului', yaw: Math.PI },
+  tup_la_stup: { dx: 5, dz: -7, label: 'Drumul stupului', yaw: Math.PI },
   tup_pe_coasta: { dx: -9, dz: -7, label: 'Treptele coastei', yaw: Math.PI },
   tup_acasa: { dx: -18, dz: -7, label: 'Drumul spre casă', yaw: Math.PI },
 };
@@ -358,7 +358,7 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   tup_la_morcovi: [-13, -11, -2, 8],
   tup_la_pod: [-6, -4, -6, 8],
   tup_in_poiana: [2, 8, 2, 8],
-  tup_la_stup: [10, 16, -2, 8],
+  tup_la_stup: [3, 9, -17, -7],
   tup_pe_coasta: [-11, -3, -15, -7],
   tup_acasa: [-22, -15, -24, -7],
 };

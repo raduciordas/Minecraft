@@ -1,10 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Inventory } from '../src/player/Inventory.ts';
+import { InputController } from '../src/player/InputController.ts';
 import { makeBody, stepBody } from '../src/player/Physics.ts';
 import { Health, MAX_MAX_HP } from '../src/player/Health.ts';
 import { StatusEffects } from '../src/player/StatusEffects.ts';
 import { MAX_HP, MAX_OXYGEN_SECONDS } from '../src/config.ts';
+
+test('losing focus clears held keyboard and touch movement', () => {
+  const input = Object.create(InputController.prototype);
+  Object.assign(input, {
+    keys: new Set(['KeyW', 'KeyD']),
+    touchMoveX: 0.7,
+    touchMoveZ: -0.5,
+    touchJump: true,
+    touchDown: true,
+  });
+
+  input.resetTransientInput();
+
+  assert.deepEqual([...input.keys], []);
+  assert.equal(input.touchMoveX, 0);
+  assert.equal(input.touchMoveZ, 0);
+  assert.equal(input.touchJump, false);
+  assert.equal(input.touchDown, false);
+});
 
 test('inventory adds, removes, tops up, serializes, and reloads stock', () => {
   const inventory = new Inventory();

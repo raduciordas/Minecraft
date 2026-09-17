@@ -35,7 +35,9 @@ import {
   BUCLA_HOME_TREE_ORIGIN,
   buildVladCastle,
   buildVatraSatului,
+  buildVatraStairs,
   VATRA_ORIGIN,
+  VATRA_STAIRS_ORIGIN,
   buildLuncaZone,
   LUNCA_ORIGIN,
   buildPadureaZone,
@@ -100,6 +102,7 @@ export class TerrainGenerator {
       buildBuclaHomeTree(BUCLA_HOME_TREE_ORIGIN.x, BUCLA_HOME_TREE_ORIGIN.z),
       buildVladCastle(80, 0),
       buildVatraSatului(VATRA_ORIGIN.x, VATRA_ORIGIN.z),
+      buildVatraStairs(VATRA_STAIRS_ORIGIN.x, VATRA_STAIRS_ORIGIN.z),
       buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),
       buildPadureaZone(PADUREA_ORIGIN.x, PADUREA_ORIGIN.z),
     ].map((t) => this.placeTemplate(t));

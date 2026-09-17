@@ -412,7 +412,9 @@ export const LOOP_RECAP_ROUTES: Record<string, MountainRoute> = {
     ],
   },
   tup_la_stup: {
-    start: [11, 7],
+    // Moved to the opposite row, leaving its old corridor free for the
+    // staircase descending from Bunicul Fierar's platform.
+    start: [4, -8],
     steps: [
       'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
       'inainte', 'inainte', 'dreapta', 'inainte', 'stanga',
@@ -539,6 +541,11 @@ export const VATRA_ORIGIN = { x: -20, z: 16 };
 export const SAFE_SPAWN = {
   x: VATRA_ORIGIN.x + 4,
   z: VATRA_ORIGIN.z + 5,
+};
+
+export const VATRA_STAIRS_ORIGIN = {
+  x: VATRA_ORIGIN.x - 11,
+  z: VATRA_ORIGIN.z + 6,
 };
 
 // Vatra Satului Codat: the phase-0 prototype square of the coding village —
@@ -668,6 +675,36 @@ export function buildVatraSatului(originX: number, originZ: number): StructureTe
     edgeSoilDepth: 6,
     // Continue the high front edge into long grass steps instead of a cut wall.
     edgeTerraceDepth: 12,
+    naturalClearance: 8,
+    blocks,
+  };
+}
+
+// A four-block-wide stairway occupies the corridor vacated by "Drumul
+// stupului". Its ground reference is Vatra's platform; Air blocks carve each
+// lower tread after the small footprint has been levelled.
+export function buildVatraStairs(originX: number, originZ: number): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  for (let step = 0; step < 8; step++) {
+    const dx = -step;
+    const top = -step;
+    for (let dz = 0; dz < 4; dz++) {
+      for (let dy = top + 1; dy <= 0; dy++) B(dx, dy, dz, BlockType.Air);
+      B(dx, top, dz, BlockType.Grass);
+      for (let depth = 1; depth <= 3; depth++) B(dx, top - depth, dz, BlockType.Dirt);
+    }
+  }
+
+  return {
+    name: 'Treptele Bunicului Fierar',
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 0,
+    levelOrigin: VATRA_ORIGIN,
     naturalClearance: 8,
     blocks,
   };

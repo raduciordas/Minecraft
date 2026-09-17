@@ -10,9 +10,11 @@ import {
   MUNTE_ORIGIN,
   PADUREA_ORIGIN,
   VATRA_ORIGIN,
+  VATRA_STAIRS_ORIGIN,
   buildMunteZone,
   buildPadureaZone,
   buildVatraSatului,
+  buildVatraStairs,
   buildBuclaBridge,
   buildBuclaHomeTree,
   buildBuclaZone,
@@ -49,6 +51,34 @@ test('loop recap routes match their expanded lesson programs', () => {
 test('the six rabbit routes finish at distinct golden stones', () => {
   const goals = LESSONS.map((id) => mountainRouteStates(LOOP_RECAP_ROUTES[id]).at(-1));
   assert.equal(new Set(goals.map((goal) => `${goal.x},${goal.z}`)).size, LESSONS.length);
+});
+
+test('Drumul stupului uses the opposite row and its old corridor contains stairs', () => {
+  assert.deepEqual(LOOP_RECAP_ROUTES.tup_la_stup.start, [4, -8]);
+
+  const oldStart = {
+    x: BUCLA_ORIGIN.x + 11,
+    z: BUCLA_ORIGIN.z + 7,
+  };
+  assert.ok(oldStart.x >= VATRA_STAIRS_ORIGIN.x - 7 && oldStart.x <= VATRA_STAIRS_ORIGIN.x);
+  assert.ok(oldStart.z >= VATRA_STAIRS_ORIGIN.z && oldStart.z <= VATRA_STAIRS_ORIGIN.z + 3);
+
+  const stairs = buildVatraStairs(VATRA_STAIRS_ORIGIN.x, VATRA_STAIRS_ORIGIN.z);
+  assert.deepEqual(stairs.levelOrigin, VATRA_ORIGIN);
+  for (let step = 0; step < 8; step++) {
+    for (let dz = 0; dz < 4; dz++) {
+      assert.ok(stairs.blocks.some((block) =>
+        block.dx === -step && block.dy === -step && block.dz === dz &&
+        block.block === BlockType.Grass
+      ));
+      if (step > 0) {
+        assert.ok(stairs.blocks.some((block) =>
+          block.dx === -step && block.dy === 0 && block.dz === dz &&
+          block.block === BlockType.Air
+        ));
+      }
+    }
+  }
 });
 
 test('the clarified routes never retrace a movement stone', () => {
