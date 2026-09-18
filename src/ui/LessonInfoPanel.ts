@@ -1,4 +1,5 @@
 import { VATRA_PUZZLES, rewardWhen } from '../vatra/VatraPuzzles';
+import { numberedZoneName } from '../vatra/ZoneOrder';
 
 // One teaching zone: its guide NPC, the concept that zone drills, and its
 // lessons in teaching order. Clicking the guide opens his own page.
@@ -138,7 +139,7 @@ export class LessonInfoPanel {
 
   private render(): void {
     const info = ZONES[this.zone];
-    this.titleText.data = info.guide;
+    this.titleText.data = numberedZoneName(this.zone, info.guide);
     this.conceptEl.innerHTML = info.concept;
 
     this.list.innerHTML = '';

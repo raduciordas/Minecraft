@@ -44,6 +44,7 @@ import { evaluate, tracesEqual } from './Interpreter';
 import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
 import type { SoundManager } from '../Sound';
+import { numberedZoneName } from './ZoneOrder';
 
 const SAVE_KEY = 'cuburia-vatra-v1';
 
@@ -286,18 +287,6 @@ export const ZONE_DEFS: ZoneDef[] = [
     protect: [-10, 16, -9, 7, 0, 8],
   },
   {
-    id: 'lunca',
-    origin: LUNCA_ORIGIN,
-    puzzles: ['gard', 'camp_grau', 'moara', 'livada', 'capite'],
-    protect: [-16, 26, -7, 11, 0, 6],
-  },
-  {
-    id: 'padurea',
-    origin: PADUREA_ORIGIN,
-    puzzles: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
-    protect: [-11, 17, -9, 8, 0, 8],
-  },
-  {
     id: 'munte',
     origin: MUNTE_ORIGIN,
     puzzles: [
@@ -308,6 +297,12 @@ export const ZONE_DEFS: ZoneDef[] = [
     levelOffset: MUNTE_LEVEL_OFFSET,
   },
   {
+    id: 'lunca',
+    origin: LUNCA_ORIGIN,
+    puzzles: ['gard', 'camp_grau', 'moara', 'livada', 'capite'],
+    protect: [-16, 26, -7, 11, 0, 6],
+  },
+  {
     id: 'bucla',
     origin: BUCLA_ORIGIN,
     puzzles: [
@@ -316,6 +311,12 @@ export const ZONE_DEFS: ZoneDef[] = [
     ],
     protect: [-26, 18, -24, 16, 0, 9],
     levelOrigin: PADUREA_ORIGIN,
+  },
+  {
+    id: 'padurea',
+    origin: PADUREA_ORIGIN,
+    puzzles: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
+    protect: [-11, 17, -9, 8, 0, 8],
   },
   {
     id: 'stana',
@@ -848,7 +849,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('munte', npc.position.x, zone.gy + 1.9, npc.position.z);
 
-    const nameSign = makeSign('5. Moș Căliman', 1.6);
+    const nameSign = makeSign(numberedZoneName('munte', 'Moș Căliman'), 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -922,7 +923,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('bucla', npc.position.x, zone.gy + 1.8, npc.position.z);
 
-    const nameSign = makeSign('6. Ciobănașul Codrin', 1.8);
+    const nameSign = makeSign(numberedZoneName('bucla', 'Ciobănașul Codrin'), 1.8);
     nameSign.position.set(npc.position.x, npc.position.y + 2.2, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -1024,7 +1025,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('stana', npc.position.x, zone.gy + 1.9, npc.position.z);
 
-    const nameSign = makeSign('4. Baba Dochia', 1.6);
+    const nameSign = makeSign(numberedZoneName('stana', 'Baba Dochia'), 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -1168,7 +1169,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('lunca', npc.position.x, this.lunGroundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('2. Baciul Luncii', 1.6);
+    const nameSign = makeSign(numberedZoneName('lunca', 'Baciul Luncii'), 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -1199,7 +1200,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('padurea', npc.position.x, this.paduGroundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('3. Muma Pădurii', 1.6);
+    const nameSign = makeSign(numberedZoneName('padurea', 'Muma Pădurii'), 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.5, npc.position.z);
     this.scene.add(nameSign);
   }
@@ -1226,7 +1227,7 @@ export class VatraModule {
     this.scene.add(npc);
     this.registerGuide('vatra', npc.position.x, this.groundY + 1.9, npc.position.z);
 
-    const nameSign = makeSign('1. Bunicul Fierar', 1.6);
+    const nameSign = makeSign(numberedZoneName('vatra', 'Bunicul Fierar'), 1.6);
     nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
     this.scene.add(nameSign);
   }

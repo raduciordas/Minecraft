@@ -3,7 +3,8 @@ import { CHUNK_HEIGHT } from '../config';
 import type { World } from '../world/World';
 
 const SPAN = 96; // blocks across, centred on the player
-const PIXELS = 224; // canvas size; two screen pixels per block
+export const MAP_PIXELS = 672; // three times the old map size
+const PIXELS = MAP_PIXELS;
 const SCALE = PIXELS / SPAN;
 const REDRAW_MS = 250; // the terrain hardly moves; no need to redraw every frame
 
@@ -119,7 +120,7 @@ export class MiniMap {
   private drawMarks(px: number, pz: number): void {
     const ctx = this.ctx;
     const half = SPAN / 2;
-    ctx.font = 'bold 9px monospace';
+    ctx.font = 'bold 24px monospace';
     ctx.textAlign = 'center';
     for (const mark of this.marks) {
       const mx = (mark.x - (px - half)) * SCALE;
@@ -127,13 +128,13 @@ export class MiniMap {
       if (mx < 0 || mx > PIXELS || mz < 0 || mz > PIXELS) continue;
       ctx.fillStyle = '#2b1808';
       ctx.beginPath();
-      ctx.arc(mx, mz, 3, 0, Math.PI * 2);
+      ctx.arc(mx, mz, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#f4ecd0';
       ctx.strokeStyle = '#2b1808';
-      ctx.lineWidth = 3;
-      ctx.strokeText(mark.label, mx, mz - 6);
-      ctx.fillText(mark.label, mx, mz - 6);
+      ctx.lineWidth = 6;
+      ctx.strokeText(mark.label, mx, mz - 14);
+      ctx.fillText(mark.label, mx, mz - 14);
     }
   }
 
@@ -148,15 +149,15 @@ export class MiniMap {
     // Forward on screen is -z, and the world's forward is (-sin yaw, -cos yaw)
     ctx.rotate(-yaw);
     ctx.beginPath();
-    ctx.moveTo(0, -7);
-    ctx.lineTo(5, 6);
-    ctx.lineTo(0, 3);
-    ctx.lineTo(-5, 6);
+    ctx.moveTo(0, -21);
+    ctx.lineTo(15, 18);
+    ctx.lineTo(0, 9);
+    ctx.lineTo(-15, 18);
     ctx.closePath();
     ctx.fillStyle = '#c8342a';
     ctx.fill();
     ctx.strokeStyle = '#f4ecd0';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 4;
     ctx.stroke();
     ctx.restore();
   }

@@ -47,6 +47,7 @@ import { VATRA_PUZZLES, PUZZLE_HELPERS, programEquivalent, normalise, gradesByTr
 import { evaluate, tracesEqual } from './vatra/Interpreter';
 import { ZONE_DEFS } from './vatra/VatraModule';
 import { ZONES } from './ui/LessonInfoPanel';
+import { mapZoneName } from './vatra/ZoneOrder';
 import { isEarned, isKnownItem, itemName } from './items/Items';
 
 // Everything the lesson-data sanity check (scratch test check_puzzles.js)
@@ -56,7 +57,7 @@ const PUZZLE_CHECK = { evaluate, tracesEqual, programEquivalent, normalise, grad
 // What the Hartă names: every teaching zone, plus the two landmarks a child
 // navigates by
 const ZONE_MARKS = [
-  ...ZONE_DEFS.map((z) => ({ x: z.origin.x, z: z.origin.z, label: ZONES[z.id]?.guide.replace(/^\S+\s/, '') ?? z.id })),
+  ...ZONE_DEFS.map((z) => ({ x: z.origin.x, z: z.origin.z, label: mapZoneName(z.id, ZONES[z.id]?.guide ?? z.id) })),
   { x: 80, z: 0, label: 'Castelul' },
   { x: SAFE_SPAWN.x, z: SAFE_SPAWN.z, label: 'Acasă' },
 ];

@@ -44,6 +44,27 @@ test('starts on solid ground and clears interrupted movement input', async ({ pa
   expect(cleared).toEqual({ x: 0, z: 0, jump: false, down: false });
 });
 
+test('the enlarged map shows all six numbered phases', async ({ page }) => {
+  const labels = await page.evaluate(() => {
+    const game = (window as any).__game;
+    game.hotbar.assignToSelected(309);
+    game.input.setTouchActive(true);
+    return game.miniMap.marks.slice(0, 6).map((mark: { label: string }) => mark.label);
+  });
+
+  await expect(page.locator('#minimap')).toBeVisible();
+  const mapBox = await page.locator('.minimap-canvas').boundingBox();
+  expect(mapBox?.width).toBeGreaterThanOrEqual(670);
+  expect(labels).toEqual([
+    '1. Bunicul Fierar',
+    '2. Moș Căliman',
+    '3. Baciul Luncii',
+    '4. Ciobănașul Codrin',
+    '5. Muma Pădurii',
+    '6. Baba Dochia',
+  ]);
+});
+
 test('all lessons accept their canonical browser program', async ({ page }) => {
   test.setTimeout(180_000);
   const results = await page.evaluate(async () => {

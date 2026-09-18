@@ -389,13 +389,20 @@
         padding: 4px; font-family: monospace;
       }
       #minimap.hidden { display: none; }
-      .minimap-canvas { display: block; image-rendering: pixelated; width: 224px; height: 224px; }
+      .minimap-canvas {
+        display: block; image-rendering: pixelated;
+        width: min(672px, calc(100vw - 28px), calc(100vh - 48px));
+        height: auto; aspect-ratio: 1;
+      }
       .minimap-caption {
         text-align: center; font: bold 11px monospace; color: #4a2f16; padding-top: 3px;
       }
       @media (max-width: 720px) {
         #minimap { top: 68px; right: 8px; padding: 3px; }
-        .minimap-canvas { width: 144px; height: 144px; }
+        .minimap-canvas {
+          width: min(432px, calc(100vw - 16px), calc(100vh - 104px));
+          height: auto;
+        }
       }
       #toast {
         position: fixed; top: 16%; left: 50%; transform: translateX(-50%);

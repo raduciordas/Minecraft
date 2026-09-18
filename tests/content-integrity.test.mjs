@@ -6,6 +6,9 @@ import { ALL_ITEM_IDS, canMineBlock, isKnownItem, itemName } from '../src/items/
 import { ToolId } from '../src/items/Tool.ts';
 import { BOW_QUIVER_SIZE, WEAPONS, WeaponId } from '../src/items/Weapon.ts';
 import { BlockType } from '../src/world/Block.ts';
+import { ZONE_PHASES, mapZoneName, numberedZoneName } from '../src/vatra/ZoneOrder.ts';
+import { ZONE_DEFS } from '../src/vatra/VatraModule.ts';
+import { MAP_PIXELS } from '../src/ui/MiniMap.ts';
 
 function visit(nodes, fn) {
   for (const node of nodes) {
@@ -20,6 +23,14 @@ test('hard blocks require an owned pickaxe', () => {
   assert.equal(canMineBlock(BlockType.Stone, ToolId.Tarnacop, 1), true);
   assert.equal(canMineBlock(BlockType.Stone, ToolId.Lopata, 1), false);
   assert.equal(canMineBlock(BlockType.Dirt, ToolId.Lopata, 0), true);
+});
+
+test('the six phases have the requested order on signs and the enlarged map', () => {
+  assert.deepEqual(ZONE_DEFS.map((zone) => zone.id), ['vatra', 'munte', 'lunca', 'bucla', 'padurea', 'stana']);
+  assert.deepEqual(ZONE_PHASES, { vatra: 1, munte: 2, lunca: 3, bucla: 4, padurea: 5, stana: 6 });
+  assert.equal(numberedZoneName('munte', 'Moș Căliman'), '2. Moș Căliman');
+  assert.equal(mapZoneName('padurea', '🌲 Muma Pădurii'), '5. Muma Pădurii');
+  assert.equal(MAP_PIXELS, 672);
 });
 
 test('the item catalogue contains unique, named, known IDs', () => {
