@@ -5,6 +5,7 @@ import { TOOLS, TOOL_IDS, ToolId, isTool, makeToolIcon } from './Tool';
 import { CONSUMABLES, CONSUMABLE_IDS, isConsumable, makeConsumableIcon } from './Consumable';
 import { GEAR, GEAR_IDS, isGear, makeGearIcon } from './Gear';
 import type { TextureAtlas } from '../rendering/TextureAtlas';
+import { polishItemIcon } from './ItemVisuals';
 
 // One place that knows every item category, so the hotbar, inventory,
 // crafting and help panels don't each carry their own chain of
@@ -24,12 +25,13 @@ export function itemName(id: number): string {
 }
 
 export function makeItemIcon(id: number, atlas: TextureAtlas): HTMLCanvasElement {
-  if (isWeapon(id)) return makeWeaponIcon(id as WeaponId);
-  if (isThrowable(id)) return makeThrowableIcon(id as ThrowableId);
-  if (isTool(id)) return makeToolIcon(id as ToolId);
-  if (isGear(id)) return makeGearIcon(id);
-  if (isConsumable(id)) return makeConsumableIcon(id);
-  return atlas.makeTileIcon(BLOCKS[id].textures.side);
+  if (isWeapon(id)) return polishItemIcon(makeWeaponIcon(id as WeaponId));
+  if (isThrowable(id)) return polishItemIcon(makeThrowableIcon(id as ThrowableId));
+  if (isTool(id)) return polishItemIcon(makeToolIcon(id as ToolId));
+  if (isGear(id)) return polishItemIcon(makeGearIcon(id));
+  if (isConsumable(id)) return polishItemIcon(makeConsumableIcon(id));
+  const textures = BLOCKS[id].textures;
+  return atlas.makeBlockIcon(textures.top, textures.side);
 }
 
 // Whether right-clicking with it in hand puts a block in the world

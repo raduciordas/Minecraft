@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BlockType } from '../world/Block';
+import { voxelBox } from './ItemVisuals';
 
 // Things you eat. Ids live in [400, 500) — above tools — so no category
 // test ever collides. Pâine keeps its old BlockType id (saves already hold
@@ -131,9 +132,7 @@ export function makeConsumableIcon(id: number): HTMLCanvasElement {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): void {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  mesh.position.set(x, y, z);
-  parent.add(mesh);
+  voxelBox(parent, w, h, d, color, x, y, z);
 }
 
 // Small first-person model, sized like a held block

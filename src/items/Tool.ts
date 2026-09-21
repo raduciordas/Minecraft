@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { shadeColor, tintColor, voxelBox } from './ItemVisuals';
 
 // Tool ids live in [300, 400) — above throwables, so isWeapon/isThrowable/isTool
 // never collide. Tools are inventory-tracked (like blocks) but never placed
@@ -141,10 +142,7 @@ export function makeToolIcon(id: ToolId): HTMLCanvasElement {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  mesh.position.set(x, y, z);
-  parent.add(mesh);
-  return mesh;
+  return voxelBox(parent, w, h, d, color, x, y, z, 'polished');
 }
 
 // Small first-person model held in the corner of the screen, matching the
@@ -152,23 +150,33 @@ function box(parent: THREE.Object3D, w: number, h: number, d: number, color: num
 export function buildToolModel(id: ToolId): THREE.Group {
   const group = new THREE.Group();
   const { handle, head } = TOOLS[id].colors;
+  const shine = tintColor(head, 0.38);
+  const shadow = shadeColor(head, 0.58);
   switch (TOOLS[id].shape) {
     case 'pickaxe': {
       box(group, 0.05, 0.62, 0.05, handle, 0, 0.05, 0);
       const pick = box(group, 0.42, 0.09, 0.09, head, 0, 0.4, 0);
       pick.rotation.z = 0.5;
+      const edge = box(group, 0.34, 0.025, 0.095, shine, -0.015, 0.44, 0);
+      edge.rotation.z = 0.5;
+      box(group, 0.065, 0.04, 0.065, shadow, 0, -0.25, 0);
       break;
     }
     case 'axe':
       box(group, 0.05, 0.62, 0.05, handle, 0, 0.05, 0);
       box(group, 0.2, 0.16, 0.05, head, 0.1, 0.36, 0);
+      box(group, 0.025, 0.15, 0.06, shine, 0.2, 0.37, 0);
+      box(group, 0.07, 0.045, 0.065, shadow, 0.015, 0.29, 0);
       break;
     case 'shovel':
       box(group, 0.045, 0.62, 0.045, handle, 0, 0.05, 0);
       box(group, 0.14, 0.18, 0.03, head, 0, 0.42, 0);
+      box(group, 0.02, 0.14, 0.035, shine, -0.055, 0.44, 0);
+      box(group, 0.1, 0.025, 0.04, shadow, 0, 0.33, 0);
       break;
     case 'compass':
       box(group, 0.14, 0.03, 0.14, head, 0, 0.05, 0);
+      box(group, 0.11, 0.012, 0.11, 0xf4ecd0, 0, 0.071, 0);
       box(group, 0.02, 0.01, 0.08, 0xc8342a, 0, 0.07, 0);
       break;
     case 'rod': {
@@ -181,6 +189,8 @@ export function buildToolModel(id: ToolId): THREE.Group {
     case 'bucket_full':
       box(group, 0.16, 0.16, 0.16, 0x8a8a8a, 0, 0.05, 0);
       box(group, 0.18, 0.015, 0.015, handle, 0, 0.14, 0);
+      box(group, 0.025, 0.13, 0.165, 0xc8d0d8, -0.06, 0.06, 0);
+      box(group, 0.15, 0.025, 0.165, 0x555a62, 0, -0.02, 0);
       if (TOOLS[id].shape === 'bucket_full') box(group, 0.13, 0.02, 0.13, head, 0, 0.12, 0);
       break;
     case 'whistle': {
@@ -193,6 +203,9 @@ export function buildToolModel(id: ToolId): THREE.Group {
       box(group, 0.22, 0.01, 0.17, head, 0, 0.05, 0);
       box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, 0.085);
       box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, -0.085);
+      box(group, 0.08, 0.008, 0.012, 0x3e8f4d, -0.04, 0.06, 0.015);
+      box(group, 0.012, 0.008, 0.07, 0xc84b3c, 0.025, 0.061, -0.015);
+      box(group, 0.025, 0.01, 0.025, 0x3f77c7, 0.07, 0.063, 0.045);
       break;
   }
   return group;

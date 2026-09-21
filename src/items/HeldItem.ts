@@ -7,6 +7,7 @@ import { isThrowable, buildThrowableModel, type ThrowableId } from './Throwable'
 import { isTool, buildToolModel, type ToolId } from './Tool';
 import { isConsumable, buildConsumableModel } from './Consumable';
 import { isGear, buildGearModel } from './Gear';
+import { voxelMaterial } from './ItemVisuals';
 
 const SKIN_COLOR = 0xe0a878;
 const BLOCK_ITEM_SIZE = 0.16;
@@ -17,7 +18,7 @@ const BLOCK_ITEM_SIZE = 0.16;
 function buildFist(): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.16, 0.16, 0.42),
-    new THREE.MeshLambertMaterial({ color: SKIN_COLOR }),
+    voxelMaterial(SKIN_COLOR),
   );
   mesh.position.set(0, -0.02, 0.14);
   return mesh;
@@ -58,7 +59,14 @@ function buildBlockModel(id: BlockType, atlas: TextureAtlas): THREE.Group {
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
 
-  const material = new THREE.MeshLambertMaterial({ map: atlas.texture, vertexColors: true, transparent: !def.opaque });
+  const material = new THREE.MeshStandardMaterial({
+    map: atlas.texture,
+    vertexColors: true,
+    transparent: !def.opaque,
+    alphaTest: def.opaque ? 0 : 0.5,
+    roughness: 0.62,
+    metalness: 0.04,
+  });
   const mesh = new THREE.Mesh(geometry, material);
   const group = new THREE.Group();
   group.add(mesh);

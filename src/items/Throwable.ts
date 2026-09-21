@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { voxelBox } from './ItemVisuals';
 
 // Throwable ids live in [200, 300), above weapons and below any future
 // category, so isWeapon/isThrowable never collide.
@@ -94,9 +95,7 @@ export function makeThrowableIcon(id: ThrowableId): HTMLCanvasElement {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): void {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  mesh.position.set(x, y, z);
-  parent.add(mesh);
+  voxelBox(parent, w, h, d, color, x, y, z, 'glossy');
 }
 
 // Small first-person model held in the corner of the screen, matching the

@@ -57,10 +57,13 @@ export function buildItemModel(id: number, atlas: TextureAtlas): THREE.Group {
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
 
-    const material = new THREE.MeshLambertMaterial({
+    const material = new THREE.MeshStandardMaterial({
       map: atlas.texture,
       vertexColors: true,
       transparent: !def.opaque,
+      alphaTest: def.opaque ? 0 : 0.5,
+      roughness: 0.58,
+      metalness: 0.05,
     });
     const mesh = new THREE.Mesh(geometry, material);
     group.add(mesh);

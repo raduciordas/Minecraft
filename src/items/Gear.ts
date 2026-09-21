@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { voxelBox, voxelMaterial } from './ItemVisuals';
 
 // Passive gear: things that work just by being in your pack — no slots to
 // equip, no wearing. Ids live in [500, 600). Game.passives() adds up every
@@ -110,9 +111,7 @@ export function makeGearIcon(id: number): HTMLCanvasElement {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): void {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  mesh.position.set(x, y, z);
-  parent.add(mesh);
+  voxelBox(parent, w, h, d, color, x, y, z);
 }
 
 // Small first-person model for when a piece of gear is selected in the hotbar
@@ -127,7 +126,7 @@ export function buildGearModel(id: number): THREE.Group {
       break;
     case 'wings':
       for (const side of [-1, 1]) {
-        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.01, 0.08), new THREE.MeshLambertMaterial({ color: main }));
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.01, 0.08), voxelMaterial(main, 'glossy'));
         wing.position.set(side * 0.1, 0.06, 0);
         wing.rotation.z = side * 0.5;
         group.add(wing);

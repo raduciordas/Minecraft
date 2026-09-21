@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { shadeColor, tintColor, voxelBox } from './ItemVisuals';
 
 // Weapon ids live above 100 so they never collide with block ids
 export const enum WeaponId {
@@ -169,40 +170,52 @@ export function makeWeaponIcon(id: WeaponId): HTMLCanvasElement {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): void {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  mesh.position.set(x, y, z);
-  parent.add(mesh);
+  voxelBox(parent, w, h, d, color, x, y, z, 'polished');
 }
 
 // Small first-person model held in the corner of the screen, built along +Y
 export function buildWeaponModel(id: WeaponId): THREE.Group {
   const group = new THREE.Group();
   const { blade, accent, handle } = WEAPONS[id].colors;
+  const shine = tintColor(blade, 0.42);
+  const shadow = shadeColor(blade, 0.58);
 
   const shape = WEAPONS[id].shape;
   if (id === WeaponId.MagmaHammer) {
     box(group, 0.055, 0.6, 0.055, handle, 0, 0.15, 0);
     box(group, 0.3, 0.17, 0.17, blade, 0, 0.48, 0);
     box(group, 0.31, 0.04, 0.18, accent, 0, 0.55, 0);
+    box(group, 0.04, 0.11, 0.18, shine, -0.13, 0.49, 0);
+    box(group, 0.04, 0.11, 0.18, shadow, 0.13, 0.47, 0);
+    box(group, 0.075, 0.035, 0.075, accent, 0, -0.16, 0);
   } else if (shape === 'club') {
     box(group, 0.045, 0.85, 0.045, handle, 0, 0.22, 0);
     box(group, 0.12, 0.045, 0.045, blade, 0.04, 0.66, 0);
     box(group, 0.045, 0.08, 0.045, accent, 0.08, 0.6, 0);
+    for (const y of [0.03, 0.2, 0.37]) box(group, 0.057, 0.025, 0.057, accent, 0, y, 0);
+    box(group, 0.035, 0.12, 0.035, shine, -0.01, 0.73, 0);
   } else if (shape === 'bow') {
     box(group, 0.035, 0.7, 0.035, blade, 0, 0.3, 0);
     box(group, 0.08, 0.035, 0.035, blade, -0.03, 0.64, 0);
     box(group, 0.08, 0.035, 0.035, blade, -0.03, -0.04, 0);
     box(group, 0.006, 0.68, 0.006, accent, -0.07, 0.3, 0);
     box(group, 0.3, 0.012, 0.012, handle, 0.06, 0.3, 0);
+    box(group, 0.05, 0.18, 0.05, shadow, 0, 0.3, 0);
+    box(group, 0.018, 0.62, 0.018, shine, 0.022, 0.3, 0.02);
   } else if (id === WeaponId.IceSpear) {
     box(group, 0.04, 0.85, 0.04, handle, 0, 0.22, 0);
     box(group, 0.07, 0.16, 0.07, blade, 0, 0.7, 0);
     box(group, 0.045, 0.08, 0.045, accent, 0, 0.8, 0);
+    box(group, 0.02, 0.17, 0.075, shine, -0.025, 0.72, 0);
+    box(group, 0.085, 0.035, 0.085, accent, 0, 0.62, 0);
   } else {
     box(group, 0.05, 0.16, 0.05, handle, 0, 0, 0);
     box(group, 0.17, 0.035, 0.06, accent, 0, 0.09, 0);
     box(group, 0.06, 0.44, 0.025, blade, 0, 0.32, 0);
     box(group, 0.035, 0.07, 0.025, blade, 0, 0.56, 0);
+    box(group, 0.014, 0.39, 0.029, shine, -0.023, 0.35, 0);
+    box(group, 0.016, 0.35, 0.029, shadow, 0.024, 0.31, 0);
+    box(group, 0.075, 0.055, 0.065, accent, 0, -0.1, 0);
   }
   return group;
 }

@@ -23,8 +23,34 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-const GRASS_GREEN: [number, number, number] = [106, 170, 64];
-const DIRT_BROWN: [number, number, number] = [134, 96, 67];
+function enhanceTile(img: ImageData): void {
+  const original = new Uint8ClampedArray(img.data);
+  const alphaAt = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= TILE_PX || y >= TILE_PX) return 0;
+    return original[(y * TILE_PX + x) * 4 + 3];
+  };
+  for (let y = 0; y < TILE_PX; y++) {
+    for (let x = 0; x < TILE_PX; x++) {
+      const i = (y * TILE_PX + x) * 4;
+      if (!original[i + 3]) continue;
+      const r = original[i];
+      const g = original[i + 1];
+      const b = original[i + 2];
+      const luma = r * 0.299 + g * 0.587 + b * 0.114;
+      const bevelLight = x === 0 || y === 0 ? 1.16 : x === TILE_PX - 1 || y === TILE_PX - 1 ? 0.76 : 1;
+      const exposed = !alphaAt(x - 1, y) || !alphaAt(x, y - 1) ? 1.12 : 1;
+      const clustered = ((x >> 1) + (y >> 1)) % 2 === 0 ? 1.025 : 0.985;
+      const light = bevelLight * exposed * clustered;
+      const colour = (channel: number) => Math.max(0, Math.min(255, (luma + (channel - luma) * 1.22) * light));
+      img.data[i] = colour(r);
+      img.data[i + 1] = colour(g);
+      img.data[i + 2] = colour(b);
+    }
+  }
+}
+
+const GRASS_GREEN: [number, number, number] = [92, 188, 58];
+const DIRT_BROWN: [number, number, number] = [148, 96, 58];
 
 const TILE_SPECS: Record<number, TileSpec> = {
   [Tile.GrassTop]: { base: GRASS_GREEN, variation: 0.12 },
@@ -43,10 +69,10 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Dirt]: { base: DIRT_BROWN, variation: 0.14 },
-  [Tile.Stone]: { base: [125, 125, 125], variation: 0.1 },
-  [Tile.Sand]: { base: [219, 207, 163], variation: 0.08 },
+  [Tile.Stone]: { base: [132, 140, 152], variation: 0.12 },
+  [Tile.Sand]: { base: [236, 211, 142], variation: 0.1 },
   [Tile.LogSide]: {
-    base: [102, 81, 50],
+    base: [124, 82, 42],
     variation: 0.06,
     draw: (px, rand) => {
       // Vertical bark streaks
@@ -61,7 +87,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.LogTop]: {
-    base: [102, 81, 50],
+    base: [132, 90, 50],
     variation: 0.05,
     draw: (px) => {
       // Concentric rings
@@ -74,7 +100,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Leaves]: {
-    base: [58, 122, 40],
+    base: [48, 146, 42],
     variation: 0.2,
     draw: (px, rand) => {
       for (let x = 0; x < TILE_PX; x++) {
@@ -85,7 +111,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Plank]: {
-    base: [178, 143, 90],
+    base: [204, 144, 72],
     variation: 0.06,
     draw: (px) => {
       // Horizontal board seams
@@ -95,7 +121,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Water]: {
-    base: [48, 96, 200],
+    base: [42, 124, 230],
     variation: 0.08,
     draw: (px, rand) => {
       // Faint wave highlights
@@ -107,7 +133,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Cobble]: {
-    base: [112, 112, 112],
+    base: [122, 130, 140],
     variation: 0.12,
     draw: (px, rand) => {
       for (let x = 0; x < TILE_PX; x++) {
@@ -120,7 +146,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Brick]: {
-    base: [152, 72, 60],
+    base: [184, 76, 58],
     variation: 0.08,
     draw: (px) => {
       // Mortar: horizontal courses + staggered vertical joints
@@ -132,7 +158,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
       }
     },
   },
-  [Tile.Snow]: { base: [236, 241, 246], variation: 0.04 },
+  [Tile.Snow]: { base: [244, 249, 255], variation: 0.045 },
   [Tile.Glass]: {
     base: [0, 0, 0],
     variation: 0,
@@ -150,7 +176,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.StoneBrick]: {
-    base: [122, 122, 122],
+    base: [136, 143, 154],
     variation: 0.08,
     draw: (px) => {
       // Two courses of large bricks with dark seams
@@ -166,7 +192,7 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Crystal]: {
-    base: [138, 92, 214],
+    base: [150, 88, 232],
     variation: 0.16,
     draw: (px, rand) => {
       // Faceted violet crystal: a bright diagonal shard plus scattered sparkle
@@ -578,6 +604,7 @@ export class TextureAtlas {
         img.data[i + 2] = Math.min(255, b);
         img.data[i + 3] = 255;
       }, mulberry32(seed + tile * 211));
+      enhanceTile(img);
       ctx.putImageData(img, ox, oy);
     }
 
@@ -607,6 +634,62 @@ export class TextureAtlas {
     const ox = (tile % ATLAS_TILES) * TILE_PX;
     const oy = Math.floor(tile / ATLAS_TILES) * TILE_PX;
     ctx.drawImage(this.canvas, ox, oy, TILE_PX, TILE_PX, 0, 0, TILE_PX, TILE_PX);
+    return icon;
+  }
+
+  // Inventory blocks use the same procedural texture as the world, projected
+  // onto a small isometric cube instead of appearing as a flat square.
+  makeBlockIcon(topTile: number, sideTile: number): HTMLCanvasElement {
+    const icon = document.createElement('canvas');
+    icon.width = 24;
+    icon.height = 24;
+    const ctx = icon.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    const tileCanvas = (tile: number) => this.makeTileIcon(tile);
+    const face = (
+      tile: number,
+      points: [number, number][],
+      transform: [number, number, number, number, number, number],
+      shade: string,
+    ) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+      ctx.closePath();
+      ctx.clip();
+      ctx.setTransform(...transform);
+      ctx.drawImage(tileCanvas(tile), 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, icon.width, icon.height);
+      ctx.restore();
+    };
+
+    ctx.fillStyle = 'rgba(8, 12, 20, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(12, 21, 9, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    face(sideTile, [[2, 7], [12, 12], [12, 23], [2, 18]], [0.625, 0.3125, 0, 0.6875, 2, 7], 'rgba(0, 0, 0, 0.12)');
+    face(sideTile, [[12, 12], [22, 7], [22, 18], [12, 23]], [0.625, -0.3125, 0, 0.6875, 12, 12], 'rgba(0, 0, 0, 0.26)');
+    face(topTile, [[12, 2], [22, 7], [12, 12], [2, 7]], [0.625, 0.3125, -0.625, 0.3125, 12, 2], 'rgba(255, 255, 255, 0.12)');
+
+    ctx.strokeStyle = 'rgba(22, 24, 30, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(12, 2);
+    ctx.lineTo(22, 7);
+    ctx.lineTo(22, 18);
+    ctx.lineTo(12, 23);
+    ctx.lineTo(2, 18);
+    ctx.lineTo(2, 7);
+    ctx.closePath();
+    ctx.moveTo(2, 7);
+    ctx.lineTo(12, 12);
+    ctx.lineTo(22, 7);
+    ctx.moveTo(12, 12);
+    ctx.lineTo(12, 23);
+    ctx.stroke();
     return icon;
   }
 }
