@@ -38,7 +38,7 @@ $env:BASE_URL='https://adresa-jocului.vercel.app'
 npm run test:e2e
 ```
 
-Testele de browser rulează automat și în GitHub Actions la fiecare push sau pull request. Raportul și capturile pentru eventualele erori rămân disponibile ca artifact al rulării timp de 14 zile.
+Testele rapide rulează automat în GitHub Actions la fiecare push sau pull request. Testele Playwright rulează numai când pornești manual workflow-ul `Test` din fila Actions; raportul și capturile pentru eventualele erori rămân disponibile ca artifact al rulării timp de 14 zile.
 
 ## Multiplayer
 
