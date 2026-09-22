@@ -400,6 +400,104 @@ const before = (program: ProgramNode[], a: string, b: string): boolean => {
   return ia >= 0 && ib >= 0 && ia < ib;
 };
 
+function countNodes(nodes: ProgramNode[], kind: ProgramNode['kind']): number {
+  let count = 0;
+  for (const node of nodes) {
+    if (node.kind === kind) count++;
+    if (node.kind === 'repeat' || node.kind === 'while' || node.kind === 'define' || node.kind === 'when') {
+      count += countNodes(node.body, kind);
+    } else if (node.kind === 'if') {
+      count += countNodes(node.body, kind) + countNodes(node.elseBody, kind);
+    }
+  }
+  return count;
+}
+
+interface ConditionalRecapConfig {
+  id: string;
+  title: string;
+  intro: string;
+  success: string;
+  rewardItems: VatraPuzzle['rewardItems'];
+  reward: string;
+  actions: VatraAction[];
+  conditions: VatraCondition[];
+  solution: ProgramNode[];
+  scenarios: Scenario[];
+  minIfs: number;
+}
+
+function conditionalRecap(config: ConditionalRecapConfig): VatraPuzzle {
+  return {
+    ...config,
+    allowIf: true,
+    allowLogic: true,
+    requirements: [{
+      text: `Drumul merge, dar exercițiul cere cel puțin ${config.minIfs} hotărâri cu blocul «dacă». Păstrează fiecare verificare în program.`,
+      check: (program) => countNodes(program, 'if') >= config.minIfs,
+    }],
+    fails: [{
+      text: 'Străjerul verifică drumul în mai multe situații. Citește fiecare întrebare și pune acțiunea în ramura potrivită.',
+      anim: 'none',
+      matches: () => true,
+    }],
+  };
+}
+
+interface VariableRecapConfig {
+  id: string;
+  title: string;
+  intro: string;
+  success: string;
+  rewardItems: VatraPuzzle['rewardItems'];
+  reward: string;
+  actions: VatraAction[];
+  variables: string[];
+  solution: ProgramNode[];
+  scenarios: Scenario[];
+  sensors?: VatraSensor[];
+  allowWhile?: boolean;
+  allowIf?: boolean;
+  reportAction: string;
+}
+
+function variableRecap(config: VariableRecapConfig): VatraPuzzle {
+  return {
+    id: config.id,
+    title: config.title,
+    intro: config.intro,
+    success: config.success,
+    rewardItems: config.rewardItems,
+    reward: config.reward,
+    actions: config.actions,
+    variables: config.variables,
+    sensors: config.sensors,
+    allowRepeat: true,
+    allowWhile: config.allowWhile,
+    allowIf: config.allowIf,
+    allowVariables: true,
+    allowCompare: true,
+    allowMath: true,
+    solution: config.solution,
+    scenarios: config.scenarios,
+    requirements: [
+      {
+        text: 'Meștera Anica vrea o buclă care să facă socoteala, nu aceiași pași copiați de multe ori.',
+        check: (program) => usesLoop(program),
+      },
+      {
+        text: 'Rezultatul trebuie citit din cutiuță. Nu scrie numărul final direct în blocul de raportare.',
+        check: (program) => readsFromBox(program, config.reportAction),
+      },
+    ],
+    fails: [{
+      text: 'Socoteala nu se potrivește. Inițializează cutiuțele, schimbă-le în buclă și citește rezultatul chiar din ele.',
+      anim: 'none',
+      matches: () => true,
+    }],
+  };
+}
+
 export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   fantana: {
     id: 'fantana',
@@ -1716,5 +1814,199 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
       ]),
     ],
     fails: [{ text: 'Țup încă nu e acasă. În REPETĂ 5 ori pune REPETĂ 3 ori cu ÎNAINTE, apoi STÂNGA, ÎNAINTE și DREAPTA.', anim: 'none', matches: () => true }],
-  }
+  },
+
+  // ---- Faza 6 — Drumul Străjii: șase recapitulări de condiționale,
+  // așezate după munte pe traseul care duce la castel.
+  felinarul_din_defileu: conditionalRecap({
+    id: 'felinarul_din_defileu',
+    title: 'Felinarul din defileu — două hotărâri',
+    intro: 'STRĂJERUL DRAGOȘ: „În defileu verifici două lucruri. Întâi cercetează drumul. DACĂ e ceață, pune baliza. DACĂ e noapte, aprinde felinarul. Sunt două întrebări separate, deci folosește două blocuri «dacă»."',
+    success: 'Defileul este marcat corect în toate cele patru vremuri. (+1 arc cu 20 de săgeți)',
+    rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
+    reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
+    actions: [{ id: 'cerceteaza_drumul', label: 'Cercetează drumul' }, { id: 'pune_baliza', label: 'Pune baliza' }, { id: 'aprinde_felinarul', label: 'Aprinde felinarul' }],
+    conditions: [{ id: 'e_ceata', label: 'e ceață' }, { id: 'e_noapte', label: 'e noapte' }],
+    solution: [A('cerceteaza_drumul'), IF('e_ceata', [A('pune_baliza')]), IF('e_noapte', [A('aprinde_felinarul')])],
+    scenarios: [
+      { label: 'Zi senină', conds: { e_ceata: false, e_noapte: false } },
+      { label: 'Ceață ziua', conds: { e_ceata: true, e_noapte: false } },
+      { label: 'Noapte senină', conds: { e_ceata: false, e_noapte: true } },
+      { label: 'Ceață noaptea', conds: { e_ceata: true, e_noapte: true } },
+    ],
+    minIfs: 2,
+  }),
+  podul_de_ceata: conditionalRecap({
+    id: 'podul_de_ceata',
+    title: 'Podul de ceață — dacă și altfel',
+    intro: 'STRĂJERUL DRAGOȘ: „Verifică podul. DACĂ bate vântul tare, închide-l; ALTFEL lasă-l deschis. Apoi, DACĂ e ceață, aprinde semnalul. Două decizii țin podul sigur.”',
+    success: 'Podul răspunde corect la vânt și ceață. (+8 socată fermentată)',
+    rewardItems: [{ id: ThrowableId.SocataBottle, count: 8 }],
+    reward: '8 sticle de socată fermentată',
+    actions: [{ id: 'verifica_podul', label: 'Verifică podul' }, { id: 'inchide_podul', label: 'Închide podul' }, { id: 'lasa_podul_deschis', label: 'Lasă podul deschis' }, { id: 'aprinde_semnalul', label: 'Aprinde semnalul' }],
+    conditions: [{ id: 'vant_tare', label: 'bate vântul tare' }, { id: 'e_ceata', label: 'e ceață' }],
+    solution: [A('verifica_podul'), IF('vant_tare', [A('inchide_podul')], [A('lasa_podul_deschis')]), IF('e_ceata', [A('aprinde_semnalul')])],
+    scenarios: [
+      { label: 'Calm și senin', conds: { vant_tare: false, e_ceata: false } },
+      { label: 'Vânt senin', conds: { vant_tare: true, e_ceata: false } },
+      { label: 'Calm cu ceață', conds: { vant_tare: false, e_ceata: true } },
+      { label: 'Furtună în ceață', conds: { vant_tare: true, e_ceata: true } },
+    ],
+    minIfs: 2,
+  }),
+  caruta_ratacita: conditionalRecap({
+    id: 'caruta_ratacita',
+    title: 'Căruța rătăcită — decizie în decizie',
+    intro: 'STRĂJERUL DRAGOȘ: „DACĂ drumul e blocat, ocolește stânca. ALTFEL, verifică: DACĂ e noroi, mergi încet; ALTFEL mergi înainte. La urmă, DACĂ vine o căruță, ridică semnul.”',
+    success: 'Căruța trece muntele fără să intre în stâncă sau noroi. (+10 Huba Bubă)',
+    rewardItems: [{ id: ThrowableId.HubaBuba, count: 10 }],
+    reward: '10 bucăți Huba Bubă',
+    actions: [{ id: 'ocoleste_stanca', label: 'Ocolește stânca' }, { id: 'mergi_incet', label: 'Mergi încet' }, { id: 'mergi_inainte', label: 'Mergi înainte' }, { id: 'ridica_semnul', label: 'Ridică semnul' }],
+    conditions: [{ id: 'drum_blocat', label: 'drumul e blocat' }, { id: 'e_noroi', label: 'este noroi' }, { id: 'vine_caruta', label: 'vine o căruță' }],
+    solution: [IF('drum_blocat', [A('ocoleste_stanca')], [IF('e_noroi', [A('mergi_incet')], [A('mergi_inainte')])]), IF('vine_caruta', [A('ridica_semnul')])],
+    scenarios: [
+      { label: 'Stâncă și căruță', conds: { drum_blocat: true, e_noroi: false, vine_caruta: true } },
+      { label: 'Noroi fără căruță', conds: { drum_blocat: false, e_noroi: true, vine_caruta: false } },
+      { label: 'Drum liber cu căruță', conds: { drum_blocat: false, e_noroi: false, vine_caruta: true } },
+    ],
+    minIfs: 3,
+  }),
+  semnalele_strajii: conditionalRecap({
+    id: 'semnalele_strajii',
+    title: 'Semnalele străjii — patru verificări',
+    intro: 'STRĂJERUL DRAGOȘ: „Patru semnale independente: DACĂ vine cineva din nord, ridică steagul albastru; DACĂ vine din sud, steagul roșu; DACĂ e pericol, bate clopotul; DACĂ e noapte, aprinde focul.”',
+    success: 'Turnul transmite toate semnalele potrivite. (+10 ceramică de Horezu)',
+    rewardItems: [{ id: BlockType.HorezuCeramic, count: 10 }],
+    reward: '10 blocuri de ceramică de Horezu, material care nu apare natural în lume',
+    actions: [{ id: 'steag_albastru', label: 'Ridică steagul albastru' }, { id: 'steag_rosu', label: 'Ridică steagul roșu' }, { id: 'bate_clopotul', label: 'Bate clopotul' }, { id: 'aprinde_focul', label: 'Aprinde focul' }],
+    conditions: [{ id: 'vine_din_nord', label: 'vine cineva din nord' }, { id: 'vine_din_sud', label: 'vine cineva din sud' }, { id: 'e_pericol', label: 'este pericol' }, { id: 'e_noapte', label: 'e noapte' }],
+    solution: [IF('vine_din_nord', [A('steag_albastru')]), IF('vine_din_sud', [A('steag_rosu')]), IF('e_pericol', [A('bate_clopotul')]), IF('e_noapte', [A('aprinde_focul')])],
+    scenarios: [
+      { label: 'Sol din nord, ziua', conds: { vine_din_nord: true, vine_din_sud: false, e_pericol: false, e_noapte: false } },
+      { label: 'Primejdie din sud, noaptea', conds: { vine_din_nord: false, vine_din_sud: true, e_pericol: true, e_noapte: true } },
+      { label: 'Drum gol, noaptea', conds: { vine_din_nord: false, vine_din_sud: false, e_pericol: false, e_noapte: true } },
+    ],
+    minIfs: 4,
+  }),
+  tabara_drumetilor: conditionalRecap({
+    id: 'tabara_drumetilor',
+    title: 'Tabăra drumeților — ȘI, SAU și NU',
+    intro: 'STRĂJERUL DRAGOȘ: „DACĂ plouă SAU e noapte, ridică adăpostul. DACĂ e frig ȘI e noapte, aprinde focul. DACĂ NU avem apă, umple burduful. Trei hotărâri, fiecare cu altă legătură.”',
+    success: 'Tabăra este pregătită pentru toate vremurile. (+8 ii tradiționale)',
+    rewardItems: [{ id: BlockType.IeBlouse, count: 8 }],
+    reward: '8 ii tradiționale, material care nu apare natural în lume',
+    actions: [{ id: 'ridica_adapostul', label: 'Ridică adăpostul' }, { id: 'aprinde_focul', label: 'Aprinde focul' }, { id: 'umple_burduful', label: 'Umple burduful cu apă' }],
+    conditions: [{ id: 'ploua', label: 'plouă' }, { id: 'e_noapte', label: 'e noapte' }, { id: 'e_frig', label: 'este frig' }, { id: 'avem_apa', label: 'avem apă' }],
+    solution: [IF(OR('ploua', 'e_noapte'), [A('ridica_adapostul')]), IF(AND('e_frig', 'e_noapte'), [A('aprinde_focul')]), IF(NOT('avem_apa'), [A('umple_burduful')])],
+    scenarios: [
+      { label: 'Ploaie ziua', conds: { ploua: true, e_noapte: false, e_frig: false, avem_apa: true } },
+      { label: 'Noapte rece fără apă', conds: { ploua: false, e_noapte: true, e_frig: true, avem_apa: false } },
+      { label: 'Zi senină fără apă', conds: { ploua: false, e_noapte: false, e_frig: false, avem_apa: false } },
+    ],
+    minIfs: 3,
+  }),
+  poarta_castelului: conditionalRecap({
+    id: 'poarta_castelului',
+    title: 'Poarta castelului — cinci hotărâri',
+    intro: 'STRĂJERUL DRAGOȘ: „Ultima pază: verifică pecetea. DACĂ e călător cinstit, deschide; ALTFEL oprește-l. DACĂ are marfă, înscrie-o. DACĂ e noapte, aprinde poarta. DACĂ e primejdie, sună alarma. DACĂ podul NU e coborât, coboară-l.”',
+    success: 'Poarta castelului lucrează corect în fiecare situație. (+12 sare de ocnă)',
+    rewardItems: [{ id: BlockType.RockSalt, count: 12 }],
+    reward: '12 blocuri de sare de ocnă, material care nu apare natural în lume',
+    actions: [{ id: 'verifica_pecetea', label: 'Verifică pecetea' }, { id: 'deschide_poarta', label: 'Deschide poarta' }, { id: 'opreste_calatorul', label: 'Oprește călătorul' }, { id: 'inscrie_marfa', label: 'Înscrie marfa' }, { id: 'aprinde_poarta', label: 'Aprinde poarta' }, { id: 'suna_alarma', label: 'Sună alarma' }, { id: 'coboara_podul', label: 'Coboară podul' }],
+    conditions: [{ id: 'calator_cinstit', label: 'călătorul e cinstit' }, { id: 'are_marfa', label: 'are marfă' }, { id: 'e_noapte', label: 'e noapte' }, { id: 'e_primejdie', label: 'este primejdie' }, { id: 'pod_coborat', label: 'podul este coborât' }],
+    solution: [A('verifica_pecetea'), IF('calator_cinstit', [A('deschide_poarta')], [A('opreste_calatorul')]), IF('are_marfa', [A('inscrie_marfa')]), IF('e_noapte', [A('aprinde_poarta')]), IF('e_primejdie', [A('suna_alarma')]), IF(NOT('pod_coborat'), [A('coboara_podul')])],
+    scenarios: [
+      { label: 'Negustor cinstit, ziua', conds: { calator_cinstit: true, are_marfa: true, e_noapte: false, e_primejdie: false, pod_coborat: true } },
+      { label: 'Străin suspect, noaptea', conds: { calator_cinstit: false, are_marfa: false, e_noapte: true, e_primejdie: true, pod_coborat: false } },
+      { label: 'Drumeț cinstit, pod ridicat', conds: { calator_cinstit: true, are_marfa: false, e_noapte: false, e_primejdie: false, pod_coborat: false } },
+    ],
+    minIfs: 5,
+  }),
+
+  // ---- Faza 8 — Târgul Socotelilor: variabile mai lungi, dar construite
+  // doar din pașii deja exersați la Baba Dochia.
+  desagii_caravanei: variableRecap({
+    id: 'desagii_caravanei',
+    title: 'Desagii caravanei — numără și raportează',
+    intro: 'MEȘTERA ANICA: „Pune «desagi» pe zero. Repetă de cinci ori: încarcă un desag și mărește cutiuța cu unu. La sfârșit raportează numărul din cutiuță.”',
+    success: 'Cinci desagi sunt gata de drum. (+8 socată fermentată)',
+    rewardItems: [{ id: ThrowableId.SocataBottle, count: 8 }],
+    reward: '8 sticle de socată fermentată',
+    actions: [{ id: 'incarca_desag', label: 'Încarcă un desag' }, { id: 'raporteaza_desagi', label: 'Raportează desagii: %1', hasArg: true }],
+    variables: ['desagi'],
+    solution: [SET('desagi', 0), REPEAT(5, [A('incarca_desag'), CHG('desagi', 1)]), A('raporteaza_desagi', V('desagi'))],
+    scenarios: [{ label: 'Dimineața caravanei' }],
+    reportAction: 'raporteaza_desagi',
+  }),
+  sticlele_de_socata: variableRecap({
+    id: 'sticlele_de_socata',
+    title: 'Sticlele de socată — cutiuța care scade',
+    intro: 'MEȘTERA ANICA: „Pune 12 în cutiuța «sticle». Vin trei drumeți; pentru fiecare dă două sticle și scade doi. Apoi spune câte au rămas, citind cutiuța.”',
+    success: 'Ai împărțit socata și ai păstrat socoteala restului. (+10 Huba Bubă)',
+    rewardItems: [{ id: ThrowableId.HubaBuba, count: 10 }],
+    reward: '10 bucăți Huba Bubă',
+    actions: [{ id: 'da_doua_sticle', label: 'Dă două sticle' }, { id: 'raporteaza_sticle', label: 'Spune câte sticle au rămas: %1', hasArg: true }],
+    variables: ['sticle'],
+    solution: [SET('sticle', 12), REPEAT(3, [A('da_doua_sticle'), CHG('sticle', -2)]), A('raporteaza_sticle', V('sticle'))],
+    scenarios: [{ label: 'Trei drumeți' }],
+    reportAction: 'raporteaza_sticle',
+  }),
+  proviziile_drumului: variableRecap({
+    id: 'proviziile_drumului',
+    title: 'Proviziile drumului — număr de la senzor',
+    intro: 'MEȘTERA ANICA: „Întreabă borna câți călători vin și pune răspunsul în «portii». Adaugă încă două porții de rezervă, apoi pregătește exact atâtea și raportează totalul.”',
+    success: 'Caravana are porții pentru toți și două de rezervă. (+1 arc cu 20 de săgeți)',
+    rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
+    reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
+    actions: [{ id: 'pregateste_portie', label: 'Pregătește o porție' }, { id: 'raporteaza_portii', label: 'Raportează porțiile: %1', hasArg: true }],
+    variables: ['portii'],
+    sensors: [{ id: 'numar_calatori', label: 'câți călători vin' }],
+    solution: [SET('portii', ADD(S('numar_calatori'), 2)), REPEAT(V('portii'), [A('pregateste_portie')]), A('raporteaza_portii', V('portii'))],
+    scenarios: [{ label: 'Caravană mică', sensors: { numar_calatori: 3 } }, { label: 'Caravană mare', sensors: { numar_calatori: 6 } }],
+    reportAction: 'raporteaza_portii',
+  }),
+  lada_cu_huba: variableRecap({
+    id: 'lada_cu_huba',
+    title: 'Lada cu Huba Bubă — două cutiuțe',
+    intro: 'MEȘTERA ANICA: „Pune «ladite» pe 4 și «gume» pe 0. Pentru fiecare lădiță, împachetează trei gume, adaugă trei la «gume» și scade una din «ladite». La urmă raportează gumele.”',
+    success: 'Patru lădițe au dat douăsprezece gume bine numărate. (+10 ceramică de Horezu)',
+    rewardItems: [{ id: BlockType.HorezuCeramic, count: 10 }],
+    reward: '10 blocuri de ceramică de Horezu, material care nu apare natural în lume',
+    actions: [{ id: 'impacheteaza_trei', label: 'Împachetează trei gume' }, { id: 'raporteaza_gume', label: 'Raportează gumele: %1', hasArg: true }],
+    variables: ['ladite', 'gume'],
+    solution: [SET('ladite', 4), SET('gume', 0), REPEAT(4, [A('impacheteaza_trei'), CHG('gume', 3), CHG('ladite', -1)]), A('raporteaza_gume', V('gume'))],
+    scenarios: [{ label: 'Patru lădițe' }],
+    reportAction: 'raporteaza_gume',
+  }),
+  transportul_de_sare: variableRecap({
+    id: 'transportul_de_sare',
+    title: 'Transportul de sare — cât timp mai rămâne',
+    intro: 'MEȘTERA ANICA: „Pune 10 în «sare». CÂT TIMP mai este sare, încarcă doi bulgări și scade doi. Când cutiuța ajunge la zero, trimite carul și raportează cât a rămas.”',
+    success: 'Tot transportul este încărcat, iar cutiuța s-a oprit exact la zero. (+8 ii tradiționale)',
+    rewardItems: [{ id: BlockType.IeBlouse, count: 8 }],
+    reward: '8 ii tradiționale, material care nu apare natural în lume',
+    actions: [{ id: 'incarca_doi_bulgari', label: 'Încarcă doi bulgări' }, { id: 'trimite_carul', label: 'Trimite carul' }, { id: 'raporteaza_sare', label: 'Raportează sarea rămasă: %1', hasArg: true }],
+    variables: ['sare'],
+    allowWhile: true,
+    solution: [SET('sare', 10), WHILE(CMP(V('sare'), '>', 0), [A('incarca_doi_bulgari'), CHG('sare', -2)]), A('trimite_carul'), A('raporteaza_sare', V('sare'))],
+    scenarios: [{ label: 'Carul de sare' }],
+    reportAction: 'raporteaza_sare',
+  }),
+  socoteala_castelului: variableRecap({
+    id: 'socoteala_castelului',
+    title: 'Socoteala castelului — cutiuțe și decizie',
+    intro: 'MEȘTERA ANICA: „Întreabă câți oaspeți vin. Pune numărul în «oaspeti» și «monede» pe zero. Cât timp mai ai oaspeți, primește câte două monede și scade un oaspete. DACĂ ai cel puțin opt monede, deschide cămara. La urmă raportează monedele.”',
+    success: 'Socoteala se adaptează singură la fiecare grup de oaspeți. (+8 obsidian)',
+    rewardItems: [{ id: BlockType.Obsidian, count: 8 }],
+    reward: '8 blocuri de obsidian, material care nu apare natural în lume',
+    actions: [{ id: 'primeste_doua_monede', label: 'Primește două monede' }, { id: 'deschide_camara', label: 'Deschide cămara' }, { id: 'raporteaza_monede', label: 'Raportează monedele: %1', hasArg: true }],
+    variables: ['oaspeti', 'monede'],
+    sensors: [{ id: 'oaspeti_la_poarta', label: 'câți oaspeți sunt la poartă' }],
+    allowWhile: true,
+    allowIf: true,
+    solution: [SET('oaspeti', S('oaspeti_la_poarta')), SET('monede', 0), WHILE(CMP(V('oaspeti'), '>', 0), [A('primeste_doua_monede'), CHG('monede', 2), CHG('oaspeti', -1)]), IF(CMP(V('monede'), '>=', 8), [A('deschide_camara')]), A('raporteaza_monede', V('monede'))],
+    scenarios: [{ label: 'Grup mic', sensors: { oaspeti_la_poarta: 3 } }, { label: 'Grup mare', sensors: { oaspeti_la_poarta: 5 } }],
+    reportAction: 'raporteaza_monede',
+  }),
 };
+
