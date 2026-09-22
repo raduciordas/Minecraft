@@ -180,14 +180,11 @@ export function buildToolModel(id: ToolId): THREE.Group {
       shaft.rotation.z = -0.08;
       box(group, 0.065, 0.18, 0.06, grip, -0.025, -0.22, 0);
       box(group, 0.1, 0.095, 0.095, shadow, 0.025, 0.39, 0);
-      const left = box(group, 0.25, 0.07, 0.075, head, -0.135, 0.42, 0);
-      left.rotation.z = -0.2;
-      const right = box(group, 0.25, 0.055, 0.065, head, 0.145, 0.43, 0);
-      right.rotation.z = 0.27;
-      const leftTip = box(group, 0.08, 0.035, 0.055, shine, -0.29, 0.38, 0);
-      leftTip.rotation.z = -0.48;
-      const rightTip = box(group, 0.07, 0.03, 0.05, shine, 0.3, 0.37, 0);
-      rightTip.rotation.z = 0.55;
+      box(group, 0.5, 0.07, 0.075, head, 0, 0.43, 0);
+      const leftEnd = box(group, 0.14, 0.11, 0.07, shine, -0.255, 0.39, 0);
+      leftEnd.rotation.z = -0.28;
+      const rightEnd = box(group, 0.14, 0.11, 0.07, shine, 0.255, 0.39, 0);
+      rightEnd.rotation.z = 0.28;
       break;
     }
     case 'axe': {
