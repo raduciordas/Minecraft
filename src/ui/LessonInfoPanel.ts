@@ -36,6 +36,17 @@ export const ZONES: Record<string, ZoneInfo> = {
       'încearcă programul în mai multe nopți și zile — să meargă în toate, altfel te-ncurc în potecă!',
     lessons: ['poteca', 'pod', 'capcana', 'ciuperci', 'rascruce'],
   },
+  straja: {
+    guide: '🛡️ Străjerul Dragoș',
+    concept:
+      '<b>Aprofundăm condițiile.</b> Drumul ocolește muntele și ajunge la castel, dar fiecare porțiune cere mai multe hotărâri. ' +
+      'Folosește mai multe blocuri «dacă», uneori unul în altul, și leagă întrebările cu ȘI, SAU și NU. Programele sunt lungi, ' +
+      'dar fiecare decizie rămâne simplă: privești situația și alegi acțiunea potrivită.',
+    lessons: [
+      'felinarul_din_defileu', 'podul_de_ceata', 'caruta_ratacita',
+      'semnalele_strajii', 'tabara_drumetilor', 'poarta_castelului',
+    ],
+  },
   munte: {
     guide: '🐐 Moș Căliman',
     concept:
@@ -69,6 +80,17 @@ export const ZONES: Record<string, ZoneInfo> = {
       'fel de bine cu patru oi sau cu patruzeci — pe când numărul scris de mână merge o singură dată. Pe ' +
       'răbojul din sat vezi tot timpul ce ține fiecare cutiuță.',
     lessons: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
+  },
+  targ: {
+    guide: '🧺 Meștera Anica',
+    concept:
+      '<b>Aprofundăm cutiuțele.</b> La târg, socoteala se schimbă după câți călători vin și câte provizii pleacă. ' +
+      'Păstrează numerele în variabile, schimbă-le în bucle și citește rezultatul din cutiuța potrivită. Sunt programe ceva mai ' +
+      'lungi decât la stână, dar fiecare pas folosește lucruri deja învățate.',
+    lessons: [
+      'desagii_caravanei', 'sticlele_de_socata', 'proviziile_drumului',
+      'lada_cu_huba', 'transportul_de_sare', 'socoteala_castelului',
+    ],
   },
 };
 
@@ -191,3 +213,4 @@ export class LessonInfoPanel {
     }
   }
 }
+
