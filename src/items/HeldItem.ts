@@ -18,13 +18,13 @@ function buildHand(): THREE.Group {
   const hand = new THREE.Group();
   const light = tintColor(SKIN_COLOR, 0.12);
   const shadow = shadeColor(SKIN_COLOR, 0.82);
-  voxelBox(hand, 0.2, 0.19, 0.23, SKIN_COLOR, 0, -0.03, 0.13);
-  voxelBox(hand, 0.15, 0.15, 0.3, shadow, 0, -0.1, 0.34);
+  voxelBox(hand, 0.145, 0.15, 0.21, SKIN_COLOR, 0, -0.035, 0.13);
+  voxelBox(hand, 0.105, 0.115, 0.28, shadow, 0, -0.095, 0.34);
   for (const side of [-1, 1]) {
-    const finger = voxelBox(hand, 0.065, 0.08, 0.2, light, side * 0.09, 0.055, 0.055);
+    const finger = voxelBox(hand, 0.043, 0.06, 0.17, light, side * 0.064, 0.042, 0.055);
     finger.rotation.x = side * 0.08;
   }
-  const thumb = voxelBox(hand, 0.08, 0.09, 0.17, light, -0.1, -0.005, 0.02);
+  const thumb = voxelBox(hand, 0.055, 0.07, 0.145, light, -0.07, -0.005, 0.025);
   thumb.rotation.z = -0.42;
   thumb.rotation.x = 0.22;
   return hand;
