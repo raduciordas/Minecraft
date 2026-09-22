@@ -25,11 +25,13 @@ test('hard blocks require an owned pickaxe', () => {
   assert.equal(canMineBlock(BlockType.Dirt, ToolId.Lopata, 0), true);
 });
 
-test('the six phases have the requested order on signs and the enlarged map', () => {
-  assert.deepEqual(ZONE_DEFS.map((zone) => zone.id), ['vatra', 'munte', 'lunca', 'bucla', 'padurea', 'stana']);
-  assert.deepEqual(ZONE_PHASES, { vatra: 1, munte: 2, lunca: 3, bucla: 4, padurea: 5, stana: 6 });
+test('the phases have the requested order on signs and the enlarged map', () => {
+  assert.deepEqual(ZONE_DEFS.map((zone) => zone.id), ['vatra', 'munte', 'lunca', 'bucla', 'padurea', 'straja', 'stana', 'targ']);
+  assert.deepEqual(ZONE_PHASES, { vatra: 1, munte: 2, lunca: 3, bucla: 4, padurea: 5, straja: 6, stana: 7, targ: 8 });
   assert.equal(numberedZoneName('munte', 'Moș Căliman'), '2. Moș Căliman');
   assert.equal(mapZoneName('padurea', '🌲 Muma Pădurii'), '5. Muma Pădurii');
+  assert.equal(mapZoneName('straja', '🛡️ Străjerul Dragoș'), '6. Străjerul Dragoș');
+  assert.equal(mapZoneName('targ', '🧺 Meștera Anica'), '8. Meștera Anica');
   assert.equal(MAP_PIXELS, 672);
 });
 
@@ -102,3 +104,4 @@ test('every lesson advertises a reward on every successful solve', () => {
     assert.equal(rewardWhen(puzzle), 'la fiecare rezolvare', puzzle.id);
   }
 });
+
