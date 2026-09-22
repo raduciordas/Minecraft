@@ -38,6 +38,8 @@ import {
   CHEESE_DX,
   CHEESE_DZ,
   TALLY_POS,
+  STRAJA_ORIGIN,
+  TARG_ORIGIN,
 } from '../world/Structures';
 import { VATRA_PUZZLES, programEquivalent, gradesByTrace, type ProgramNode } from './VatraPuzzles';
 import { evaluate, tracesEqual } from './Interpreter';
@@ -188,6 +190,18 @@ const LESSON_SIGNS: Record<string, { dx: number; dz: number; label: string; yaw?
   tup_la_stup: { dx: 5, dz: -7, label: 'Drumul stupului', yaw: Math.PI },
   tup_pe_coasta: { dx: -9, dz: -7, label: 'Treptele coastei', yaw: Math.PI },
   tup_acasa: { dx: -18, dz: -7, label: 'Drumul spre casă', yaw: Math.PI },
+  felinarul_din_defileu: { dx: -10, dz: -4.5, label: 'Felinarul din defileu' },
+  podul_de_ceata: { dx: 0, dz: -4.5, label: 'Podul de ceață' },
+  caruta_ratacita: { dx: 10, dz: -4.5, label: 'Căruța rătăcită' },
+  semnalele_strajii: { dx: -10, dz: 9.5, label: 'Semnalele străjii', yaw: Math.PI },
+  tabara_drumetilor: { dx: 0, dz: 9.5, label: 'Tabăra drumeților', yaw: Math.PI },
+  poarta_castelului: { dx: 10, dz: 9.5, label: 'Poarta castelului', yaw: Math.PI },
+  desagii_caravanei: { dx: -10, dz: -4.5, label: 'Desagii caravanei' },
+  sticlele_de_socata: { dx: 0, dz: -4.5, label: 'Sticlele de socată' },
+  proviziile_drumului: { dx: 10, dz: -4.5, label: 'Proviziile drumului' },
+  lada_cu_huba: { dx: -10, dz: 9.5, label: 'Lada cu Huba Bubă', yaw: Math.PI },
+  transportul_de_sare: { dx: 0, dz: 9.5, label: 'Transportul de sare', yaw: Math.PI },
+  socoteala_castelului: { dx: 10, dz: 9.5, label: 'Socoteala castelului', yaw: Math.PI },
 };
 
 // Draws the wood-plank canvas texture shared by both the big lesson
@@ -320,10 +334,28 @@ export const ZONE_DEFS: ZoneDef[] = [
     protect: [-11, 17, -9, 8, 0, 8],
   },
   {
+    id: 'straja',
+    origin: STRAJA_ORIGIN,
+    puzzles: [
+      'felinarul_din_defileu', 'podul_de_ceata', 'caruta_ratacita',
+      'semnalele_strajii', 'tabara_drumetilor', 'poarta_castelului',
+    ],
+    protect: [-15, 22, -11, 14, 0, 8],
+  },
+  {
     id: 'stana',
     origin: STANA_ORIGIN,
     puzzles: ['cojoacele', 'oile_la_numarat', 'tarcul', 'drumul_oilor', 'socoteala_stanii'],
     protect: [-17, 22, -16, 16, 0, 10],
+  },
+  {
+    id: 'targ',
+    origin: TARG_ORIGIN,
+    puzzles: [
+      'desagii_caravanei', 'sticlele_de_socata', 'proviziile_drumului',
+      'lada_cu_huba', 'transportul_de_sare', 'socoteala_castelului',
+    ],
+    protect: [-15, 15, -11, 11, 0, 8],
   },
 ];
 
@@ -363,6 +395,18 @@ const CLICK_REGIONS: Record<string, [number, number, number, number]> = {
   tup_la_stup: [3, 9, -17, -7],
   tup_pe_coasta: [-11, -3, -15, -7],
   tup_acasa: [-22, -15, -24, -7],
+  felinarul_din_defileu: [-12, -8, -9, -5],
+  podul_de_ceata: [-2, 2, -9, -5],
+  caruta_ratacita: [8, 12, -9, -5],
+  semnalele_strajii: [-12, -8, 5, 9],
+  tabara_drumetilor: [-2, 2, 5, 9],
+  poarta_castelului: [8, 12, 5, 9],
+  desagii_caravanei: [-12, -8, -9, -5],
+  sticlele_de_socata: [-2, 2, -9, -5],
+  proviziile_drumului: [8, 12, -9, -5],
+  lada_cu_huba: [-12, -8, 5, 9],
+  transportul_de_sare: [-2, 2, 5, 9],
+  socoteala_castelului: [8, 12, 5, 9],
 };
 
 // A zone once placed in the world: origin, ground height, and whether its
@@ -805,6 +849,8 @@ export class VatraModule {
     this.buildBaciul();
     this.buildMumaPadurii();
     this.buildBabaDochia();
+    this.buildConsolidationGuide('straja', 'Străjerul Dragoș', 0x355b72, 0x8b3f2f);
+    this.buildConsolidationGuide('targ', 'Meștera Anica', 0x8a3f55, 0xd7b46a);
     this.buildMosCaliman();
     this.buildMountainGoats();
     this.buildCiobanasCodrin();
@@ -820,6 +866,35 @@ export class VatraModule {
     if (this.done.has('oile_la_numarat')) this.setCountedSheepProps(true);
     if (this.done.has('drumul_oilor')) this.setGrazingSheepProps(true);
     if (this.done.has('capcana')) this.setWolfProp(true);
+  }
+
+  private buildConsolidationGuide(zoneId: 'straja' | 'targ', name: string, coat: number, cap: number): void {
+    const zone = this.zones.get(zoneId)!;
+    const npc = new THREE.Group();
+    const skin = 0xd7a47c;
+    const trousers = 0x35403b;
+    for (const side of [-1, 1]) {
+      box(npc, 0.16, 0.58, 0.17, trousers, side * 0.14, 0.34, 0);
+      box(npc, 0.19, 0.15, 0.27, 0x29231e, side * 0.14, 0.08, -0.04);
+      box(npc, 0.13, 0.52, 0.13, coat, side * 0.32, 0.86, 0);
+      box(npc, 0.14, 0.14, 0.14, skin, side * 0.32, 0.56, 0);
+    }
+    box(npc, 0.5, 0.72, 0.32, coat, 0, 1, 0);
+    box(npc, 0.52, 0.11, 0.34, 0xe4d6b8, 0, 0.78, 0);
+    const head = box(npc, 0.41, 0.41, 0.41, skin, 0, 1.62, 0);
+    box(head, 0.46, 0.16, 0.45, cap, 0, 0.21, 0);
+    for (const side of [-1, 1]) {
+      box(head, 0.07, 0.07, 0.035, 0xf7f1e2, side * 0.1, 0.03, -0.22);
+      box(head, 0.035, 0.035, 0.04, 0x28231d, side * 0.1, 0.03, -0.24);
+    }
+    npc.position.set(zone.ox + 0.5, zone.gy + 1, zone.oz + 0.5);
+    npc.rotation.y = Math.PI;
+    this.scene.add(npc);
+    this.registerGuide(zoneId, npc.position.x, zone.gy + 1.9, npc.position.z);
+
+    const nameSign = makeSign(numberedZoneName(zoneId, name), 1.75);
+    nameSign.position.set(npc.position.x, npc.position.y + 2.35, npc.position.z);
+    this.scene.add(nameSign);
   }
 
   // Moș Căliman keeps the easy practice paths on the mountain. He is the
