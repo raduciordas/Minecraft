@@ -321,6 +321,20 @@ export class Game {
     this.vatra = new VatraModule(this.scene, this.world, this.sound, this.inventory, (x, y, z, id) => {
       this.applyBlockChange(x, y, z, id);
       this.sendEdit(x, y, z, id);
+    }, (puzzleId, itemId, count, x, y, z) => {
+      this.droppedItems.addDroppedItem({
+        id: `reward-${puzzleId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        itemId,
+        count,
+        x,
+        y,
+        z,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: 2.2,
+        vz: (Math.random() - 0.5) * 1.2,
+        localOnly: true,
+      }, 1);
+      this.sound.place();
     });
     // The Tabla de Blocuri (Blockly) is loaded on first use — it is a large
     // chunk and nobody needs it until they open their first lesson.
@@ -613,7 +627,7 @@ export class Game {
           else this.sound.hitMob();
         });
         this.droppedItems.update(PHYSICS_STEP, this.world, this.player.body, (item) => {
-          if (this.multiplayer) this.network.sendPickupItem(item.id);
+          if (this.multiplayer && !item.localOnly) this.network.sendPickupItem(item.id);
           else this.inventory.add(item.itemId, item.count);
         });
         this.accumulator -= PHYSICS_STEP;
@@ -1510,3 +1524,4 @@ export class Game {
     }
   }
 }
+
