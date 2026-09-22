@@ -45,6 +45,7 @@ import type { World } from '../world/World';
 import type { Inventory } from '../player/Inventory';
 import type { SoundManager } from '../Sound';
 import { numberedZoneName } from './ZoneOrder';
+import { voxelMaterial } from '../items/ItemVisuals';
 
 const SAVE_KEY = 'cuburia-vatra-v1';
 
@@ -456,7 +457,7 @@ interface Smoke {
 }
 
 function box(parent: THREE.Object3D, w: number, h: number, d: number, color: number, x: number, y: number, z: number): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), voxelMaterial(color));
   mesh.position.set(x, y, z);
   parent.add(mesh);
   return mesh;
@@ -763,6 +764,7 @@ export class VatraModule {
     private sound: SoundManager,
     private inventory: Inventory,
     private setBlock: (x: number, y: number, z: number, id: number) => void,
+    private dropReward: (puzzleId: string, itemId: number, count: number, x: number, y: number, z: number) => void,
   ) {
     for (const def of ZONE_DEFS) {
       const levelOrigin = def.levelOrigin ?? def.origin;
@@ -1919,15 +1921,19 @@ export class VatraModule {
       this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0xe8b34d, 4, this.paduGroundY);
       this.spawnFlyingBits(this.pox + CROSS_X + 0.5, this.paduGroundY + 2.5, this.poz + CROSS_Z + 0.5, 0x7a2416, 3, this.paduGroundY);
     }
-    // Every successful run pays the puzzle's reward again. Refillable
+    // Every successful run drops the reward beside the lesson. Refillable
     // rewards represent a fresh finite supply, so replaying replaces any
-    // leftovers instead of stacking another quiver.
+    // leftovers before the new supply appears on the ground.
     const puzzle = VATRA_PUZZLES[puzzleId];
     if (puzzle) {
-      for (const item of puzzle.rewardItems) {
+      const [ox, gy, oz] = this.originFor(puzzleId);
+      const sign = LESSON_SIGNS[puzzleId] ?? { dx: 0, dz: 0 };
+      puzzle.rewardItems.forEach((item, index) => {
         if (item.refill) this.inventory.remove(item.id, this.inventory.count(item.id));
-        this.inventory.add(item.id as BlockType, item.count);
-      }
+        const side = index % 2 === 0 ? -1 : 1;
+        const row = Math.floor(index / 2);
+        this.dropReward(puzzleId, item.id, item.count, ox + sign.dx + side * (0.45 + row * 0.18), gy + 1.25, oz + sign.dz + 0.7);
+      });
     }
     if (firstTime) {
       this.done.add(puzzleId);
@@ -2361,3 +2367,4 @@ export class VatraModule {
     }
   }
 }
+
