@@ -81,12 +81,14 @@ export interface DroppedItemData {
   vx: number;
   vy: number;
   vz: number;
+  localOnly?: boolean;
 }
 
 export class DroppedItem {
   readonly id: string;
   readonly itemId: number;
   readonly count: number;
+  readonly localOnly: boolean;
   readonly body: Body;
   readonly group: THREE.Group;
   pickupDelay: number;
@@ -100,6 +102,7 @@ export class DroppedItem {
     this.id = data.id;
     this.itemId = data.itemId;
     this.count = data.count;
+    this.localOnly = data.localOnly ?? false;
     this.pickupDelay = pickupDelay;
 
     this.body = makeBody(0.2, 0.4);
@@ -222,3 +225,4 @@ export class DroppedItemManager {
     }
   }
 }
+
