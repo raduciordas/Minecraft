@@ -42,6 +42,10 @@ import {
   LUNCA_ORIGIN,
   buildPadureaZone,
   PADUREA_ORIGIN,
+  buildStrajaZone,
+  STRAJA_ORIGIN,
+  buildTargZone,
+  TARG_ORIGIN,
   type StructureTemplate,
 } from './Structures';
 
@@ -105,6 +109,8 @@ export class TerrainGenerator {
       buildVatraStairs(VATRA_STAIRS_ORIGIN.x, VATRA_STAIRS_ORIGIN.z),
       buildLuncaZone(LUNCA_ORIGIN.x, LUNCA_ORIGIN.z),
       buildPadureaZone(PADUREA_ORIGIN.x, PADUREA_ORIGIN.z),
+      buildStrajaZone(STRAJA_ORIGIN.x, STRAJA_ORIGIN.z),
+      buildTargZone(TARG_ORIGIN.x, TARG_ORIGIN.z),
     ].map((t) => this.placeTemplate(t));
   }
 
@@ -369,3 +375,4 @@ export class TerrainGenerator {
     }
   }
 }
+
