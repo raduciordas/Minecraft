@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { shadeColor, tintColor, voxelBox } from './ItemVisuals';
+import { shadeColor, tintColor, voxelBox, voxelMaterial } from './ItemVisuals';
 
 // Tool ids live in [300, 400) — above throwables, so isWeapon/isThrowable/isTool
 // never collide. Tools are inventory-tracked (like blocks) but never placed
@@ -145,68 +145,135 @@ function box(parent: THREE.Object3D, w: number, h: number, d: number, color: num
   return voxelBox(parent, w, h, d, color, x, y, z, 'polished');
 }
 
+function cylinder(
+  parent: THREE.Object3D,
+  radiusTop: number,
+  radiusBottom: number,
+  height: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  segments = 8,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments),
+    voxelMaterial(color, 'polished'),
+  );
+  mesh.position.set(x, y, z);
+  parent.add(mesh);
+  return mesh;
+}
+
 // Small first-person model held in the corner of the screen, matching the
 // scale and build style of buildWeaponModel in Weapon.ts.
 export function buildToolModel(id: ToolId): THREE.Group {
   const group = new THREE.Group();
   const { handle, head } = TOOLS[id].colors;
-  const shine = tintColor(head, 0.38);
-  const shadow = shadeColor(head, 0.58);
+  const wood = shadeColor(handle, 0.62);
+  const grip = shadeColor(handle, 0.42);
+  const shine = tintColor(head, 0.55);
+  const shadow = shadeColor(head, 0.42);
   switch (TOOLS[id].shape) {
     case 'pickaxe': {
-      box(group, 0.05, 0.62, 0.05, handle, 0, 0.05, 0);
-      const pick = box(group, 0.42, 0.09, 0.09, head, 0, 0.4, 0);
-      pick.rotation.z = 0.5;
-      const edge = box(group, 0.34, 0.025, 0.095, shine, -0.015, 0.44, 0);
-      edge.rotation.z = 0.5;
-      box(group, 0.065, 0.04, 0.065, shadow, 0, -0.25, 0);
+      const shaft = box(group, 0.045, 0.68, 0.045, wood, 0, 0.06, 0);
+      shaft.rotation.z = -0.08;
+      box(group, 0.065, 0.18, 0.06, grip, -0.025, -0.22, 0);
+      box(group, 0.1, 0.095, 0.095, shadow, 0.025, 0.39, 0);
+      const left = box(group, 0.25, 0.07, 0.075, head, -0.135, 0.42, 0);
+      left.rotation.z = -0.2;
+      const right = box(group, 0.25, 0.055, 0.065, head, 0.145, 0.43, 0);
+      right.rotation.z = 0.27;
+      const leftTip = box(group, 0.08, 0.035, 0.055, shine, -0.29, 0.38, 0);
+      leftTip.rotation.z = -0.48;
+      const rightTip = box(group, 0.07, 0.03, 0.05, shine, 0.3, 0.37, 0);
+      rightTip.rotation.z = 0.55;
       break;
     }
-    case 'axe':
-      box(group, 0.05, 0.62, 0.05, handle, 0, 0.05, 0);
-      box(group, 0.2, 0.16, 0.05, head, 0.1, 0.36, 0);
-      box(group, 0.025, 0.15, 0.06, shine, 0.2, 0.37, 0);
-      box(group, 0.07, 0.045, 0.065, shadow, 0.015, 0.29, 0);
+    case 'axe': {
+      const shaft = box(group, 0.048, 0.68, 0.048, wood, -0.015, 0.05, 0);
+      shaft.rotation.z = -0.09;
+      box(group, 0.07, 0.18, 0.06, grip, -0.04, -0.22, 0);
+      box(group, 0.1, 0.1, 0.08, shadow, 0.015, 0.38, 0);
+      box(group, 0.17, 0.19, 0.065, head, 0.11, 0.4, 0);
+      box(group, 0.075, 0.13, 0.07, head, 0.205, 0.38, 0);
+      const edge = box(group, 0.026, 0.2, 0.075, shine, 0.25, 0.4, 0);
+      edge.rotation.z = -0.08;
       break;
-    case 'shovel':
-      box(group, 0.045, 0.62, 0.045, handle, 0, 0.05, 0);
-      box(group, 0.14, 0.18, 0.03, head, 0, 0.42, 0);
-      box(group, 0.02, 0.14, 0.035, shine, -0.055, 0.44, 0);
-      box(group, 0.1, 0.025, 0.04, shadow, 0, 0.33, 0);
+    }
+    case 'shovel': {
+      box(group, 0.042, 0.58, 0.042, wood, 0, 0.11, 0);
+      box(group, 0.15, 0.035, 0.045, grip, 0, -0.2, 0);
+      box(group, 0.035, 0.11, 0.045, grip, -0.065, -0.15, 0);
+      box(group, 0.035, 0.11, 0.045, grip, 0.065, -0.15, 0);
+      box(group, 0.11, 0.07, 0.045, shadow, 0, 0.4, 0);
+      box(group, 0.18, 0.16, 0.045, head, 0, 0.49, 0);
+      box(group, 0.13, 0.075, 0.05, head, 0, 0.605, 0);
+      box(group, 0.14, 0.025, 0.055, shine, 0, 0.65, 0);
       break;
-    case 'compass':
-      box(group, 0.14, 0.03, 0.14, head, 0, 0.05, 0);
-      box(group, 0.11, 0.012, 0.11, 0xf4ecd0, 0, 0.071, 0);
-      box(group, 0.02, 0.01, 0.08, 0xc8342a, 0, 0.07, 0);
+    }
+    case 'compass': {
+      const rim = cylinder(group, 0.105, 0.105, 0.035, shadow, 0, 0.08, 0, 12);
+      rim.rotation.x = Math.PI / 2;
+      const face = cylinder(group, 0.086, 0.086, 0.04, 0xf6eed7, 0, 0.08, -0.005, 12);
+      face.rotation.x = Math.PI / 2;
+      const needle = box(group, 0.018, 0.012, 0.12, 0xd83d34, 0, 0.102, -0.01);
+      needle.rotation.y = -0.42;
+      box(group, 0.035, 0.018, 0.035, shine, 0, 0.113, -0.01);
       break;
+    }
     case 'rod': {
-      const rod = box(group, 0.03, 0.8, 0.03, handle, 0.05, 0.25, 0);
-      rod.rotation.z = -0.35;
-      box(group, 0.005, 0.4, 0.005, head, 0.28, 0.35, 0);
+      const lower = cylinder(group, 0.025, 0.035, 0.48, wood, -0.02, 0.12, 0, 8);
+      lower.rotation.z = -0.32;
+      const upper = cylinder(group, 0.01, 0.025, 0.46, handle, 0.13, 0.5, 0, 8);
+      upper.rotation.z = -0.46;
+      cylinder(group, 0.075, 0.075, 0.025, shadow, 0.08, 0.16, 0.025, 10).rotation.x = Math.PI / 2;
+      cylinder(group, 0.045, 0.045, 0.03, shine, 0.08, 0.16, 0, 10).rotation.x = Math.PI / 2;
+      box(group, 0.008, 0.46, 0.008, 0xd9e2e8, 0.35, 0.42, 0);
+      box(group, 0.045, 0.045, 0.025, 0xc84b3c, 0.35, 0.18, 0);
       break;
     }
     case 'bucket':
-    case 'bucket_full':
-      box(group, 0.16, 0.16, 0.16, 0x8a8a8a, 0, 0.05, 0);
-      box(group, 0.18, 0.015, 0.015, handle, 0, 0.14, 0);
-      box(group, 0.025, 0.13, 0.165, 0xc8d0d8, -0.06, 0.06, 0);
-      box(group, 0.15, 0.025, 0.165, 0x555a62, 0, -0.02, 0);
-      if (TOOLS[id].shape === 'bucket_full') box(group, 0.13, 0.02, 0.13, head, 0, 0.12, 0);
-      break;
-    case 'whistle': {
-      const pipe = box(group, 0.04, 0.34, 0.04, handle, 0, 0.14, 0);
-      pipe.rotation.z = 0.4;
-      box(group, 0.055, 0.06, 0.055, head, -0.06, 0.29, 0);
+    case 'bucket_full': {
+      const steel = 0x9da8b2;
+      box(group, 0.19, 0.035, 0.19, shadow, 0, -0.02, 0);
+      box(group, 0.025, 0.17, 0.17, steel, -0.085, 0.075, 0);
+      box(group, 0.025, 0.17, 0.17, tintColor(steel, 0.35), 0.085, 0.075, 0);
+      box(group, 0.145, 0.17, 0.025, steel, 0, 0.075, 0.075);
+      box(group, 0.145, 0.17, 0.025, shadow, 0, 0.075, -0.075);
+      const handleArc = new THREE.Mesh(
+        new THREE.TorusGeometry(0.115, 0.009, 5, 12, Math.PI),
+        voxelMaterial(0x454b52, 'polished'),
+      );
+      handleArc.position.set(0, 0.18, 0);
+      handleArc.rotation.z = Math.PI;
+      group.add(handleArc);
+      if (TOOLS[id].shape === 'bucket_full') box(group, 0.14, 0.018, 0.14, tintColor(head, 0.2), 0, 0.17, 0);
       break;
     }
-    case 'map':
-      box(group, 0.22, 0.01, 0.17, head, 0, 0.05, 0);
-      box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, 0.085);
-      box(group, 0.235, 0.025, 0.02, handle, 0, 0.05, -0.085);
-      box(group, 0.08, 0.008, 0.012, 0x3e8f4d, -0.04, 0.06, 0.015);
-      box(group, 0.012, 0.008, 0.07, 0xc84b3c, 0.025, 0.061, -0.015);
-      box(group, 0.025, 0.01, 0.025, 0x3f77c7, 0.07, 0.063, 0.045);
+    case 'whistle': {
+      const pipe = cylinder(group, 0.027, 0.038, 0.4, tintColor(handle, 0.12), 0, 0.15, 0, 8);
+      pipe.rotation.z = 0.52;
+      const mouthpiece = box(group, 0.08, 0.055, 0.055, head, -0.105, 0.31, 0);
+      mouthpiece.rotation.z = 0.2;
+      for (const [x, y] of [[0.02, 0.17], [0.065, 0.105], [0.105, 0.045]] as const) {
+        box(group, 0.018, 0.018, 0.045, grip, x, y, -0.025);
+      }
       break;
+    }
+    case 'map': {
+      const paper = box(group, 0.28, 0.012, 0.21, tintColor(head, 0.12), 0, 0.08, 0);
+      paper.rotation.z = -0.06;
+      const leftRoll = cylinder(group, 0.016, 0.016, 0.23, wood, -0.145, 0.08, 0, 8);
+      leftRoll.rotation.x = Math.PI / 2;
+      const rightRoll = cylinder(group, 0.016, 0.016, 0.23, wood, 0.145, 0.08, 0, 8);
+      rightRoll.rotation.x = Math.PI / 2;
+      box(group, 0.1, 0.009, 0.014, 0x3e8f4d, -0.045, 0.09, 0.025);
+      const route = box(group, 0.014, 0.009, 0.09, 0xc84b3c, 0.03, 0.091, -0.01);
+      route.rotation.y = 0.35;
+      box(group, 0.028, 0.011, 0.028, 0x3f77c7, 0.085, 0.094, 0.055);
+      break;
+    }
   }
   return group;
 }
@@ -219,3 +286,4 @@ export function disposeModel(group: THREE.Object3D): void {
     }
   });
 }
+
