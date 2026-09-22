@@ -3,6 +3,7 @@ import { GRAVITY, ZOMBIE_ATTACK_COOLDOWN, ZOMBIE_BURN_SECONDS } from '../config'
 import { isWater, isSolid } from '../world/Block';
 import type { World } from '../world/World';
 import { stepBody, makeBody, type Body } from '../player/Physics';
+import { shadeColor, tintColor, voxelMaterial } from '../items/ItemVisuals';
 
 export type MobKind = 'pig' | 'sheep' | 'zombie' | 'shadow' | 'golem' | 'wasp' | 'zmeu' | 'capcaun';
 
@@ -66,7 +67,7 @@ function box(
   x: number, y: number, z: number,
   opacity = 1,
 ): THREE.Mesh {
-  const material = new THREE.MeshLambertMaterial({ color });
+  const material = voxelMaterial(color);
   if (opacity < 1) {
     material.transparent = true;
     material.opacity = opacity;
@@ -81,7 +82,7 @@ function box(
 function leg(parent: THREE.Object3D, w: number, len: number, color: number, x: number, hipY: number, z: number): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(w, len, w);
   geometry.translate(0, -len / 2, 0);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color }));
+  const mesh = new THREE.Mesh(geometry, voxelMaterial(color));
   mesh.position.set(x, hipY, z);
   parent.add(mesh);
   return mesh;
@@ -111,6 +112,8 @@ function buildModel(kind: MobKind): MobModel {
     box(group, 0.65, 0.45, 0.95, pink, 0, 0.55, 0.05);
     const head = box(group, 0.45, 0.45, 0.4, pink, 0, 0.62, -0.6);
     box(head, 0.2, 0.14, 0.06, darkPink, 0, -0.05, -0.23);
+    box(head, 0.05, 0.05, 0.025, shadeColor(darkPink, 0.55), -0.05, -0.05, -0.265);
+    box(head, 0.05, 0.05, 0.025, shadeColor(darkPink, 0.55), 0.05, -0.05, -0.265);
     eyes(head, 0.45);
     for (const [x, z] of [[-0.2, -0.3], [0.2, -0.3], [-0.2, 0.35], [0.2, 0.35]]) {
       legs.push(leg(group, 0.18, 0.35, darkPink, x, 0.36, z));
@@ -121,6 +124,8 @@ function buildModel(kind: MobKind): MobModel {
     box(group, 0.7, 0.55, 1.0, wool, 0, 0.72, 0.05);
     const head = box(group, 0.35, 0.38, 0.35, skin, 0, 0.92, -0.6);
     box(head, 0.4, 0.3, 0.2, wool, 0, 0.12, 0.05);
+    box(head, 0.09, 0.12, 0.08, skin, -0.22, 0.08, 0);
+    box(head, 0.09, 0.12, 0.08, skin, 0.22, 0.08, 0);
     eyes(head, 0.35);
     for (const [x, z] of [[-0.22, -0.3], [0.22, -0.3], [-0.22, 0.35], [0.22, 0.35]]) {
       legs.push(leg(group, 0.16, 0.48, skin, x, 0.48, z));
@@ -135,7 +140,7 @@ function buildModel(kind: MobKind): MobModel {
     for (const side of [-1, 1]) {
       const armGeo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
       armGeo.translate(0, -0.3, 0);
-      const arm = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: skin }));
+      const arm = new THREE.Mesh(armGeo, voxelMaterial(skin));
       arm.position.set(side * 0.32, 1.35, 0);
       arm.rotation.x = -Math.PI / 2;
       group.add(arm);
@@ -151,7 +156,7 @@ function buildModel(kind: MobKind): MobModel {
     const head = box(group, 0.4, 0.4, 0.4, darker, 0, 1.7, 0, 0.85);
     for (const side of [-1, 1]) {
       const eye = box(head, 0.09, 0.09, 0.02, 0xc9a7ff, side * 0.1, 0.03, -0.21);
-      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0x9a6cff);
+      (eye.material as THREE.MeshStandardMaterial).emissive.setHex(0x9a6cff);
     }
     // Ragged floating cloak instead of feet
     for (const side of [-1, 1]) {
@@ -166,12 +171,12 @@ function buildModel(kind: MobKind): MobModel {
     const head = box(group, 0.5, 0.45, 0.5, dark, 0, 1.9, 0);
     for (const side of [-1, 1]) {
       const eye = box(head, 0.1, 0.06, 0.02, 0xffc14d, side * 0.11, 0.02, -0.26);
-      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xcc7a00);
+      (eye.material as THREE.MeshStandardMaterial).emissive.setHex(0xcc7a00);
     }
     for (const side of [-1, 1]) {
       const armGeo = new THREE.BoxGeometry(0.28, 0.95, 0.28);
       armGeo.translate(0, -0.45, 0);
-      const arm = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: rock }));
+      const arm = new THREE.Mesh(armGeo, voxelMaterial(rock));
       arm.position.set(side * 0.66, 1.6, 0);
       group.add(arm);
     }
@@ -188,13 +193,15 @@ function buildModel(kind: MobKind): MobModel {
     const head = box(group, 0.3, 0.3, 0.24, stripe, 0, 0.32, -0.4);
     for (const side of [-1, 1]) {
       const eye = box(head, 0.07, 0.07, 0.02, 0xff5555, side * 0.07, 0.02, -0.13);
-      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xaa2222);
+      (eye.material as THREE.MeshStandardMaterial).emissive.setHex(0xaa2222);
     }
     box(group, 0.06, 0.06, 0.2, stripe, 0, 0.26, 0.45); // stinger
     for (const side of [-1, 1]) {
       const wingGeo = new THREE.BoxGeometry(0.4, 0.02, 0.28);
       wingGeo.translate(side * 0.2, 0, 0);
-      const wingMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+      const wingMat = voxelMaterial(tintColor(0xaad8e8, 0.35), 'glossy');
+      wingMat.transparent = true;
+      wingMat.opacity = 0.52;
       const wing = new THREE.Mesh(wingGeo, wingMat);
       wing.position.set(side * 0.18, 0.5, 0.05);
       group.add(wing);
@@ -215,12 +222,14 @@ function buildModel(kind: MobKind): MobModel {
     box(head, 0.08, 0.22, 0.08, darkScale, 0.14, 0.25, 0.05);
     for (const side of [-1, 1]) {
       const eye = box(head, 0.08, 0.08, 0.02, 0xffcc33, side * 0.13, 0.05, -0.24);
-      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xff8800);
+      (eye.material as THREE.MeshStandardMaterial).emissive.setHex(0xff8800);
     }
     for (const side of [-1, 1]) {
       const wingGeo = new THREE.BoxGeometry(1.3, 0.04, 0.7);
       wingGeo.translate(side * 0.65, 0, 0);
-      const wingMat = new THREE.MeshLambertMaterial({ color: darkScale, transparent: true, opacity: 0.85 });
+      const wingMat = voxelMaterial(darkScale, 'glossy');
+      wingMat.transparent = true;
+      wingMat.opacity = 0.88;
       const wing = new THREE.Mesh(wingGeo, wingMat);
       wing.position.set(side * 0.28, 0.72, 0.05);
       wing.rotation.z = side * 0.35;
@@ -240,7 +249,7 @@ function buildModel(kind: MobKind): MobModel {
     const head = box(group, 0.55, 0.55, 0.55, skin, 0, 2.15, 0);
     for (const side of [-1, 1]) {
       const eye = box(head, 0.08, 0.08, 0.02, 0xffe066, side * 0.13, 0.05, -0.28);
-      (eye.material as THREE.MeshLambertMaterial).emissive.setHex(0xccaa33);
+      (eye.material as THREE.MeshStandardMaterial).emissive.setHex(0xccaa33);
     }
     for (const side of [-1, 1]) {
       box(head, 0.06, 0.14, 0.06, 0xf2eee0, side * 0.16, -0.2, -0.24);
@@ -248,7 +257,7 @@ function buildModel(kind: MobKind): MobModel {
     for (const side of [-1, 1]) {
       const armGeo = new THREE.BoxGeometry(0.32, 1.0, 0.32);
       armGeo.translate(0, -0.5, 0);
-      const arm = new THREE.Mesh(armGeo, new THREE.MeshLambertMaterial({ color: skin }));
+      const arm = new THREE.Mesh(armGeo, voxelMaterial(skin));
       arm.position.set(side * 0.68, 1.75, 0);
       group.add(arm);
     }
@@ -574,7 +583,7 @@ export class Mob {
     if (!active && !this.emissiveDirty) return;
     this.group.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
-      const material = obj.material as THREE.MeshLambertMaterial;
+      const material = obj.material as THREE.MeshStandardMaterial;
       if (this.burning) {
         const flicker = 0.35 + 0.35 * Math.sin(this.burnTimer * 25);
         material.emissive.setRGB(flicker, flicker * 0.35, 0);
@@ -611,3 +620,4 @@ export class Mob {
     });
   }
 }
+
