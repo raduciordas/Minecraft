@@ -7,21 +7,27 @@ import { isThrowable, buildThrowableModel, type ThrowableId } from './Throwable'
 import { isTool, buildToolModel, type ToolId } from './Tool';
 import { isConsumable, buildConsumableModel } from './Consumable';
 import { isGear, buildGearModel } from './Gear';
-import { voxelMaterial } from './ItemVisuals';
+import { shadeColor, tintColor, voxelBox } from './ItemVisuals';
 
 const SKIN_COLOR = 0xe0a878;
 const BLOCK_ITEM_SIZE = 0.16;
 
-// A small skin-toned fist that the sword or block sits inside, so the
-// first-person view reads as "a hand holding an item" rather than a
-// disembodied weapon floating in the corner of the screen.
-function buildFist(): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.16, 0.42),
-    voxelMaterial(SKIN_COLOR),
-  );
-  mesh.position.set(0, -0.02, 0.14);
-  return mesh;
+// Palm, wrist and curled fingers make the selected object read as something
+// actually held, while keeping the chunky voxel silhouette.
+function buildHand(): THREE.Group {
+  const hand = new THREE.Group();
+  const light = tintColor(SKIN_COLOR, 0.12);
+  const shadow = shadeColor(SKIN_COLOR, 0.82);
+  voxelBox(hand, 0.2, 0.19, 0.23, SKIN_COLOR, 0, -0.03, 0.13);
+  voxelBox(hand, 0.15, 0.15, 0.3, shadow, 0, -0.1, 0.34);
+  for (const side of [-1, 1]) {
+    const finger = voxelBox(hand, 0.065, 0.08, 0.2, light, side * 0.09, 0.055, 0.055);
+    finger.rotation.x = side * 0.08;
+  }
+  const thumb = voxelBox(hand, 0.08, 0.09, 0.17, light, -0.1, -0.005, 0.02);
+  thumb.rotation.z = -0.42;
+  thumb.rotation.x = 0.22;
+  return hand;
 }
 
 // Untextured single-block cube built from the world atlas, so a held block
@@ -79,7 +85,7 @@ function buildBlockModel(id: BlockType, atlas: TextureAtlas): THREE.Group {
 // (sword, tool, food, gear or block).
 export function buildHeldItem(id: number, atlas: TextureAtlas): THREE.Group {
   const group = new THREE.Group();
-  group.add(buildFist());
+  group.add(buildHand());
   if (isWeapon(id)) {
     group.add(buildWeaponModel(id as WeaponId));
   } else if (isThrowable(id)) {
@@ -99,3 +105,4 @@ export function buildHeldItem(id: number, atlas: TextureAtlas): THREE.Group {
 }
 
 export { disposeModel };
+
