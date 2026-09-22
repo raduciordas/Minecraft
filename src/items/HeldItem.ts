@@ -7,26 +7,18 @@ import { isThrowable, buildThrowableModel, type ThrowableId } from './Throwable'
 import { isTool, buildToolModel, type ToolId } from './Tool';
 import { isConsumable, buildConsumableModel } from './Consumable';
 import { isGear, buildGearModel } from './Gear';
-import { shadeColor, tintColor, voxelBox } from './ItemVisuals';
+import { shadeColor, voxelBox } from './ItemVisuals';
 
 const SKIN_COLOR = 0xe0a878;
 const BLOCK_ITEM_SIZE = 0.16;
 
-// Palm, wrist and curled fingers make the selected object read as something
-// actually held, while keeping the chunky voxel silhouette.
+// A slim, clean palm behind the selected object. The grip is implied by the
+// overlap, without separate fingers obscuring small tools.
 function buildHand(): THREE.Group {
   const hand = new THREE.Group();
-  const light = tintColor(SKIN_COLOR, 0.12);
   const shadow = shadeColor(SKIN_COLOR, 0.82);
-  voxelBox(hand, 0.145, 0.15, 0.21, SKIN_COLOR, 0, -0.035, 0.13);
+  voxelBox(hand, 0.14, 0.145, 0.21, SKIN_COLOR, 0, -0.035, 0.13);
   voxelBox(hand, 0.105, 0.115, 0.28, shadow, 0, -0.095, 0.34);
-  for (const side of [-1, 1]) {
-    const finger = voxelBox(hand, 0.043, 0.06, 0.17, light, side * 0.064, 0.042, 0.055);
-    finger.rotation.x = side * 0.08;
-  }
-  const thumb = voxelBox(hand, 0.055, 0.07, 0.145, light, -0.07, -0.005, 0.025);
-  thumb.rotation.z = -0.42;
-  thumb.rotation.x = 0.22;
   return hand;
 }
 
