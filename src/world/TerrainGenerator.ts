@@ -296,14 +296,14 @@ export class TerrainGenerator {
       for (let lz = 2; lz <= CHUNK_SIZE - 3; lz++) {
         const wx = baseX + lx;
         const wz = baseZ + lz;
-        // A trunk just outside the flattened mountain platform used to lose
-        // its base while leaving its canopy suspended above a lesson.
-        const shadowsMountainZone = this.structures.some((s) =>
-          s.name === 'Creasta Iedului' &&
-          wx >= s.minX - 4 && wx <= s.maxX + 4 &&
-          wz >= s.minZ - 4 && wz <= s.maxZ + 4
+        // Trees are placed before structures. Exclude every trunk whose crown
+        // could overlap a lesson terrace; otherwise flattening can erase its
+        // trunk while leaving leaves suspended just outside the footprint.
+        const crownTouchesLesson = this.structures.some((s) =>
+          wx >= s.minX - 3 && wx <= s.maxX + 3 &&
+          wz >= s.minZ - 3 && wz <= s.maxZ + 3
         );
-        if (shadowsMountainZone) continue;
+        if (crownTouchesLesson) continue;
         if (hash2D(wx, wz, this.seed) >= TREE_PROBABILITY) continue;
 
         const ground = this.heightAt(wx, wz);
