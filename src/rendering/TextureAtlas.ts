@@ -49,7 +49,7 @@ function enhanceTile(img: ImageData): void {
   }
 }
 
-const GRASS_GREEN: [number, number, number] = [92, 188, 58];
+const GRASS_GREEN: [number, number, number] = [104, 158, 76];
 const DIRT_BROWN: [number, number, number] = [148, 96, 58];
 
 const TILE_SPECS: Record<number, TileSpec> = {
@@ -100,12 +100,12 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Leaves]: {
-    base: [48, 146, 42],
+    base: [62, 130, 54],
     variation: 0.2,
     draw: (px, rand) => {
       for (let x = 0; x < TILE_PX; x++) {
         for (let y = 0; y < TILE_PX; y++) {
-          if (rand() < 0.25) px(x, y, 38, 90, 26);
+          if (rand() < 0.25) px(x, y, 42, 88, 34);
         }
       }
     },
@@ -693,3 +693,4 @@ export class TextureAtlas {
     return icon;
   }
 }
+
