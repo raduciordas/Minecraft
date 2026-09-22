@@ -4,7 +4,9 @@ export const ZONE_PHASES: Record<string, number> = {
   lunca: 3,
   bucla: 4,
   padurea: 5,
-  stana: 6,
+  straja: 6,
+  stana: 7,
+  targ: 8,
 };
 
 export function numberedZoneName(zoneId: string, name: string): string {
@@ -15,3 +17,4 @@ export function numberedZoneName(zoneId: string, name: string): string {
 export function mapZoneName(zoneId: string, guide: string): string {
   return numberedZoneName(zoneId, guide.replace(/^\S+\s/, ''));
 }
+
