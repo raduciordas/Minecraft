@@ -199,6 +199,9 @@ export function buildStanaZone(originX: number, originZ: number): StructureTempl
     surface: BlockType.Grass,
     clearAbove: 9,
     pad: 2,
+    edgeSoilDepth: 8,
+    edgeTerraceDepth: 12,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -379,8 +382,9 @@ export function buildMunteZone(originX: number, originZ: number): StructureTempl
     pad: 4,
     levelOffset: MUNTE_LEVEL_OFFSET,
     edgeSoilDepth: 6,
-    // A broader twelve-step shoulder reconnects the lowered back edge.
-    edgeTerraceDepth: 12,
+    // Keep the untouched mountain ten blocks farther from the old shoulder.
+    // The full 22-ring transition rebuilds it as grass-covered contour steps.
+    edgeTerraceDepth: 22,
     naturalClearance: 8,
     blocks,
   };
@@ -467,6 +471,8 @@ export function buildBuclaZone(originX: number, originZ: number): StructureTempl
     clearAbove: 8,
     pad: 4,
     levelOrigin: PADUREA_ORIGIN,
+    edgeSoilDepth: 8,
+    edgeTerraceDepth: 12,
     naturalClearance: 8,
     blocks,
   };
@@ -785,6 +791,9 @@ export function buildLuncaZone(originX: number, originZ: number): StructureTempl
     // past that or a stray leaf/log is left stranded in mid-air.
     clearAbove: 9,
     pad: 2,
+    edgeSoilDepth: 8,
+    edgeTerraceDepth: 12,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -886,6 +895,9 @@ export function buildPadureaZone(originX: number, originZ: number): StructureTem
     // (up to 7 above natural ground) so nothing is left floating.
     clearAbove: 9,
     pad: 2,
+    edgeSoilDepth: 8,
+    edgeTerraceDepth: 12,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -905,6 +917,7 @@ function buildConsolidationTerrace(
   originX: number,
   originZ: number,
   accent: BlockType,
+  edgeTerraceDepth = 12,
 ): StructureTemplate {
   const blocks: StructureBlock[] = [];
   const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
@@ -939,7 +952,9 @@ function buildConsolidationTerrace(
     surface: BlockType.Grass,
     clearAbove: 8,
     pad: 2,
-    edgeTerraceDepth: 3,
+    edgeSoilDepth: 8,
+    edgeTerraceDepth,
+    naturalClearance: 8,
     blocks,
   };
 }
@@ -949,6 +964,8 @@ export function buildStrajaZone(originX: number, originZ: number): StructureTemp
 }
 
 export function buildTargZone(originX: number, originZ: number): StructureTemplate {
-  return buildConsolidationTerrace('Targul Socotelilor', originX, originZ, BlockType.HorezuCeramic);
+  // The former three-block lip ended abruptly against the mountain. Thirteen
+  // rings retain the original three and move the complete slope back by ten.
+  return buildConsolidationTerrace('Targul Socotelilor', originX, originZ, BlockType.HorezuCeramic, 13);
 }
 
