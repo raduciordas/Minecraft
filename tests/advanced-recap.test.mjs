@@ -8,7 +8,14 @@ import { buildHelpSections } from '../src/ui/HelpData.ts';
 import { BlockType } from '../src/world/Block.ts';
 import { ThrowableId } from '../src/items/Throwable.ts';
 import { WeaponId } from '../src/items/Weapon.ts';
-import { STRAJA_ORIGIN, TARG_ORIGIN, buildStrajaZone, buildTargZone } from '../src/world/Structures.ts';
+import {
+  MUNTE_ORIGIN,
+  STRAJA_ORIGIN,
+  TARG_ORIGIN,
+  buildMunteZone,
+  buildStrajaZone,
+  buildTargZone,
+} from '../src/world/Structures.ts';
 
 const CONDITIONALS = [
   'felinarul_din_defileu', 'podul_de_ceata', 'caruta_ratacita',
@@ -43,6 +50,20 @@ test('both new terraces contain six distinct lesson stations', () => {
     const markers = structure.blocks.filter((block) => block.dy === 1 && (block.block === BlockType.Lamp || block.block === BlockType.HorezuCeramic));
     assert.equal(markers.length, 6, structure.name);
     assert.equal(new Set(markers.map((block) => `${block.dx},${block.dz}`)).size, 6, structure.name);
+  }
+});
+
+test('lesson plateaus blend into terrain with long grass terraces', () => {
+  const straja = buildStrajaZone(STRAJA_ORIGIN.x, STRAJA_ORIGIN.z);
+  const targ = buildTargZone(TARG_ORIGIN.x, TARG_ORIGIN.z);
+  const munte = buildMunteZone(MUNTE_ORIGIN.x, MUNTE_ORIGIN.z);
+
+  assert.equal(straja.edgeTerraceDepth, 12);
+  assert.equal(targ.edgeTerraceDepth, 13);
+  assert.equal(munte.edgeTerraceDepth, 22);
+  for (const structure of [straja, targ, munte]) {
+    assert.ok((structure.edgeSoilDepth ?? 0) >= 6, structure.name);
+    assert.ok((structure.naturalClearance ?? 0) >= 8, structure.name);
   }
 });
 
