@@ -889,3 +889,66 @@ export function buildPadureaZone(originX: number, originZ: number): StructureTem
     blocks,
   };
 }
+
+// Two consolidation terraces on the far side of the mountain arc. The first
+// continues Muma Padurii's conditionals toward the castle; the second sits
+// beyond Baba Dochia and gives variables a longer, calmer practice area.
+export const STRAJA_ORIGIN = { x: 56, z: -34 };
+export const TARG_ORIGIN = { x: 9, z: 64 };
+export const RECAP_STATIONS: readonly [number, number][] = [
+  [-10, -7], [0, -7], [10, -7],
+  [-10, 7], [0, 7], [10, 7],
+];
+
+function buildConsolidationTerrace(
+  name: string,
+  originX: number,
+  originZ: number,
+  accent: BlockType,
+): StructureTemplate {
+  const blocks: StructureBlock[] = [];
+  const B = (dx: number, dy: number, dz: number, block: BlockType) => blocks.push({ dx, dy, dz, block });
+
+  for (let x = -15; x <= 15; x++) {
+    for (let z = -11; z <= 11; z++) B(x, 0, z, BlockType.Grass);
+  }
+  for (let x = -15; x <= 15; x++) B(x, 0, 0, BlockType.RiverStone);
+  for (let z = -11; z <= 11; z++) B(0, 0, z, BlockType.RiverStone);
+
+  for (const [cx, cz] of RECAP_STATIONS) {
+    for (let x = cx - 2; x <= cx + 2; x++) {
+      for (let z = cz - 2; z <= cz + 2; z++) B(x, 0, z, BlockType.Plank);
+    }
+    B(cx, 1, cz, accent);
+    B(cx - 2, 1, cz - 2, BlockType.Log);
+    B(cx + 2, 1, cz - 2, BlockType.Log);
+  }
+
+  // A clear road leaves the conditional terrace in the castle's direction.
+  if (name === 'Drumul Strajii') {
+    for (let i = 0; i <= 7; i++) {
+      B(15 + i, 0, i, BlockType.RiverStone);
+      B(15 + i, 0, i + 1, BlockType.RiverStone);
+    }
+  }
+
+  return {
+    name,
+    originX,
+    originZ,
+    surface: BlockType.Grass,
+    clearAbove: 8,
+    pad: 2,
+    edgeTerraceDepth: 3,
+    blocks,
+  };
+}
+
+export function buildStrajaZone(originX: number, originZ: number): StructureTemplate {
+  return buildConsolidationTerrace('Drumul Strajii', originX, originZ, BlockType.Lamp);
+}
+
+export function buildTargZone(originX: number, originZ: number): StructureTemplate {
+  return buildConsolidationTerrace('Targul Socotelilor', originX, originZ, BlockType.HorezuCeramic);
+}
+
