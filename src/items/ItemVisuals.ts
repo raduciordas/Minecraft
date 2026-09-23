@@ -12,12 +12,12 @@ export function shadeColor(color: number, factor = 0.65): number {
 
 export function voxelMaterial(color: number, finish: VoxelFinish = 'matte'): THREE.MeshStandardMaterial {
   const base = new THREE.Color(color);
-  const emissive = base.clone().multiplyScalar(finish === 'glossy' ? 0.1 : 0.045);
+  const emissive = base.clone().multiplyScalar(0.008);
   const settings = finish === 'polished'
-    ? { roughness: 0.34, metalness: 0.28 }
+    ? { roughness: 0.42, metalness: 0.2 }
     : finish === 'glossy'
       ? { roughness: 0.22, metalness: 0.12 }
-      : { roughness: 0.72, metalness: 0.02 };
+      : { roughness: 0.86, metalness: 0.0 };
   return new THREE.MeshStandardMaterial({ color: base, emissive, ...settings });
 }
 
@@ -91,3 +91,4 @@ export function polishItemIcon(source: HTMLCanvasElement): HTMLCanvasElement {
   ctx.putImageData(data, 0, 0);
   return out;
 }
+
