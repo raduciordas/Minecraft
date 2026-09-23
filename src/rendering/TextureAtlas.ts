@@ -37,11 +37,11 @@ function enhanceTile(img: ImageData): void {
       const g = original[i + 1];
       const b = original[i + 2];
       const luma = r * 0.299 + g * 0.587 + b * 0.114;
-      const bevelLight = x === 0 || y === 0 ? 1.16 : x === TILE_PX - 1 || y === TILE_PX - 1 ? 0.76 : 1;
-      const exposed = !alphaAt(x - 1, y) || !alphaAt(x, y - 1) ? 1.12 : 1;
+      const bevelLight = 1;
+      const exposed = !alphaAt(x - 1, y) || !alphaAt(x, y - 1) ? 1.025 : 1;
       const clustered = ((x >> 1) + (y >> 1)) % 2 === 0 ? 1.025 : 0.985;
       const light = bevelLight * exposed * clustered;
-      const colour = (channel: number) => Math.max(0, Math.min(255, (luma + (channel - luma) * 1.22) * light));
+      const colour = (channel: number) => Math.max(0, Math.min(255, (luma + (channel - luma) * 0.94) * light));
       img.data[i] = colour(r);
       img.data[i + 1] = colour(g);
       img.data[i + 2] = colour(b);
@@ -49,8 +49,8 @@ function enhanceTile(img: ImageData): void {
   }
 }
 
-const GRASS_GREEN: [number, number, number] = [104, 158, 76];
-const DIRT_BROWN: [number, number, number] = [148, 96, 58];
+const GRASS_GREEN: [number, number, number] = [107, 143, 70];
+const DIRT_BROWN: [number, number, number] = [125, 99, 70];
 
 const TILE_SPECS: Record<number, TileSpec> = {
   [Tile.GrassTop]: { base: GRASS_GREEN, variation: 0.12 },
@@ -69,8 +69,8 @@ const TILE_SPECS: Record<number, TileSpec> = {
     },
   },
   [Tile.Dirt]: { base: DIRT_BROWN, variation: 0.14 },
-  [Tile.Stone]: { base: [132, 140, 152], variation: 0.12 },
-  [Tile.Sand]: { base: [236, 211, 142], variation: 0.1 },
+  [Tile.Stone]: { base: [142, 144, 139], variation: 0.1 },
+  [Tile.Sand]: { base: [218, 209, 177], variation: 0.075 },
   [Tile.LogSide]: {
     base: [124, 82, 42],
     variation: 0.06,
