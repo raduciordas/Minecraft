@@ -13,7 +13,8 @@ interface ChunkMeshes {
 export class ChunkMeshManager {
   private meshes = new Map<string, ChunkMeshes>();
   private solidMaterial: THREE.MeshLambertMaterial;
-  private waterMaterial: THREE.MeshLambertMaterial;
+  private waterMaterial: THREE.MeshPhongMaterial;
+  private waterTime = { value: 0 };
 
   constructor(
     private scene: THREE.Scene,
@@ -24,14 +25,44 @@ export class ChunkMeshManager {
       vertexColors: true,
       alphaTest: 0.5, // glass tile has fully transparent pixels
     });
-    this.waterMaterial = new THREE.MeshLambertMaterial({
-      map: atlas.texture,
-      vertexColors: true,
+    this.waterMaterial = new THREE.MeshPhongMaterial({
+      color: 0x329f9c,
+      specular: 0xc6e9ed,
+      shininess: 110,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.30,
       depthWrite: false,
       side: THREE.DoubleSide, // water surface stays visible from underneath
     });
+    this.waterMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.waterTime = this.waterTime;
+      shader.vertexShader = 'varying vec3 waterPosition;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nwaterPosition = (modelMatrix * vec4(position, 1.0)).xyz;');
+      shader.fragmentShader = 'uniform float waterTime;\nvarying vec3 waterPosition;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
+        #include <normal_fragment_maps>
+        vec2 p = waterPosition.xz;
+        vec3 ripple = vec3(cos(p.x*2.1+p.y*0.8+waterTime*1.3)*0.09,0.0,
+          sin(p.y*2.7-p.x*0.5+waterTime)*0.07);
+        normal = normalize(normal + mat3(viewMatrix)*ripple);
+      `);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+        float fresnel = pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),3.0);
+        outgoingLight = mix(outgoingLight, outgoingLight*1.25+vec3(0.035,0.055,0.07),fresnel*0.6);
+        diffuseColor.a = mix(opacity,0.70,fresnel);
+        #include <opaque_fragment>
+      `);
+    };
+  }
+
+  update(dt: number, camera: THREE.Camera): void {
+    this.waterTime.value += dt;
+    for (const entry of this.meshes.values()) {
+      if (!entry.solid) continue;
+      const sphere = entry.solid.geometry.boundingSphere;
+      entry.solid.castShadow = !!sphere && sphere.center.distanceToSquared(camera.position) < 2304;
+    }
   }
 
   get meshCount(): number {
@@ -54,6 +85,7 @@ export class ChunkMeshManager {
     if (solid) {
       entry.solid = new THREE.Mesh(solid, this.solidMaterial);
       entry.solid.matrixAutoUpdate = false; // vertices are in world space already
+      entry.solid.receiveShadow = true;
       this.scene.add(entry.solid);
     }
     if (water) {
@@ -81,3 +113,4 @@ export class ChunkMeshManager {
     }
   }
 }
+
