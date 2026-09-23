@@ -232,10 +232,16 @@ export class Game {
   private worldReady = false;
   private accumulator = 0;
   private lastTime = 0;
+  private shadowElapsed = 0;
 
   constructor(container: HTMLElement, playerName: string) {
     this.playerName = playerName;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     container.appendChild(this.renderer.domElement);
@@ -258,6 +264,15 @@ export class Game {
     const ambient = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -36;
+    sun.shadow.camera.right = sun.shadow.camera.top = 36;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 180;
+    sun.shadow.bias = -0.0003;
+    sun.shadow.normalBias = 0.035;
+    this.scene.add(sun.target);
     sun.position.set(0.5, 1, 0.3);
     this.scene.add(sun);
     this.dayNight = new DayNightCycle(this.scene, ambient, sun);
@@ -687,6 +702,13 @@ export class Game {
     this.camera.rotation.x = this.input.pitch;
 
     this.dayNight.update(dt, this.camera);
+    this.meshManager.update(dt, this.camera);
+    // Sun shadows are local and refreshed at 15 Hz to limit GPU cost.
+    this.shadowElapsed += dt;
+    if (this.shadowElapsed >= 1 / 15) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowElapsed = 0;
+    }
 
     // Blue screen tint while the camera is inside a water block
     const eyeUnderwater = isWater(
