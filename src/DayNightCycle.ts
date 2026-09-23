@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NaturalSky } from './rendering/NaturalSky';
 import {
   FULL_DAY_SECONDS,
   DAY_SECONDS,
@@ -8,7 +9,7 @@ import {
   CHUNK_SIZE,
 } from './config';
 
-const DAY_SKY = new THREE.Color(0x87ceeb);
+const DAY_SKY = new THREE.Color(0xc4dee0);
 const SUNSET_SKY = new THREE.Color(0xe8875a);
 const NIGHT_SKY = new THREE.Color(0x070b21);
 
@@ -66,12 +67,17 @@ export class DayNightCycle {
   private skyColor = new THREE.Color();
   private sunDir = new THREE.Vector3();
   private skyRadius = RENDER_DISTANCE * CHUNK_SIZE * 0.9;
+  private atmosphere: NaturalSky;
+  private hemisphere = new THREE.HemisphereLight(0xbad8ed, 0x70634e, 0.7);
+  private warmSun = new THREE.Color(0xffa46c);
 
   constructor(
     private scene: THREE.Scene,
     private ambient: THREE.AmbientLight,
     private directional: THREE.DirectionalLight,
   ) {
+    this.atmosphere = new NaturalSky(scene, this.skyRadius * 1.2);
+    scene.add(this.hemisphere);
     this.sun = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xfff3a0, fog: false }));
     this.sun.scale.setScalar(14);
     scene.add(this.sun);
@@ -146,13 +152,19 @@ export class DayNightCycle {
     this.sunDir.set(Math.cos(angle), Math.sin(angle), 0.35).normalize();
 
     const daylight = this.daylight;
-    this.ambient.intensity = 0.18 + 0.52 * daylight;
-    this.directional.intensity = 0.08 + 0.82 * daylight;
-    this.directional.position.copy(this.sunDir).multiplyScalar(100);
+    this.ambient.intensity = 0.12 + 0.24 * daylight;
+    this.hemisphere.intensity = 0.16 + 0.64 * daylight;
+    this.directional.intensity = 0.06 + 1.65 * daylight;
+    this.directional.position.copy(camera.position).addScaledVector(this.sunDir, 100);
+    this.directional.target.position.copy(camera.position);
+    this.directional.target.updateMatrixWorld();
 
     // Sky: night <-> day, tinted orange near the horizon
     this.skyColor.lerpColors(NIGHT_SKY, DAY_SKY, daylight);
     const sunsetStrength = Math.max(0, 1 - Math.abs(this.elevation) / 0.28);
+    this.directional.color.set(0xfff4df).lerp(this.warmSun, sunsetStrength);
+    this.directional.castShadow = daylight > 0.15;
+    this.atmosphere.update(dt, camera, daylight, sunsetStrength, this.sunDir);
     this.skyColor.lerp(SUNSET_SKY, sunsetStrength * 0.6);
     (this.scene.background as THREE.Color).copy(this.skyColor);
     (this.scene.fog as THREE.Fog).color.copy(this.skyColor);
@@ -165,3 +177,4 @@ export class DayNightCycle {
     this.stars.visible = this.starsMaterial.opacity > 0.02;
   }
 }
+
