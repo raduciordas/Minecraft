@@ -68,6 +68,7 @@ function hash2D(x: number, z: number, seed: number): number {
 }
 
 const TREE_PROBABILITY = 0.008;
+const MAX_TREE_ELEVATION = 43;
 const RECAP_RIDGES = [
   { x: MUNTE_ORIGIN.x, z: MUNTE_ORIGIN.z + 54, width: 31, depth: 26, rise: 40 },
   { x: TARG_ORIGIN.x, z: TARG_ORIGIN.z + 40, width: 29, depth: 25, rise: 38 },
@@ -178,6 +179,15 @@ export class TerrainGenerator {
     return rise;
   }
 
+  private valleyFloor(wx: number, wz: number, height: number): number {
+    // Fill the low basin between Lunca, Vatra and Straja without moving their
+    // lesson platforms. A ten-block fringe joins the meadow to native hills.
+    const edge = Math.min(wx + 10, 52 - wx, wz + 58, 10 - wz);
+    const t = Math.max(0, Math.min(1, edge / 10));
+    const blend = t * t * (3 - 2 * t);
+    return height + Math.max(0, 30 - height) * blend;
+  }
+
   heightAt(wx: number, wz: number): number {
     const h =
       TERRAIN_BASE_HEIGHT +
@@ -194,6 +204,7 @@ export class TerrainGenerator {
       height = h + arc * (peak - h);
     }
     height += this.recapRidge(wx, wz);
+    height = this.valleyFloor(wx, wz, height);
     return Math.max(1, Math.min(CHUNK_HEIGHT - 10, Math.floor(height)));
   }
 
@@ -325,11 +336,13 @@ export class TerrainGenerator {
         const nearRecap = [MUNTE_ORIGIN, STRAJA_ORIGIN, TARG_ORIGIN].some((o) =>
           Math.abs(wx - o.x) < 48 && Math.abs(wz - o.z) < 42
         );
-        if (hash2D(wx, wz, this.seed) >= (nearRecap ? 0.016 : TREE_PROBABILITY)) continue;
+        const inValley = wx >= -10 && wx <= 50 && wz >= -58 && wz <= 10;
+        if (hash2D(wx, wz, this.seed) >= (inValley ? 0.018 : nearRecap ? 0.016 : TREE_PROBABILITY)) continue;
 
         let ground = CHUNK_HEIGHT - 3;
         while (ground > 0 && chunk.getBlock(lx, ground, lz) === BlockType.Air) ground--;
         if (chunk.getBlock(lx, ground, lz) !== BlockType.Grass) continue;
+        if (ground > MAX_TREE_ELEVATION) continue;
 
         const trunkHeight = 4 + (hash2D(wx, wz, this.seed + 7) < 0.5 ? 0 : 1);
         const top = ground + trunkHeight;
