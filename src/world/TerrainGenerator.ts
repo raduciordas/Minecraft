@@ -68,6 +68,11 @@ function hash2D(x: number, z: number, seed: number): number {
 }
 
 const TREE_PROBABILITY = 0.008;
+const RECAP_RIDGES = [
+  { x: MUNTE_ORIGIN.x, z: MUNTE_ORIGIN.z + 54, width: 31, depth: 26, rise: 40 },
+  { x: TARG_ORIGIN.x, z: TARG_ORIGIN.z + 40, width: 29, depth: 25, rise: 38 },
+  { x: STRAJA_ORIGIN.x + 49, z: STRAJA_ORIGIN.z, width: 25, depth: 29, rise: 37 },
+] as const;
 
 // World landmarks: fixed points of interest stamped into the terrain wherever
 // their footprint overlaps a chunk (see placeStructures).
@@ -162,6 +167,17 @@ export class TerrainGenerator {
     return radial;
   }
 
+  private recapRidge(wx: number, wz: number): number {
+    let rise = 0;
+    for (const ridge of RECAP_RIDGES) {
+      const dx = (wx - ridge.x) / ridge.width;
+      const dz = (wz - ridge.z) / ridge.depth;
+      const shoulder = Math.max(0, 1 - dx * dx - dz * dz);
+      rise = Math.max(rise, ridge.rise * shoulder * shoulder);
+    }
+    return rise;
+  }
+
   heightAt(wx: number, wz: number): number {
     const h =
       TERRAIN_BASE_HEIGHT +
@@ -177,6 +193,7 @@ export class TerrainGenerator {
       const peak = MOUNTAIN_BASE_HEIGHT + Math.pow(ridge, 1.4) * MOUNTAIN_AMP;
       height = h + arc * (peak - h);
     }
+    height += this.recapRidge(wx, wz);
     return Math.max(1, Math.min(CHUNK_HEIGHT - 10, Math.floor(height)));
   }
 
@@ -192,15 +209,17 @@ export class TerrainGenerator {
         const sandy = height <= SAND_HEIGHT;
         const snowy = height >= SNOW_LINE;
         const arc = this.arcFactor(wx, wz);
+        const ridge = this.recapRidge(wx, wz);
+        const exposedRock = ridge > 9 && height > 46 && hash2D(wx, wz, this.seed + 31) < 0.5;
 
         for (let y = 0; y <= height; y++) {
           let id: BlockType;
-          if (y === height) id = snowy ? BlockType.Snow : sandy ? BlockType.Sand : BlockType.Grass;
+          if (y === height) id = exposedRock ? BlockType.Stone : snowy ? BlockType.Snow : sandy ? BlockType.Sand : BlockType.Grass;
           else if (y >= height - 3) id = snowy ? BlockType.Stone : sandy ? BlockType.Sand : BlockType.Dirt;
           else {
             id = BlockType.Stone;
             // Crystal veins run through the deep rock inside the mountain band
-            if (arc > 0.35 && y < height - 6 && hash2D(wx, y * 131 + wz, this.seed + 3) < CRYSTAL_VEIN_PROBABILITY) {
+            if ((arc > 0.35 || ridge > 9) && y < height - 6 && hash2D(wx, y * 131 + wz, this.seed + 3) < CRYSTAL_VEIN_PROBABILITY) {
               id = BlockType.Crystal;
             }
           }
@@ -212,9 +231,9 @@ export class TerrainGenerator {
       }
     }
 
-    this.placeTrees(chunk);
     this.placeCrystalSpires(chunk);
     this.placeStructures(chunk);
+    this.placeTrees(chunk);
   }
 
   // Flattens each landmark's footprint (so it sits on a clean pad regardless
@@ -296,17 +315,20 @@ export class TerrainGenerator {
       for (let lz = 2; lz <= CHUNK_SIZE - 3; lz++) {
         const wx = baseX + lx;
         const wz = baseZ + lz;
-        // Trees are placed before structures. Exclude every trunk whose crown
-        // could overlap a lesson terrace; otherwise flattening can erase its
-        // trunk while leaving leaves suspended just outside the footprint.
-        const crownTouchesLesson = this.structures.some((s) =>
-          wx >= s.minX - 3 && wx <= s.maxX + 3 &&
-          wz >= s.minZ - 3 && wz <= s.maxZ + 3
+        // Keep trunks and crowns away from lesson props, while allowing trees
+        // on the grass shoulders after their final ground level is known.
+        const touchesLesson = this.structures.some((s) =>
+          wx >= s.flatMinX - 2 && wx <= s.flatMaxX + 2 &&
+          wz >= s.flatMinZ - 2 && wz <= s.flatMaxZ + 2
         );
-        if (crownTouchesLesson) continue;
-        if (hash2D(wx, wz, this.seed) >= TREE_PROBABILITY) continue;
+        if (touchesLesson) continue;
+        const nearRecap = [MUNTE_ORIGIN, STRAJA_ORIGIN, TARG_ORIGIN].some((o) =>
+          Math.abs(wx - o.x) < 48 && Math.abs(wz - o.z) < 42
+        );
+        if (hash2D(wx, wz, this.seed) >= (nearRecap ? 0.016 : TREE_PROBABILITY)) continue;
 
-        const ground = this.heightAt(wx, wz);
+        let ground = CHUNK_HEIGHT - 3;
+        while (ground > 0 && chunk.getBlock(lx, ground, lz) === BlockType.Air) ground--;
         if (chunk.getBlock(lx, ground, lz) !== BlockType.Grass) continue;
 
         const trunkHeight = 4 + (hash2D(wx, wz, this.seed + 7) < 0.5 ? 0 : 1);
@@ -345,7 +367,7 @@ export class TerrainGenerator {
         const wz = baseZ + lz;
         const ground = this.heightAt(wx, wz);
         if (ground < CRYSTAL_LINE) continue;
-        if (this.arcFactor(wx, wz) < 0.5) continue;
+        if (this.arcFactor(wx, wz) < 0.5 && this.recapRidge(wx, wz) < 18) continue;
         if (hash2D(wx, wz, this.seed + 11) >= CRYSTAL_SPIRE_PROBABILITY) continue;
         if (chunk.getBlock(lx, ground, lz) !== BlockType.Snow) continue;
 
