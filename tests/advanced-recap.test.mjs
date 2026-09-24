@@ -9,7 +9,7 @@ import { BlockType } from '../src/world/Block.ts';
 import { ThrowableId } from '../src/items/Throwable.ts';
 import { WeaponId } from '../src/items/Weapon.ts';
 import { World, worldToChunk } from '../src/world/World.ts';
-import { WORLD_SEED } from '../src/config.ts';
+import { SEA_LEVEL, WORLD_SEED } from '../src/config.ts';
 import {
   MUNTE_ORIGIN,
   STRAJA_ORIGIN,
@@ -122,6 +122,42 @@ test('new trees around Anica grow from finished grass, outside lesson stations',
     }
   }
   assert.ok(trees >= 3, `expected trees on the surrounding slopes, got ${trees}`);
+});
+
+test('the basin between Lunca, Vatra and Straja is dry raised ground', () => {
+  const world = new World(WORLD_SEED);
+  for (let z = -48; z <= 0; z += 3) {
+    for (let x = 0; x <= 42; x += 3) {
+      assert.ok(world.generator.heightAt(x, z) >= 30, `low basin at ${x},${z}`);
+      world.generateChunk(worldToChunk(x), worldToChunk(z));
+      assert.notEqual(world.getBlock(x, SEA_LEVEL, z), BlockType.Water, `lake at ${x},${z}`);
+    }
+  }
+  let trees = 0;
+  for (let z = -48; z <= 0; z++) {
+    for (let x = 0; x <= 42; x++) {
+      if ((x <= 12 && z <= -22) || x >= 39) continue;
+      const ground = world.generator.heightAt(x, z);
+      if (world.getBlock(x, ground, z) !== BlockType.Grass) continue;
+      if (world.getBlock(x, ground + 1, z) !== BlockType.Log) continue;
+      if ([4, 5].some((height) => world.getBlock(x, ground + height + 1, z) === BlockType.Leaves)) trees++;
+    }
+  }
+  assert.ok(trees >= 3, `expected trees in the meadow, got ${trees}`);
+});
+
+test('rocky mountain crowns have no tree trunks', () => {
+  const world = new World(WORLD_SEED);
+  for (const [cx, cz] of [[MUNTE_ORIGIN.x, MUNTE_ORIGIN.z + 54], [TARG_ORIGIN.x, TARG_ORIGIN.z + 40]]) {
+    for (let z = cz - 10; z <= cz + 10; z++) {
+      for (let x = cx - 10; x <= cx + 10; x++) {
+        world.generateChunk(worldToChunk(x), worldToChunk(z));
+        for (let y = 44; y <= 75; y++) {
+          assert.notEqual(world.getBlock(x, y, z), BlockType.Log, `high tree at ${x},${y},${z}`);
+        }
+      }
+    }
+  }
 });
 
 test('conditional consolidation grows from two to five if blocks', () => {
