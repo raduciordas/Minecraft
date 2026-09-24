@@ -30,7 +30,7 @@ export class ChunkMeshManager {
       specular: 0xc6e9ed,
       shininess: 110,
       transparent: true,
-      opacity: 0.30,
+      opacity: 0.46,
       depthWrite: false,
       side: THREE.DoubleSide, // water surface stays visible from underneath
     });
