@@ -1821,7 +1821,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   felinarul_din_defileu: conditionalRecap({
     id: 'felinarul_din_defileu',
     title: 'Felinarul din defileu — două hotărâri',
-    intro: 'STRĂJERUL DRAGOȘ: „În defileu verifici două lucruri. Întâi cercetează drumul. DACĂ e ceață, pune baliza. DACĂ e noapte, aprinde felinarul. Sunt două întrebări separate, deci folosește două blocuri «dacă»."',
+    intro: 'STRĂJERUL DRAGOȘ: „Cercetează defileul înainte de a-l pregăti pentru drumeți. Baliza îi orientează prin ceață, iar felinarul luminează drumul noaptea. Ocupă-te de marcaj înaintea luminii și folosește fiecare doar când este nevoie. Ce se întâmplă într-o noapte cu ceață?”',
     success: 'Defileul este marcat corect în toate cele patru vremuri. (+1 arc cu 20 de săgeți)',
     rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
     reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
@@ -1839,7 +1839,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   podul_de_ceata: conditionalRecap({
     id: 'podul_de_ceata',
     title: 'Podul de ceață — dacă și altfel',
-    intro: 'STRĂJERUL DRAGOȘ: „Verifică podul. DACĂ bate vântul tare, închide-l; ALTFEL lasă-l deschis. Apoi, DACĂ e ceață, aprinde semnalul. Două decizii țin podul sigur.”',
+    intro: 'STRĂJERUL DRAGOȘ: „Începe cu o inspecție a podului. Vântul puternic face trecerea nesigură; pe vreme liniștită, drumul trebuie să rămână deschis. După ce hotărăști accesul, ai grijă de vizibilitate: semnalul luminos este necesar în ceață, chiar și la un pod închis.”',
     success: 'Podul răspunde corect la vânt și ceață. (+8 socată fermentată)',
     rewardItems: [{ id: ThrowableId.SocataBottle, count: 8 }],
     reward: '8 sticle de socată fermentată',
@@ -1857,7 +1857,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   caruta_ratacita: conditionalRecap({
     id: 'caruta_ratacita',
     title: 'Căruța rătăcită — decizie în decizie',
-    intro: 'STRĂJERUL DRAGOȘ: „DACĂ drumul e blocat, ocolește stânca. ALTFEL, verifică: DACĂ e noroi, mergi încet; ALTFEL mergi înainte. La urmă, DACĂ vine o căruță, ridică semnul.”',
+    intro: 'STRĂJERUL DRAGOȘ: „Alege un singur fel de a înainta: stânca ce blochează drumul trebuie ocolită, noroiul de pe un drum liber cere mers încet, iar un drum liber și uscat permite mersul înainte. După deplasare, avertizează cu semnul numai căruțele care se apropie. Care obstacol are întâietate?”',
     success: 'Căruța trece muntele fără să intre în stâncă sau noroi. (+10 Huba Bubă)',
     rewardItems: [{ id: ThrowableId.HubaBuba, count: 10 }],
     reward: '10 bucăți Huba Bubă',
@@ -1874,7 +1874,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   semnalele_strajii: conditionalRecap({
     id: 'semnalele_strajii',
     title: 'Semnalele străjii — patru verificări',
-    intro: 'STRĂJERUL DRAGOȘ: „Patru semnale independente: DACĂ vine cineva din nord, ridică steagul albastru; DACĂ vine din sud, steagul roșu; DACĂ e pericol, bate clopotul; DACĂ e noapte, aprinde focul.”',
+    intro: 'STRĂJERUL DRAGOȘ: „Codul turnului este acesta: albastru pentru sosiri din nord, roșu pentru sosiri din sud, clopot pentru pericol și foc pe timpul nopții. Parcurge semnalele în această ordine și transmite numai ce se potrivește situației. O veste o exclude oare pe alta?”',
     success: 'Turnul transmite toate semnalele potrivite. (+10 ceramică de Horezu)',
     rewardItems: [{ id: BlockType.HorezuCeramic, count: 10 }],
     reward: '10 blocuri de ceramică de Horezu, material care nu apare natural în lume',
@@ -1891,7 +1891,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   tabara_drumetilor: conditionalRecap({
     id: 'tabara_drumetilor',
     title: 'Tabăra drumeților — ȘI, SAU și NU',
-    intro: 'STRĂJERUL DRAGOȘ: „DACĂ plouă SAU e noapte, ridică adăpostul. DACĂ e frig ȘI e noapte, aprinde focul. DACĂ NU avem apă, umple burduful. Trei hotărâri, fiecare cu altă legătură.”',
+    intro: 'STRĂJERUL DRAGOȘ: „Pregătește întâi adăpostul, apoi focul și la urmă apa, doar acolo unde este nevoie. Ploaia și întunericul sunt fiecare un motiv suficient pentru adăpost. Lemnele se păstrează pentru nopțile reci, iar un burduf care are deja apă nu se umple din nou. Cum deosebești aceste trei reguli?”',
     success: 'Tabăra este pregătită pentru toate vremurile. (+8 ii tradiționale)',
     rewardItems: [{ id: BlockType.IeBlouse, count: 8 }],
     reward: '8 ii tradiționale, material care nu apare natural în lume',
@@ -1908,7 +1908,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   poarta_castelului: conditionalRecap({
     id: 'poarta_castelului',
     title: 'Poarta castelului — cinci hotărâri',
-    intro: 'STRĂJERUL DRAGOȘ: „Ultima pază: verifică pecetea. DACĂ e călător cinstit, deschide; ALTFEL oprește-l. DACĂ are marfă, înscrie-o. DACĂ e noapte, aprinde poarta. DACĂ e primejdie, sună alarma. DACĂ podul NU e coborât, coboară-l.”',
+    intro: 'STRĂJERUL DRAGOȘ: „Începe cu pecetea: călătorii cinstiți primesc acces, ceilalți sunt opriți. Continuă controlul, în ordine, cu marfa, iluminarea, alarma și podul, indiferent cine a sosit. Marfa se trece în registru, noaptea cere lumină, primejdia cere alarmă, iar podul trebuie lăsat coborât fără a-l coborî încă o dată. Găsește verificările necesare.”',
     success: 'Poarta castelului lucrează corect în fiecare situație. (+12 sare de ocnă)',
     rewardItems: [{ id: BlockType.RockSalt, count: 12 }],
     reward: '12 blocuri de sare de ocnă, material care nu apare natural în lume',
@@ -1928,7 +1928,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   desagii_caravanei: variableRecap({
     id: 'desagii_caravanei',
     title: 'Desagii caravanei — numără și raportează',
-    intro: 'MEȘTERA ANICA: „Pune «desagi» pe zero. Repetă de cinci ori: încarcă un desag și mărește cutiuța cu unu. La sfârșit raportează numărul din cutiuță.”',
+    intro: 'MEȘTERA ANICA: „Caravana pleacă fără bagaje încărcate și așteaptă cinci desagi. Încarcă-i pe rând și ține în cutiuța «desagi» evidența celor urcați deja în car. La plecare, anunță totalul din evidență. Cum faci aceeași muncă de mai multe ori fără să copiezi fiecare pas?”',
     success: 'Cinci desagi sunt gata de drum. (+8 socată fermentată)',
     rewardItems: [{ id: ThrowableId.SocataBottle, count: 8 }],
     reward: '8 sticle de socată fermentată',
@@ -1941,7 +1941,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   sticlele_de_socata: variableRecap({
     id: 'sticlele_de_socata',
     title: 'Sticlele de socată — cutiuța care scade',
-    intro: 'MEȘTERA ANICA: „Pune 12 în cutiuța «sticle». Vin trei drumeți; pentru fiecare dă două sticle și scade doi. Apoi spune câte au rămas, citind cutiuța.”',
+    intro: 'MEȘTERA ANICA: „Ai douăsprezece sticle și trei drumeți. Fiecare primește câte două. Cutiuța «sticle» trebuie să arate mereu câte mai sunt în ladă, iar la sfârșit vei anunța ce a rămas. Ce se schimbă în socoteală după fiecare drumeț?”',
     success: 'Ai împărțit socata și ai păstrat socoteala restului. (+10 Huba Bubă)',
     rewardItems: [{ id: ThrowableId.HubaBuba, count: 10 }],
     reward: '10 bucăți Huba Bubă',
@@ -1954,7 +1954,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   proviziile_drumului: variableRecap({
     id: 'proviziile_drumului',
     title: 'Proviziile drumului — număr de la senzor',
-    intro: 'MEȘTERA ANICA: „Întreabă borna câți călători vin și pune răspunsul în «portii». Adaugă încă două porții de rezervă, apoi pregătește exact atâtea și raportează totalul.”',
+    intro: 'MEȘTERA ANICA: „Fiecare călător are nevoie de o porție, iar caravana mai ia două de rezervă. Borna îți spune câți oameni vin, dar numărul diferă de la un drum la altul. Folosește cutiuța «portii» pentru a pregăti cantitatea potrivită și a anunța totalul. Programul tău trebuie să ajute ambele caravane.”',
     success: 'Caravana are porții pentru toți și două de rezervă. (+1 arc cu 20 de săgeți)',
     rewardItems: [{ id: WeaponId.Arc, count: BOW_QUIVER_SIZE, refill: true }],
     reward: '1 arc cu 20 de săgeți; refă lecția pentru un set nou',
@@ -1968,7 +1968,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   lada_cu_huba: variableRecap({
     id: 'lada_cu_huba',
     title: 'Lada cu Huba Bubă — două cutiuțe',
-    intro: 'MEȘTERA ANICA: „Pune «ladite» pe 4 și «gume» pe 0. Pentru fiecare lădiță, împachetează trei gume, adaugă trei la «gume» și scade una din «ladite». La urmă raportează gumele.”',
+    intro: 'MEȘTERA ANICA: „Patru lădițe așteaptă să fie împachetate, fiecare cu trei gume. La început nu ai împachetat nicio gumă. Ține două evidențe: lădițele încă neterminate și gumele deja împachetate. La final, anunță totalul gumelor din cutiuță. Cum se schimbă cele două evidențe când termini o lădiță?”',
     success: 'Patru lădițe au dat douăsprezece gume bine numărate. (+10 ceramică de Horezu)',
     rewardItems: [{ id: BlockType.HorezuCeramic, count: 10 }],
     reward: '10 blocuri de ceramică de Horezu, material care nu apare natural în lume',
@@ -1981,7 +1981,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   transportul_de_sare: variableRecap({
     id: 'transportul_de_sare',
     title: 'Transportul de sare — cât timp mai rămâne',
-    intro: 'MEȘTERA ANICA: „Pune 10 în «sare». CÂT TIMP mai este sare, încarcă doi bulgări și scade doi. Când cutiuța ajunge la zero, trimite carul și raportează cât a rămas.”',
+    intro: 'MEȘTERA ANICA: „Zece bulgări de sare așteaptă lângă car. Poți încărca doar câte doi odată. Cutiuța «sare» urmărește marfa rămasă pe pământ și te ajută să hotărăști când munca s-a terminat. Abia atunci trimite carul, apoi anunță cât a rămas. Ce trebuie să verifici înainte de a încărca alți bulgări?”',
     success: 'Tot transportul este încărcat, iar cutiuța s-a oprit exact la zero. (+8 ii tradiționale)',
     rewardItems: [{ id: BlockType.IeBlouse, count: 8 }],
     reward: '8 ii tradiționale, material care nu apare natural în lume',
@@ -1995,7 +1995,7 @@ export const VATRA_PUZZLES: Record<string, VatraPuzzle> = {
   socoteala_castelului: variableRecap({
     id: 'socoteala_castelului',
     title: 'Socoteala castelului — cutiuțe și decizie',
-    intro: 'MEȘTERA ANICA: „Întreabă câți oaspeți vin. Pune numărul în «oaspeti» și «monede» pe zero. Cât timp mai ai oaspeți, primește câte două monede și scade un oaspete. DACĂ ai cel puțin opt monede, deschide cămara. La urmă raportează monedele.”',
+    intro: 'MEȘTERA ANICA: „La poartă sosesc grupuri de mărimi diferite; borna îți spune câți oaspeți așteaptă. Punga este goală, iar fiecare oaspete plătește două monede. Urmărește oamenii rămași și banii adunați. După ce îi primești pe toți, cămara se poate deschide numai cu cel puțin opt monede. La urmă, anunță încasările din cutiuță.”',
     success: 'Socoteala se adaptează singură la fiecare grup de oaspeți. (+8 obsidian)',
     rewardItems: [{ id: BlockType.Obsidian, count: 8 }],
     reward: '8 blocuri de obsidian, material care nu apare natural în lume',
